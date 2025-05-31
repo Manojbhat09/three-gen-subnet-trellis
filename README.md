@@ -63,8 +63,8 @@ The most rigorous testing environment used is the Deep Learning VM Image, which 
 ### Environment Management With Conda
 
 For optimal environment setup:
-- Prefer [Conda](https://docs.conda.io/en/latest/) for handling dependencies and isolating environments. It’s straightforward and efficient for project setup.
-- If Conda isn’t viable, fallback to manual installations guided by `conda_env_*.yml` files for package details, and use `requirements.txt`. Utilizing a virtual environment is highly advised for dependency management.
+- Prefer [Conda](https://docs.conda.io/en/latest/) for handling dependencies and isolating environments. It's straightforward and efficient for project setup.
+- If Conda isn't viable, fallback to manual installations guided by `conda_env_*.yml` files for package details, and use `requirements.txt`. Utilizing a virtual environment is highly advised for dependency management.
 
 ### Process Supervision With PM2
 
@@ -117,9 +117,6 @@ Update `miner.config.js` with wallet information and ports, then execute with [P
 pm2 start miner.config.js
 ```
 
-
-
-
 ## Running the Validator
 
 Key Aspects of Operating a Validator:
@@ -168,7 +165,6 @@ You can also test the validator using the mock script. Navigate to the `mocks` f
 PYTHONPATH=$PWD/.. python mock_miner.py --subtensor.network finney --netuid 17 --wallet.name default --wallet.hotkey default --logging.trace
 ```
 
-
 ## Prompt Generation
 
 Our subnet supports prompt generation from two main sources: organic traffic via Public API 
@@ -210,4 +206,53 @@ To set up the prompt collector:
 
 For more details and to get started with the prompt collector, visit the following URL:
 - [Prompt Collector Repository](https://github.com/404-Repo/get-prompts)
+
+# Text-to-3D Generation with TRELLIS
+
+This repository contains scripts for generating 3D models from text descriptions using TRELLIS.
+
+## Setup Instructions
+
+1. Create a new conda environment:
+```bash
+conda create -n trellis python=3.10
+conda activate trellis
+conda install pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+```
+
+2. Clone TRELLIS repository:
+```bash
+git clone https://github.com/KAIR-BAIR/TRELLIS.git
+```
+
+3. Run the setup script with required flags:
+```bash
+cd TRELLIS
+./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast
+```
+
+4. Install TRELLIS as a Python package:
+```bash
+pip install -e .
+```
+
+## Usage
+
+Run the generation script:
+```bash
+python test_trellis.py
+```
+
+The script will generate a 3D model from the prompt "a blue monkey sitting on temple" and save the outputs in the following formats:
+- PLY file (3D Gaussians): `outputs/blue_monkey_gaussian.ply`
+- GLB file (Textured mesh): `outputs/blue_monkey.glb`
+- Preview videos:
+  - `outputs/preview_gaussian.mp4`
+  - `outputs/preview_rf.mp4`
+
+## Environment Variables
+
+The following environment variables are set in the scripts:
+- `SPCONV_ALGO=native`
+- `ATTN_BACKEND=xformers`
 
