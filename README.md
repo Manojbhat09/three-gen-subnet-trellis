@@ -213,6 +213,34 @@ This repository contains scripts for generating 3D models from text descriptions
 
 ## Setup Instructions
 
+There are two ways to set up the environment:
+
+### Option 1: Using Environment YML Files (Recommended)
+
+We provide three separate conda environments for different components:
+
+1. **TRELLIS Environment** (for text-to-3D generation):
+```bash
+conda env create -f environment_trellis.yml
+conda activate trellis_new
+```
+
+2. **Mining Environment** (for running generation endpoints):
+```bash
+conda env create -f environment_mining.yml
+conda activate three-gen-mining
+```
+
+3. **Neurons Environment** (for running validator/miner nodes):
+```bash
+conda env create -f environment_neurons.yml
+conda activate three-gen-neurons
+```
+
+### Option 2: Manual Setup
+
+If you prefer to set up manually:
+
 1. Create a new conda environment:
 ```bash
 conda create -n trellis python=3.10
