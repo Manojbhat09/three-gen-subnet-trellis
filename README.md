@@ -213,7 +213,25 @@ This repository contains scripts for generating 3D models from text descriptions
 
 ## Setup Instructions
 
-There are two ways to set up the environment:
+### Prerequisites
+
+1. **System Dependencies** (Ubuntu/Debian):
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    libgl1-mesa-dev \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libglew-dev \
+    libglfw3-dev \
+    libglvnd-dev \
+    pkg-config \
+    xvfb
+```
+
+There are three ways to set up the environment:
 
 ### Option 1: Using Environment YML Files (Recommended)
 
@@ -237,9 +255,38 @@ conda env create -f environment_neurons.yml
 conda activate three-gen-neurons
 ```
 
-### Option 2: Manual Setup
+### Option 2: Using Requirements.txt
 
-If you prefer to set up manually:
+1. Create and activate conda environment:
+```bash
+conda create -n trellis python=3.10
+conda activate trellis
+```
+
+2. Install required conda packages:
+```bash
+conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8
+conda install -c conda-forge gcc=12 gxx=12
+conda install -c conda-forge nvdiffrast
+```
+
+3. Set compiler environment variables:
+```bash
+export CC=$(which gcc)
+export CXX=$(which g++)
+```
+
+4. Install Python packages:
+```bash
+pip install -r requirements.txt
+```
+
+5. Install special dependencies:
+```bash
+pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
+```
+
+### Option 3: Manual Setup
 
 1. Create a new conda environment:
 ```bash
