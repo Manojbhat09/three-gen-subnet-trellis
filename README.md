@@ -233,7 +233,7 @@ sudo apt-get install -y \
 
 There are three ways to set up the environment:
 
-### Option 1: Using Environment YML Files (Recommended)
+### 1: Using Environment YML Files (Recommended)
 
 We provide three separate conda environments for different components:
 
@@ -255,7 +255,7 @@ conda env create -f environment_neurons.yml
 conda activate three-gen-neurons
 ```
 
-### Option 2: Using Requirements.txt
+### 2: Using Requirements.txt
 
 1. Create and activate conda environment:
 ```bash
@@ -266,10 +266,23 @@ conda activate trellis
 2. Install required conda packages:
 ```bash
 conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8
+conda install pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
 conda install -c conda-forge gcc=12 gxx=12
-conda install -c conda-forge nvdiffrast
+git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+cd kaolin
+git checkout v0.17.0  # Match your desired version
+pip install -r tools/requirements.txt
+python setup.py develop
+cd ..
+git clone https://github.com/NVlabs/nvdiffrast
+cd nvdiffrast
+pip install ninja
+pip install .
 ```
-
+or 
+```
+pip install git+https://github.com/NVlabs/nvdiffrast.git
+```
 3. Set compiler environment variables:
 ```bash
 export CC=$(which gcc)
@@ -283,26 +296,24 @@ pip install -r requirements.txt
 
 5. Install special dependencies:
 ```bash
+git clone https://github.com/autonomousvision/mip-splatting --recursive /tmp/extensions/mip-splatting/
 pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
 ```
 
-### Option 3: Manual Setup
-
-1. Create a new conda environment:
+### Next steps:
+1.
 ```bash
-conda create -n trellis python=3.10
-conda activate trellis
-conda install pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+conda activate trellis_new
 ```
 
 2. Clone TRELLIS repository:
 ```bash
-git clone https://github.com/KAIR-BAIR/TRELLIS.git
+git clone --recurse-submodules https://github.com/microsoft/TRELLIS.git
+cd TRELLIS
 ```
 
 3. Run the setup script with required flags:
 ```bash
-cd TRELLIS
 ./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast
 ```
 
