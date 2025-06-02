@@ -215,7 +215,16 @@ This repository contains scripts for generating 3D models from text descriptions
 
 ### Prerequisites
 
-1. **System Dependencies** (Ubuntu/Debian):
+1. **Hardware Requirements**:
+   - NVIDIA GPU with CUDA support
+   - Minimum 16GB GPU RAM recommended
+   - Minimum 32GB System RAM recommended
+
+2. **CUDA Requirements**:
+   - CUDA 11.8 or CUDA 12.1
+   - NVIDIA drivers version >= 525.60.13
+
+3. **System Dependencies** (Ubuntu/Debian):
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
@@ -265,24 +274,31 @@ conda activate trellis
 
 2. Install required conda packages:
 ```bash
-conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8
-conda install pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+# Install PyTorch with CUDA support
+conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+
+# Install required compilers
 conda install -c conda-forge gcc=12 gxx=12
+
+# Install Kaolin
 git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
 cd kaolin
 git checkout v0.17.0  # Match your desired version
 pip install -r tools/requirements.txt
 python setup.py develop
 cd ..
+
+# Install nvdiffrast
 git clone https://github.com/NVlabs/nvdiffrast
 cd nvdiffrast
 pip install ninja
 pip install .
 ```
-or 
-```
+or alternatively for nvdiffrast:
+```bash
 pip install git+https://github.com/NVlabs/nvdiffrast.git
 ```
+
 3. Set compiler environment variables:
 ```bash
 export CC=$(which gcc)
@@ -296,12 +312,14 @@ pip install -r requirements.txt
 
 5. Install special dependencies:
 ```bash
+# Install mip-splatting and diff-gaussian-rasterization
 git clone https://github.com/autonomousvision/mip-splatting --recursive /tmp/extensions/mip-splatting/
 pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
 ```
 
 ### Next steps:
-1.
+
+1. Activate the environment:
 ```bash
 conda activate trellis_new
 ```
@@ -322,6 +340,22 @@ cd TRELLIS
 pip install -e .
 ```
 
+## Environment Variables
+
+Required environment variables:
+```bash
+export SPCONV_ALGO=native
+export ATTN_BACKEND=xformers
+export CC=$(which gcc)
+export CXX=$(which g++)
+```
+
+Optional environment variables:
+```bash
+export CUDA_VISIBLE_DEVICES=0  # Specify GPU device
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512  # Help with OOM errors
+```
+
 ## Usage
 
 Run the generation script:
@@ -333,12 +367,185 @@ The script will generate a 3D model from the prompt "a blue monkey sitting on te
 - PLY file (3D Gaussians): `outputs/blue_monkey_gaussian.ply`
 - GLB file (Textured mesh): `outputs/blue_monkey.glb`
 - Preview videos:
-  - `outputs/preview_gaussian.mp4`
-  - `outputs/preview_rf.mp4`
+  - `outputs/preview_gaussian.mp4` (Gaussian splatting preview)
+  - `outputs/preview_rf.mp4` (Radiance field preview)
+  - `outputs/preview_mesh.mp4` (Mesh preview)
 
-## Environment Variables
+## Troubleshooting
 
-The following environment variables are set in the scripts:
-- `SPCONV_ALGO=native`
-- `ATTN_BACKEND=xformers`
+### Common Issues
+
+1. **CUDA Version Mismatch**
+   ```
+   RuntimeError: CUDA error: no kernel image is available for execution on the device
+   ```
+   Solution: Make sure your NVIDIA drivers support your CUDA version. For CUDA 11.8:
+   ```bash
+   # Check NVIDIA driver version
+   nvidia-smi
+   # If needed, install correct driver
+   sudo apt install nvidia-driver-525
+   ```
+
+2. **OpenGL Issues**
+   ```
+   ImportError: libGL.so.1: cannot open shared object file
+   ```
+   Solution: Reinstall OpenGL libraries:
+   ```bash
+   sudo apt-get install --reinstall libgl1-mesa-glx
+   ```
+
+3. **Kaolin Installation Issues**
+   If Kaolin fails to install, try:
+   ```bash
+   conda install -c conda-forge pytorch-cuda=11.8
+   pip uninstall kaolin
+   pip install kaolin==0.13.0
+   ```
+
+4. **Flash Attention Issues**
+   If you encounter flash attention errors, set this environment variable:
+   ```bash
+   export ATTN_BACKEND=xformers
+   ```
+
+### Version Compatibility Matrix
+
+| Component | Version | Compatible With |
+|-----------|---------|-----------------|
+| PyTorch   | 2.4.0   | CUDA 11.8/12.1 |
+| Kaolin    | 0.13.0  | PyTorch 2.4.0  |
+| nvdiffrast| latest  | CUDA 11.8/12.1 |
+| gcc/g++   | 12.x    | All            |
+
+## Monitoring
+
+Monitor GPU usage during generation:
+```bash
+watch -n 1 nvidia-smi
+```
+
+Monitor CPU and memory:
+```bash
+htop
+```
+
+## Files to Save
+
+When backing up or moving to a new instance, save these files:
+1. Custom scripts:
+   - `test_trellis.py`
+   - `serve_trellis.py`
+2. Environment files:
+   - `environment_trellis.yml`
+   - `environment_mining.yml`
+   - `environment_neurons.yml`
+   - `requirements.txt`
+   - `setup_requirements.txt`
+3. Any modified configuration files
+
+The conda environments themselves should be recreated rather than backed up.
+
+
+
+## Setup 3D topia
+
+
+```
+# install dependencies
+conda create -n primx python=3.9
+conda install pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 -c pytorch -c nvidia
+# requires xformer for efficient attention
+conda install xformers::xformers
+# install other dependencies
+pip install -r requirements.txt
+```
+```
+pip install git+https://github.com/NVlabs/nvdiffrast.git
+pip install "numpy<2"
+pip install onnxruntime
+```
+
+
+```
+wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+sudo sh cuda_11.8.0_520.61.05_linux.run
+export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+source ~/.bashrc
+source /home/mbhat/miniconda/bin/activate
+conda activate primx
+nvcc --version
+```
+
+```
+sudo apt-get install libeigen3-dev  # For Ubuntu/Debian
+git clone https://github.com/ashawkey/cubvh
+```
+If needed:
+Then modify cubvh/setup.py to use system Eigen headers instead of the submodule:
+```
+# In setup.py, change:
+include_dirs=[
+    os.path.join(_src_path, 'include'),
+    os.path.join(_src_path, 'third_party', 'eigen'),  # ← Remove this line
+    '/usr/include/eigen3',  # ← Add this line
+],
+```
+
+Then:
+```
+conda install -c fvcore -c iopath -c conda-forge fvcore iopath
+conda install ninja  # Critical for compiling extensions
+```
+
+Then:
+```
+cd cubvh
+git submodule update --init --recursive
+rm -rf third_party/eigen
+git clone https://gitlab.com/libeigen/eigen.git third_party/eigen
+sudo cp -r patch/eigen/ /home/mbhat/miniconda/envs/primx/lib/python3.9/site-packages/torch/include/
+cd cubvh
+pip install . --verbose 
+```
+
+then the main:
+```
+bash install.sh
+```
+
+download important files:
+```
+mkdir pretrained && cd pretrained
+# download DiT
+wget https://huggingface.co/FrozenBurning/3DTopia-XL/resolve/main/model_sview_dit_fp16.pt
+# download VAE
+wget https://huggingface.co/FrozenBurning/3DTopia-XL/resolve/main/model_vae_fp16.pt
+cd ..
+```
+
+install inference files:
+```
+conda install -c iopath iopath
+conda install -c bottler nvidiacub
+conda install jupyter
+pip install scikit-image matplotlib imageio plotly opencv-python
+git clone --recursive https://github.com/facebookresearch/pytorch3d
+cd pytorch3d
+python setup.py clean
+python setup.py install  # Use --user if not in a virtual env
+```
+
+Run inference:
+```
+python inference.py ./configs/inference_dit.yml
+```
+
+
+
+## License
+
+TRELLIS is licensed under [Microsoft Research License](https://github.com/microsoft/TRELLIS/blob/main/LICENSE.txt).
 
