@@ -267,9 +267,21 @@ conda activate trellis
 ```bash
 conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8
 conda install -c conda-forge gcc=12 gxx=12
-conda install -c conda-forge nvdiffrast
+git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+cd kaolin
+git checkout v0.17.0  # Match your desired version
+pip install -r tools/requirements.txt
+python setup.py develop
+cd ..
+git clone https://github.com/NVlabs/nvdiffrast
+cd nvdiffrast
+pip install ninja
+pip install .
 ```
-
+or 
+```
+pip install git+https://github.com/NVlabs/nvdiffrast.git
+```
 3. Set compiler environment variables:
 ```bash
 export CC=$(which gcc)
