@@ -283,6 +283,7 @@ pip install -r requirements.txt
 
 5. Install special dependencies:
 ```bash
+git clone https://github.com/autonomousvision/mip-splatting --recursive /tmp/extensions/mip-splatting/
 pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
 ```
 
