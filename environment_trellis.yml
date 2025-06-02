@@ -188,7 +188,6 @@ dependencies:
       - dataclasses-json==0.6.7
       - decorator==5.2.1
       - deprecated==1.2.18
-      - diff-gaussian-rasterization==0.0.0
       - easydict==1.13
       - entrypoints==0.4
       - exceptiongroup==1.3.0
@@ -221,7 +220,6 @@ dependencies:
       - jupyter-client==7.4.9
       - jupyter-core==5.8.1
       - jupyterlab-widgets==3.0.15
-      - kaolin==0.17.0
       - kiwisolver==1.4.8
       - lark==1.2.2
       - lazy-loader==0.4
@@ -237,7 +235,6 @@ dependencies:
       - ninja==1.11.1.4
       - numba==0.61.2
       - numpy==1.26.4
-      - nvdiffrast==0.3.3
       - onnxruntime==1.22.0
       - open3d==0.19.0
       - opencv-python-headless==4.11.0.86
@@ -279,7 +276,6 @@ dependencies:
       - scooby==0.10.1
       - six==1.17.0
       - sniffio==1.3.1
-      - spconv-cu120==2.3.6
       - stack-data==0.6.3
       - starlette==0.46.2
       - termcolor==3.1.0
@@ -296,7 +292,6 @@ dependencies:
       - typing-inspection==0.4.1
       - tzdata==2025.2
       - usd-core==25.5.1
-      - utils3d==0.0.2
       - uvicorn==0.34.2
       - vtk==9.4.2
       - warp-lang==1.7.1
