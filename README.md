@@ -542,7 +542,46 @@ Run inference:
 python inference.py ./configs/inference_dit.yml
 ```
 
+## Setup with DetailGen
 
+```
+conda create -n trellis_detail python=3.10 numpy=1.24.3 scipy=1.10.1 -y
+conda activate trellis_detail && pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 && pip install -r requirements.txt && pip install -r DetailGen3D/requirements.txt
+wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+sh cuda_11.8.0_520.61.05_linux.run
+export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+pip install numpy==1.24
+git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+cd kolin
+pip install -r tools/requirements.txt
+python setup.py develop
+conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1  pytorch-cuda=11.8 -c pytorch -c nvidia
+python setup.py develop
+
+pip install ninja
+cd nvdiffrast/
+pip install .
+cd .
+pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
+pip uninstall -y torch-cluster
+nvcc --version
+pip uninstall torch-cluster
+FORCE_CUDA=1 pip install --no-cache-dir --verbose torch-cluster
+cd TRELLIS/
+./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian
+cd ..
+pip install huggingface-hub
+huggingface-cli login
+export SPCONV_ALGO=native
+export ATTN_BACKEND=xformers
+export CC=$(which gcc)
+export CXX=$(which g++)
+pip install accelerate
+huggingface-cli download VAST-AI/DetailGen3D --local-dir detailgen3d --local-dir-use-symlinks False
+cp DetailGen3D/detailgen3d detailgen3d/ -r
+python test_trellis_detail.py 
+```
 
 ## License
 
