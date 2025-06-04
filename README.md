@@ -335,11 +335,6 @@ cd TRELLIS
 ./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast
 ```
 
-4. Install TRELLIS as a Python package:
-```bash
-pip install -e .
-```
-
 ## Environment Variables
 
 Required environment variables:
@@ -348,6 +343,10 @@ export SPCONV_ALGO=native
 export ATTN_BACKEND=xformers
 export CC=$(which gcc)
 export CXX=$(which g++)
+```
+```
+export PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 ```
 
 Optional environment variables:
