@@ -448,23 +448,14 @@ The conda environments themselves should be recreated rather than backed up.
 
 
 
-## Setup 3D topia
+## Setup 3D topia XL
 
 
 ```
 # install dependencies
 conda create -n primx python=3.9
-conda install pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 -c pytorch -c nvidia
-# requires xformer for efficient attention
-conda install xformers::xformers
-# install other dependencies
-pip install -r requirements.txt
 ```
-```
-pip install git+https://github.com/NVlabs/nvdiffrast.git
-pip install "numpy<2"
-pip install onnxruntime
-```
+
 
 
 ```
@@ -479,7 +470,23 @@ nvcc --version
 ```
 
 ```
-sudo apt-get install libeigen3-dev  # For Ubuntu/Debian
+conda install pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 -c pytorch -c nvidia
+# requires xformer for efficient attention
+conda install xformers::xformers
+# install other dependencies
+pip install -r requirements.txt
+```
+
+```
+pip install git+https://github.com/NVlabs/nvdiffrast.git
+pip install "numpy<2"
+pip install onnxruntime
+```
+
+```
+export CUDA_LAUNCH_BLOCKING=1  # Synchronize CUDA errors
+export TORCH_USE_CUDA_DSA=1    # Enable device-side assertions
+apt-get install libeigen3-dev  # For Ubuntu/Debian
 git clone https://github.com/ashawkey/cubvh
 ```
 If needed:
@@ -501,17 +508,18 @@ conda install ninja  # Critical for compiling extensions
 
 Then:
 ```
+apt-get update && apt-get install -y libeigen3-dev
 cd cubvh
 git submodule update --init --recursive
 rm -rf third_party/eigen
 git clone https://gitlab.com/libeigen/eigen.git third_party/eigen
-sudo cp -r patch/eigen/ /home/mbhat/miniconda/envs/primx/lib/python3.9/site-packages/torch/include/
-cd cubvh
+cp -r patch/eigen/ /home/mbhat/miniconda/envs/primx/lib/python3.9/site-packages/torch/include/
 pip install . --verbose 
 ```
 
 then the main:
 ```
+cd 3DTopia-XL
 bash install.sh
 ```
 
@@ -522,19 +530,31 @@ mkdir pretrained && cd pretrained
 wget https://huggingface.co/FrozenBurning/3DTopia-XL/resolve/main/model_sview_dit_fp16.pt
 # download VAE
 wget https://huggingface.co/FrozenBurning/3DTopia-XL/resolve/main/model_vae_fp16.pt
+mkdir pretrained
+mv model_* pretrained/
 cd ..
 ```
 
 install inference files:
 ```
+export CUB_HOME=/home/mbhat/miniconda/envs/primx/include/cub
+conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.1 -c pytorch -c nvidia
 conda install -c iopath iopath
 conda install -c bottler nvidiacub
 conda install jupyter
 pip install scikit-image matplotlib imageio plotly opencv-python
+
+#Normal:
 git clone --recursive https://github.com/facebookresearch/pytorch3d
 cd pytorch3d
 python setup.py clean
 python setup.py install  # Use --user if not in a virtual env
+
+#For A6000:
+CUB_HOME=/home/mbhat/miniconda/envs/primx/include/cub FORCE_CUDA=1 TORCH_CUDA_ARCH_LIST="8.6" pip install -e .
+
+#or for all together:
+cd /home/mbhat/three-gen-subnet-trellis/3DTopia-XL/pytorch3d && CUDA_HOME=/usr/local/cuda-11.8 CUB_HOME=/home/mbhat/miniconda/envs/primx/include/cub FORCE_CUDA=1 TORCH_CUDA_ARCH_LIST="8.6" pip install -e .
 ```
 
 Run inference:
@@ -582,6 +602,46 @@ huggingface-cli download VAST-AI/DetailGen3D --local-dir detailgen3d --local-dir
 cp DetailGen3D/detailgen3d detailgen3d/ -r
 python test_trellis_detail.py 
 ```
+
+
+## Setup for 3Dtopia:
+
+```
+apt-get update
+apt-get install gcc-9 g++-9
+export CC=gcc-9
+export CXX=g++-9
+wget https://developer.download.nvidia.com/compute/cuda/11.3.1/local_installers/cuda_11.3.1_465.19.01_linux.run
+chmod +x cuda_11.3.1_465.19.01_linux.run
+./cuda_11.3.1_465.19.01_linux.run --override
+# install only the toolkit
+```
+
+```
+export CUDA_HOME=/usr/local/cuda-11.3
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
+
+```
+```
+which nvcc
+nvcc --version
+
+# Now try installing tiny-cuda-nn again
+pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
+
+# nvdiffrast
+pip install git+https://github.com/NVlabs/nvdiffrast
+
+# [optional, will use pysdf if unavailable] cubvh:
+pip install git+https://github.com/ashawkey/cubvh
+
+pip install numpy==1.21.6 && pip install pymcubes==0.1.6
+```
+
+
+
 
 ## License
 
