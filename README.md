@@ -460,10 +460,9 @@ conda create -n primx python=3.9
 
 ```
 wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
-sudo sh cuda_11.8.0_520.61.05_linux.run
+sh cuda_11.8.0_520.61.05_linux.run --override --silent --toolkit 
 export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
 export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
-source ~/.bashrc
 source /home/mbhat/miniconda/bin/activate
 conda activate primx
 nvcc --version
@@ -473,12 +472,13 @@ nvcc --version
 conda install pytorch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 pytorch-cuda=11.8 -c pytorch -c nvidia
 # requires xformer for efficient attention
 conda install xformers::xformers
+cd 3DTopia-XL
 # install other dependencies
 pip install -r requirements.txt
 ```
 
 ```
-pip install git+https://github.com/NVlabs/nvdiffrast.git
+pip install git+https://github.com/NVlabs/nvdiffrast
 pip install "numpy<2"
 pip install onnxruntime
 ```
@@ -492,6 +492,7 @@ git clone https://github.com/ashawkey/cubvh
 If needed:
 Then modify cubvh/setup.py to use system Eigen headers instead of the submodule:
 ```
+# kill -9 35563 && rm /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock
 # In setup.py, change:
 include_dirs=[
     os.path.join(_src_path, 'include'),
@@ -513,8 +514,48 @@ cd cubvh
 git submodule update --init --recursive
 rm -rf third_party/eigen
 git clone https://gitlab.com/libeigen/eigen.git third_party/eigen
-cp -r patch/eigen/ /home/mbhat/miniconda/envs/primx/lib/python3.9/site-packages/torch/include/
-pip install . --verbose 
+cd third_party/eigen
+git checkout 3.4.0  # Use a stable version
+cd ../..
+
+# Copy eigen headers to torch include directory
+mkdir -p /home/mbhat/miniconda/envs/3dtopia/lib/python3.9/site-packages/torch/include/eigen
+cp -r third_party/eigen/Eigen /home/mbhat/miniconda/envs/3dtopia/lib/python3.9/site-packages/torch/include/eigen/
+
+# Install with correct CUDA architecture flags
+# For RTX 4090 (8.9), RTX 3090 (8.6), or A6000 (8.6)
+export TORCH_CUDA_ARCH_LIST="8.6"  # Use 8.6 for most recent NVIDIA GPUs
+export FORCE_CUDA=1
+pip install . --verbose
+```
+
+If you encounter compilation errors, try these troubleshooting steps:
+
+1. Check your GPU architecture:
+```bash
+nvidia-smi
+```
+
+2. Set the appropriate architecture flag based on your GPU:
+- RTX 4090: "8.9"
+- RTX 3090/A6000: "8.6"
+- RTX 2080 Ti: "7.5"
+- RTX 1080 Ti: "6.1"
+
+3. If the installation still fails, you can use pysdf as an alternative:
+```bash
+pip install pysdf
+```
+
+4. For Eigen-related errors, try this alternative approach:
+```bash
+# Install Eigen from conda
+conda install -c conda-forge eigen
+
+# Then try installing cubvh again with specific flags
+export EIGEN_INCLUDE_DIR=/home/mbhat/miniconda/envs/3dtopia/include/eigen3
+export FORCE_CUDA=1
+pip install . --verbose
 ```
 
 then the main:
@@ -544,8 +585,9 @@ conda install -c bottler nvidiacub
 conda install jupyter
 pip install scikit-image matplotlib imageio plotly opencv-python
 
-#Normal:
 git clone --recursive https://github.com/facebookresearch/pytorch3d
+
+#Normal:
 cd pytorch3d
 python setup.py clean
 python setup.py install  # Use --user if not in a virtual env
@@ -606,42 +648,107 @@ python test_trellis_detail.py
 
 ## Setup for 3Dtopia:
 
-```
-apt-get update
-apt-get install gcc-9 g++-9
-export CC=gcc-9
-export CXX=g++-9
-wget https://developer.download.nvidia.com/compute/cuda/11.3.1/local_installers/cuda_11.3.1_465.19.01_linux.run
-chmod +x cuda_11.3.1_465.19.01_linux.run
-./cuda_11.3.1_465.19.01_linux.run --override
-# install only the toolkit
-```
 
-```
-export CUDA_HOME=/usr/local/cuda-11.3
-export PATH=$CUDA_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
 
-```
-```
-which nvcc
-nvcc --version
-
-# Now try installing tiny-cuda-nn again
-pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
-
-# nvdiffrast
-pip install git+https://github.com/NVlabs/nvdiffrast
-
-# [optional, will use pysdf if unavailable] cubvh:
-pip install git+https://github.com/ashawkey/cubvh
-
-pip install numpy==1.21.6 && pip install pymcubes==0.1.6
+1. Test the first stage of repo:
+```bash
+conda env create -f requirements.yml
+conda activate 3dtopia-first
+python -u sample_stage1.py --text "a robot" --samples 1 --sampler ddim --steps 200 --cfg_scale 7.5 --seed 0
 ```
 
 
+2. Run the second stage:
+```
+ source /home/mbhat/miniconda/bin/activate
+ conda create -n 3dtopia-second python=3.9 -y
+ 
+ wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+sh cuda_11.8.0_520.61.05_linux.run --override --silent  --toolkit 
 
+
+export CC=/usr/bin/gcc-9
+export CXX=/usr/bin/g++-9
+export CUDA_HOME=/usr/local/cuda-11.8
+export TORCH_CUDA_ARCH_LIST="8.9;9.0;8.6"
+export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+export TORCH_CUDA_ARCH_LIST="8.6"  # Use 8.6 for most recent NVIDIA GPUs
+export FORCE_CUDA=1
+
+mkdir -p /home/mbhat/miniconda/envs/3dtopia-second/bin && ln -s /usr/local/cuda-11.3/bin/nvcc /home/mbhat/miniconda/envs/3dtopia-second/bin/nvcc
+ conda install -c conda-forge cudatoolkit=11.8
+ conda install -c conda-forge eigen
+ pip install pysdf
+ conda activate 3dtopia-second
+conda install pytorch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 pytorch-cuda=11.8 -c pytorch -c nvidia
+
+git clone https://github.com/3DTopia/threefiner
+cd threefiner
+export CUDA_HOME=/usr/local/cuda-11.8 && export PATH=/usr/local/cuda-11.8/bin:$PATH && export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH && cd /home/mbhat/three-gen-subnet-trellis/3DTopia/threefiner && pip install .
+
+ pip install git+https://github.com/NVlabs/nvdiffrast
+ 
+pip install --no-cache-dir --verbose git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
+
+apt-get update && apt-get install -y libegl1-mesa-dev
+
+apt-get update && apt-get install -y xvfb && Xvfb :1 -screen 0 1024x768x24 & export DISPLAY=:1 && nvidia-smi -pm 1
+
+threefiner sd --mesh results/default/stage1/a_robot_0_0.ply --prompt "a robot" --text_dir --front_dir='-y' --outdir results/default/stage2/ --save a_robot_0_0_sd.glb --force_cuda_rast
+
+huggingface-cli login
+or export HF_TOKEN= 
+
+threefiner if2 --mesh results/default/stage2/a_robot_0_0_sd.glb --prompt "a robot" --outdir results/default/stage2/ --save a_robot_0_0_if2.glb --force_cuda_rast
+```
+
+
+<!-- 
+# # Then try installing cubvh again with specific flags
+# export EIGEN_INCLUDE_DIR=/home/mbhat/miniconda/envs/3dtopia/include/eigen3
+# export FORCE_CUDA=1
+# pip install . --verbose
+# ```
+
+# 4. Install the main 3DTopia package:
+# ```bash
+# cd ..
+# cd 3DTopia
+# pip install -r requirement.txt
+# ```
+
+
+# 6. Test the second stage:
+# ```bash
+# # Set CUB home directory
+# export CUB_HOME=/home/mbhat/miniconda/envs/3dtopia-second/include/cub
+
+# # Install PyTorch with CUDA 12.1
+# conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.1 -c pytorch -c nvidia
+
+# # Install additional dependencies
+# conda install -c iopath iopath
+# conda install -c bottler nvidiacub
+# conda install jupyter
+# pip install scikit-image matplotlib imageio plotly opencv-python
+# ```
+
+# 7. Install PyTorch3D:
+# ```bash
+# # For A6000 GPUs:
+# CUB_HOME=/home/mbhat/miniconda/envs/3dtopia-second/include/cub FORCE_CUDA=1 TORCH_CUDA_ARCH_LIST="8.6" pip install -e .
+
+# # Or for all GPUs:
+# cd pytorch3d && CUDA_HOME=/usr/local/cuda-11.3 CUB_HOME=/home/mbhat/miniconda/envs/3dtopia-second/include/cub FORCE_CUDA=1 TORCH_CUDA_ARCH_LIST="8.6" pip install -e .
+# ```
+
+# 8. Run inference:
+# ```bash
+# python inference.py ./configs/inference_dit.yml
+# ```
+ -->
+Note: Make sure all environment variables are properly set and the CUDA toolkit is correctly installed before running inference.
 
 ## License
 
