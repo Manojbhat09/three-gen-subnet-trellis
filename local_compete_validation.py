@@ -1,266 +1,191 @@
 #!/usr/bin/env python3
-# Subnet 17 (404-GEN) - Local Compete Validation Script
-# Purpose: Validates multiple pre-generated (and pre-compressed) PLY files
-#          for a single prompt using a local validation endpoint to compare scores.
+# Subnet 17 (404-GEN) - Local Competition Runner
+# Purpose: A tool to generate multiple models for the same prompt with different
+#          seeds and compare their local validation scores to find the best one.
 
 import asyncio
+import aiohttp
+import argparse
+import time
+import os
 import base64
 import json
-import os
-import sys
-import traceback
-from datetime import datetime
-from typing import List, Dict, Any, Tuple, Optional
-from dataclasses import dataclass
 from pathlib import Path
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+import random
 
-import aiohttp
-import bittensor as bt
-
-# --- Configuration Constants ---
-LOCAL_VALIDATION_ENDPOINT_URL: str = "http://127.0.0.1:8094/validate_txt_to_3d_ply/"
-MAX_RETRIES: int = 3
-RETRY_DELAY: float = 2.0
-VALIDATION_TIMEOUT: float = 60.0
-MIN_FILE_SIZE: int = 100  # Minimum expected file size in bytes
-OUTPUT_DIR: str = "./validation_results"
-LOG_DIR: str = "./logs"
+# --- Configuration ---
+GENERATION_SERVER_URL = "http://127.0.0.1:8093/generate/"
+VALIDATION_SERVER_URL = "http://127.0.0.1:8094/validate_txt_to_3d_ply/"
+OUTPUT_DIR = "competition_results"
 
 # --- Data Structures ---
 @dataclass
-class ValidationResult:
-    label: str
-    score: float
-    file_path: str
-    error: Optional[str] = None
-    retry_count: int = 0
+class CompetitionEntry:
+    seed: int
+    ply_bytes: bytes
+    generation_time: float
+    validation_score: float = -1.0
+    validation_details: Optional[Dict[str, Any]] = None
+    filepath: Optional[str] = None
 
 # --- Helper Functions ---
-def setup_logging():
-    """Configure logging with file and console handlers."""
-    os.makedirs(LOG_DIR, exist_ok=True)
-    log_file = os.path.join(LOG_DIR, f"compete_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-    bt.logging.config(
-        logging_dir=LOG_DIR,
-        logging_file=log_file,
-        debug=True,
-        trace=False
-    )
+def print_header(title):
+    print("\n" + "=" * 70)
+    print(f" {title}")
+    print("=" * 70)
 
-def validate_file_path(file_path: str) -> Tuple[bool, Optional[str]]:
-    """Validates if a file exists and has valid size."""
-    try:
-        path = Path(file_path)
-        if not path.exists():
-            return False, f"File does not exist: {file_path}"
-        if not path.is_file():
-            return False, f"Path is not a file: {file_path}"
-        if path.stat().st_size < MIN_FILE_SIZE:
-            return False, f"File too small ({path.stat().st_size} bytes): {file_path}"
-        return True, None
-    except Exception as e:
-        return False, f"Error validating file: {str(e)}"
+def print_status(message, success=True):
+    symbol = "✓" if success else "✗"
+    print(f"[{symbol}] {message}")
 
-async def validate_single_file(
-    session: aiohttp.ClientSession,
-    prompt: str,
-    file_path: str,
-    miner_label: str,
-    retry_count: int = 0
-) -> ValidationResult:
-    """Validates a single compressed PLY file against a prompt with retries."""
-    bt.logging.info(f"Validating '{miner_label}' ({file_path}) for prompt: '{prompt[:70]}...'")
+async def run_single_generation(
+    session: aiohttp.ClientSession, 
+    prompt: str, 
+    seed: int,
+    run_index: int,
+    total_runs: int
+) -> Optional[CompetitionEntry]:
+    """Runs one generation-validation cycle."""
+    print_header(f"Run {run_index}/{total_runs} | Seed: {seed}")
     
+    # 1. Generation
+    payload = aiohttp.FormData()
+    payload.add_field('prompt', prompt)
+    payload.add_field('seed', str(seed))
+    
+    gen_start_time = time.time()
     try:
-        # Validate file before processing
-        is_valid, error_msg = validate_file_path(file_path)
-        if not is_valid:
-            return ValidationResult(
-                label=miner_label,
-                score=-2.0,
-                file_path=file_path,
-                error=error_msg
-            )
+        async with session.post(GENERATION_SERVER_URL, data=payload, timeout=300) as response:
+            gen_time = time.time() - gen_start_time
+            if response.status != 200:
+                error_text = await response.text()
+                print_status(f"Generation failed. Status: {response.status}, Error: {error_text}", success=False)
+                return None
+            
+            ply_bytes = await response.read()
+            print_status(f"Generation successful in {gen_time:.2f}s.", success=True)
+            
+            entry = CompetitionEntry(seed=seed, ply_bytes=ply_bytes, generation_time=gen_time)
+            
+    except Exception as e:
+        print_status(f"An error occurred during generation: {e}", success=False)
+        return None
 
-        with open(file_path, "rb") as f:
-            compressed_ply_bytes = f.read()
-        
-        base64_compressed_data = base64.b64encode(compressed_ply_bytes).decode('utf-8')
-        
-        payload = {
-            "prompt": prompt,
-            "data": base64_compressed_data,
-            "compression": 2,  # 2 for SPZ
-            "data_ver": 0,
-            "generate_preview": False 
-        }
-        
-        async with session.post(LOCAL_VALIDATION_ENDPOINT_URL, json=payload, timeout=VALIDATION_TIMEOUT) as response:
+    # 2. Validation
+    val_payload = {
+        "prompt": prompt,
+        "data": base64.b64encode(ply_bytes).decode('utf-8'),
+        "compression": 0
+    }
+    try:
+        async with session.post(VALIDATION_SERVER_URL, json=val_payload, timeout=120) as response:
             if response.status == 200:
-                validation_result = await response.json()
-                score = validation_result.get("score", 0.0)
-                
-                # Validate score
-                if not 0 <= score <= 1:
-                    raise ValueError(f"Invalid score received: {score}")
-                
-                bt.logging.success(f"Score for '{miner_label}': {score:.4f}")
-                return ValidationResult(
-                    label=miner_label,
-                    score=score,
-                    file_path=file_path
-                )
+                result = await response.json()
+                entry.validation_score = result.get('score', 0.0)
+                entry.validation_details = result.get('details', {})
+                print_status(f"Validation successful. Score: {entry.validation_score:.4f}", success=True)
             else:
                 error_text = await response.text()
-                error_msg = f"Validation HTTP error: Status {response.status}, {error_text}"
-                bt.logging.error(f"Error for '{miner_label}': {error_msg}")
-                
-                if retry_count < MAX_RETRIES:
-                    await asyncio.sleep(RETRY_DELAY * (retry_count + 1))
-                    return await validate_single_file(
-                        session, prompt, file_path, miner_label, retry_count + 1
-                    )
-                
-                return ValidationResult(
-                    label=miner_label,
-                    score=-1.0,
-                    file_path=file_path,
-                    error=error_msg,
-                    retry_count=retry_count
-                )
-                
-    except FileNotFoundError:
-        error_msg = f"File not found: {file_path}"
-        bt.logging.error(f"Error for '{miner_label}': {error_msg}")
-        return ValidationResult(
-            label=miner_label,
-            score=-2.0,
-            file_path=file_path,
-            error=error_msg
-        )
+                print_status(f"Validation failed. Status: {response.status}, Error: {error_text}", success=False)
     except Exception as e:
-        error_msg = f"Validation exception: {str(e)}"
-        bt.logging.error(f"Error for '{miner_label}': {error_msg}")
-        
-        if retry_count < MAX_RETRIES:
-            await asyncio.sleep(RETRY_DELAY * (retry_count + 1))
-            return await validate_single_file(
-                session, prompt, file_path, miner_label, retry_count + 1
-            )
-        
-        return ValidationResult(
-            label=miner_label,
-            score=-1.0,
-            file_path=file_path,
-            error=error_msg,
-            retry_count=retry_count
-        )
+        print_status(f"An error occurred during validation: {e}", success=False)
 
-def save_results(prompt: str, results: List[ValidationResult]):
-    """Saves validation results to a JSON file."""
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = os.path.join(OUTPUT_DIR, f"validation_results_{timestamp}.json")
-    
-    output_data = {
-        "prompt": prompt,
-        "timestamp": timestamp,
-        "results": [
-            {
-                "label": r.label,
-                "score": r.score,
-                "file_path": r.file_path,
-                "error": r.error,
-                "retry_count": r.retry_count
-            }
-            for r in results
-        ]
-    }
-    
-    with open(output_file, "w") as f:
-        json.dump(output_data, f, indent=2)
-    
-    bt.logging.info(f"Results saved to: {output_file}")
+    return entry
 
-def print_results(prompt: str, results: List[ValidationResult]):
-    """Prints validation results in a formatted way."""
-    bt.logging.info("\n" + "="*50)
-    bt.logging.info("Validation Results")
-    bt.logging.info("="*50)
-    bt.logging.info(f"Prompt: {prompt}")
-    bt.logging.info("-"*50)
-    
-    # Sort results by score (descending)
-    sorted_results = sorted(results, key=lambda x: x.score, reverse=True)
-    
-    for result in sorted_results:
-        if result.score < 0:
-            status = "ERROR" if result.score == -1.0 else "FILE ERROR"
-            bt.logging.error(f"{result.label}: {status}")
-            if result.error:
-                bt.logging.error(f"  Error: {result.error}")
-            if result.retry_count > 0:
-                bt.logging.error(f"  Retries: {result.retry_count}")
-        else:
-            bt.logging.info(f"{result.label}: Score = {result.score:.4f}")
-    
-    bt.logging.info("="*50)
-
-async def main_compete_validation():
-    """Main function for running the compete validation."""
-    setup_logging()
-    bt.logging.info("--- Subnet 17 Local Compete Validation Script ---")
-
-    # Get prompt
-    target_prompt = input("\nEnter the prompt for which the models were generated: ").strip()
-    if not target_prompt:
-        bt.logging.error("Prompt cannot be empty.")
+def save_best_asset(prompt: str, entry: CompetitionEntry, run_dir: Path):
+    """Saves the winning asset and its report."""
+    if not entry.ply_bytes:
         return
-
-    # Get model submissions
-    miner_submissions: List[Tuple[str, str]] = []
-    bt.logging.info("\nEnter model submissions (type 'done' when finished):")
-    
-    while True:
-        label = input(f"\nEnter a label for a miner/model (or type 'done' to finish): ").strip()
-        if label.lower() == 'done':
-            break
-            
-        file_path = input(f"Enter the full path to the compressed .ply.spz file for '{label}': ").strip()
         
-        is_valid, error_msg = validate_file_path(file_path)
-        if not is_valid:
-            bt.logging.warning(f"Invalid file: {error_msg}")
-            continue
-            
-        miner_submissions.append((label, file_path))
-
-    if not miner_submissions:
-        bt.logging.info("No submissions provided. Exiting.")
-        return
-
-    bt.logging.info(f"\nStarting validation for {len(miner_submissions)} submissions against prompt: '{target_prompt}'")
+    sanitized_prompt = "".join([c if c.isalnum() else "_" for c in prompt])[:50]
     
-    # Run validations
-    results: List[ValidationResult] = []
+    # Save PLY file
+    ply_filename = f"BEST_{sanitized_prompt}_seed{entry.seed}_score{entry.validation_score:.2f}.ply"
+    ply_filepath = run_dir / ply_filename
+    with open(ply_filepath, "wb") as f:
+        f.write(entry.ply_bytes)
+    entry.filepath = str(ply_filepath)
+    print_status(f"Saved best model to: {ply_filepath}", success=True)
+    
+    # Save validation report
+    report_filename = f"BEST_{sanitized_prompt}_seed{entry.seed}_report.json"
+    report_filepath = run_dir / report_filename
+    with open(report_filepath, "w") as f:
+        json.dump(entry.validation_details, f, indent=4)
+    print_status(f"Saved best model's report to: {report_filepath}", success=True)
+
+
+async def main():
+    parser = argparse.ArgumentParser(description="Run a competition for a single prompt with multiple seeds.")
+    parser.add_argument("prompt", type=str, help="The text prompt to generate a 3D model from.")
+    parser.add_argument("-n", "--num_runs", type=int, default=5, help="Number of different seeds to try.")
+    parser.add_argument("--save-all", action="store_true", help="Save all generated assets, not just the best one.")
+    
+    args = parser.parse_args()
+
+    # Create a unique directory for this competition run
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    sanitized_prompt = "".join([c if c.isalnum() else "_" for c in args.prompt])[:50]
+    run_dir = Path(OUTPUT_DIR) / f"{timestamp}_{sanitized_prompt}"
+    run_dir.mkdir(exist_ok=True, parents=True)
+
+    print_header("Local Competition Runner")
+    print(f"Prompt: '{args.prompt}'")
+    print(f"Number of Runs: {args.num_runs}")
+    print(f"Results will be saved in: {run_dir}")
+    print("-" * 70)
+
+    # Generate a list of unique random seeds
+    seeds = [random.randint(0, 2**32 - 1) for _ in range(args.num_runs)]
+    
+    results: List[CompetitionEntry] = []
+    
     async with aiohttp.ClientSession() as session:
-        tasks = [
-            validate_single_file(session, target_prompt, fp, lbl)
-            for lbl, fp in miner_submissions
-        ]
-        validation_results = await asyncio.gather(*tasks)
-        results.extend(validation_results)
+        for i, seed in enumerate(seeds):
+            entry = await run_single_generation(session, args.prompt, seed, i + 1, args.num_runs)
+            if entry:
+                results.append(entry)
 
-    # Save and print results
-    save_results(target_prompt, results)
-    print_results(target_prompt, results)
+    if not results:
+        print_header("Competition Finished - No Successful Runs")
+        print("Could not generate or validate any models.")
+        return
+
+    # Sort results by validation score (highest first)
+    results.sort(key=lambda x: x.validation_score, reverse=True)
+
+    # --- Print Summary ---
+    print_header("Competition Results Summary")
+    print(f"{'Rank':<5} | {'Seed':<12} | {'Score':<10} | {'Gen Time (s)':<15}")
+    print("-" * 70)
+    for i, res in enumerate(results):
+        rank = i + 1
+        print(f"{rank:<5} | {res.seed:<12} | {res.validation_score:<10.4f} | {res.generation_time:<15.2f}")
+
+    # --- Save Assets ---
+    print_header("Saving Assets")
+    best_entry = results[0]
+    
+    if best_entry.validation_score > 0:
+        print(f"Best score was {best_entry.validation_score:.4f} from seed {best_entry.seed}.")
+        save_best_asset(args.prompt, best_entry, run_dir)
+    else:
+        print("No entries achieved a positive score. Not saving a 'best' asset.")
+
+    if args.save_all:
+        print("\nSaving all other assets as requested...")
+        for i, entry in enumerate(results):
+            if entry.seed != best_entry.seed and entry.ply_bytes:
+                 ply_filename = f"rank{i+1}_{sanitized_prompt}_seed{entry.seed}_score{entry.validation_score:.2f}.ply"
+                 ply_filepath = run_dir / ply_filename
+                 with open(ply_filepath, "wb") as f:
+                     f.write(entry.ply_bytes)
+                 print_status(f"Saved asset to: {ply_filepath}", success=True)
+    
+    print_header("Competition Complete")
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main_compete_validation())
-    except KeyboardInterrupt:
-        bt.logging.info("\nLocal compete validation stopped by user.")
-    except Exception as e:
-        bt.logging.critical(f"Critical error: {e}")
-        traceback.print_exc()
-        sys.exit(1) 
+    asyncio.run(main()) 
