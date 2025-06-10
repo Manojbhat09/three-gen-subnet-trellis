@@ -607,22 +607,28 @@ python inference.py ./configs/inference_dit.yml
 ## Setup with DetailGen
 
 ```
+git clone https://github.com/VAST-AI-Research/DetailGen3D --recursive
 conda create -n trellis_detail python=3.10 numpy=1.24.3 scipy=1.10.1 -y
 conda activate trellis_detail && pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 && pip install -r requirements.txt && pip install -r DetailGen3D/requirements.txt
 wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
-sh cuda_11.8.0_520.61.05_linux.run
+sh cuda_11.8.0_520.61.05_linux.run --override --silent  --toolkit 
+export CC=/usr/bin/gcc-9
+export CXX=/usr/bin/g++-9
+export CUDA_HOME=/usr/local/cuda-11.8
+export TORCH_CUDA_ARCH_LIST="8.9;9.0;8.6"
 export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
 export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 pip install numpy==1.24
-git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
-cd kolin
-pip install -r tools/requirements.txt
-python setup.py develop
 conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1  pytorch-cuda=11.8 -c pytorch -c nvidia
+git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+cd kaolin
+pip install Cython>=0.29.37
+pip install -r tools/requirements.txt
+pip install scipy==1.15.3
 python setup.py develop
 
 pip install ninja
-cd nvdiffrast/
+ pip install git+https://github.com/NVlabs/nvdiffrast
 pip install .
 cd .
 pip install /tmp/extensions/mip-splatting/submodules/diff-gaussian-rasterization/
@@ -643,6 +649,8 @@ pip install accelerate
 huggingface-cli download VAST-AI/DetailGen3D --local-dir detailgen3d --local-dir-use-symlinks False
 cp DetailGen3D/detailgen3d detailgen3d/ -r
 python test_trellis_detail.py 
+
+pip uninstall -y numpy scipy trimesh scikit-image && pip install numpy==1.24.3 && pip install scipy==1.10.1 && pip install trimesh scikit-image
 ```
 
 
@@ -701,6 +709,29 @@ huggingface-cli login
 or export HF_TOKEN= 
 
 threefiner if2 --mesh results/default/stage2/a_robot_0_0_sd.glb --prompt "a robot" --outdir results/default/stage2/ --save a_robot_0_0_if2.glb --force_cuda_rast
+```
+
+Install trellis-text
+
+```
+conda create -n trellis_text python=3.10
+conda activate trellis_text                                                                               
+conda install pytorch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 pytorch-cuda=12.1 -c pytorch -c nvidia   
+
+export CUDA_HOME=/usr/local/cuda-12.1
+export TORCH_CUDA_ARCH_LIST="8.9;9.0;8.6"
+export PATH=/usr/local/cuda-12.1/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+export FORCE_CUDA=1
+
+pip install -r requirements.txt
+
+git clone --recurse-submodules https://github.com/microsoft/TRELLIS.git
+cd TRELLIS
+cp trellis ../TRELLIS-TextImagen3D
+./setup.sh --basic --kaolin
+export HF_TOKEN=
+huggingface-cli login
 ```
 
 

@@ -1,0 +1,28 @@
+{
+  "_class_name": "DetailGen3DPipeline",
+  "_diffusers_version": "0.32.0.dev0",
+  "feature_extractor_1": [
+    "transformers",
+    "BitImageProcessor"
+  ],
+  "image_encoder_1": [
+    "transformers",
+    "Dinov2Model"
+  ],
+  "noise_scheduler": [
+    "diffusers",
+    "DDPMScheduler"
+  ],
+  "transformer": [
+    "detailgen3d.models.transformers.detailgen3d_transformers",
+    "DetailGen3DDiTModel"
+  ],
+  "vae": [
+    "detailgen3d.models.autoencoders.autoencoder_kl_triposg",
+    "TripoSGVAEModel"
+  ],
+  "scheduler": [
+    "detailgen3d.schedulers.scheduling_rectified_flow",
+    "RectifiedFlowScheduler"
+  ]
+}

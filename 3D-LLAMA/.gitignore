@@ -1,0 +1,11 @@
+output
+outputs
+**__pycache__
+.DS_Store
+cache
+step1x3d_texture/custom_rasterizer/build
+step1x3d_texture/custom_rasterizer/dist
+step1x3d_texture/custom_rasterizer/custom_rasterizer.egg-info
+step1x3d_texture/differentiable_renderer/build
+step1x3d_texture/differentiable_renderer/dist
+step1x3d_texture/differentiable_renderer/mesh_processor.egg-info

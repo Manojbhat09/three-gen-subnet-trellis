@@ -9,8 +9,8 @@ TRELLIS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TRELLIS
 sys.path.append(TRELLIS_PATH)
 
 # Add DetailGen3D to Python path
-DETAILGEN3D_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "detailgen3d")
-sys.path.append(os.path.dirname(DETAILGEN3D_PATH))  # Add parent directory to path
+DETAILGEN3D_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "DetailGen3D")
+sys.path.append(DETAILGEN3D_PATH)
 
 # Set spconv algorithm to native for single run and use xformers for attention
 os.environ['SPCONV_ALGO'] = 'native'
@@ -21,8 +21,8 @@ import torch
 import numpy as np
 from trellis.pipelines import TrellisTextTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
-from DetailGen3D.detailgen3d.pipelines import DetailGen3DPipeline
-from DetailGen3D.detailgen3d.inference_utils import generate_dense_grid_points
+from detailgen3d.pipelines import DetailGen3DPipeline
+from detailgen3d.inference_utils import generate_dense_grid_points
 from PIL import Image
 import trimesh
 from skimage import measure
