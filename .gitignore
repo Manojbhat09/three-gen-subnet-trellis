@@ -60,6 +60,11 @@ TRELLIS/
 *.gif
 *.glb
 *.ply
+ckpts/*.safetensors
+3DTopia-XL/pretrained/*.pt
+detailgen3d/transformer/diffusion_pytorch_model.safetensors
+detailgen3d/image_encoder_1/model.safetensors
+detailgen3d/vae/diffusion_pytorch_model.safetensors
 
 # Large data files
 *.h5
@@ -107,4 +112,7 @@ validation/benchmark/results/
 # Git pack files
 .git/objects/pack/tmp_*
 .git/objects/pack/*.pack
+
+# Git LFS files
+.git/lfs/
 
