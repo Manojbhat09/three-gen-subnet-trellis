@@ -1,0 +1,8 @@
+{
+  "flux_inference_steps": 20,
+  "hunyuan_inference_steps": 50,
+  "guidance_scale": 3.5,
+  "image_resolution": 768,
+  "batch_size": 1,
+  "memory_optimization": "speed"
+}

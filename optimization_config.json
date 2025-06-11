@@ -1,0 +1,51 @@
+{
+  "profiles": {
+    "ultra_quality": {
+      "name": "ultra_quality",
+      "target_generation_time": 300.0,
+      "quality_threshold": 0.9,
+      "flux_inference_steps": 50,
+      "hunyuan_inference_steps": 100,
+      "guidance_scale": 7.5,
+      "image_resolution": 1024,
+      "batch_size": 1,
+      "memory_optimization": "quality"
+    },
+    "balanced": {
+      "name": "balanced",
+      "target_generation_time": 120.0,
+      "quality_threshold": 0.8,
+      "flux_inference_steps": 28,
+      "hunyuan_inference_steps": 70,
+      "guidance_scale": 5.0,
+      "image_resolution": 1024,
+      "batch_size": 1,
+      "memory_optimization": "balanced"
+    },
+    "speed": {
+      "name": "speed",
+      "target_generation_time": 60.0,
+      "quality_threshold": 0.7,
+      "flux_inference_steps": 20,
+      "hunyuan_inference_steps": 50,
+      "guidance_scale": 3.5,
+      "image_resolution": 768,
+      "batch_size": 1,
+      "memory_optimization": "speed"
+    },
+    "turbo": {
+      "name": "turbo",
+      "target_generation_time": 30.0,
+      "quality_threshold": 0.65,
+      "flux_inference_steps": 12,
+      "hunyuan_inference_steps": 30,
+      "guidance_scale": 2.0,
+      "image_resolution": 512,
+      "batch_size": 1,
+      "memory_optimization": "speed"
+    }
+  },
+  "current_profile": "speed",
+  "optimization_enabled": true,
+  "last_updated": 1749581478.2939487
+}

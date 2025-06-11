@@ -3,6 +3,7 @@
 # Enhanced with circuit breakers, health monitoring, and advanced error recovery
 
 import os
+import sys
 import time
 import torch
 import traceback
@@ -16,6 +17,11 @@ from dataclasses import dataclass, asdict
 from contextlib import asynccontextmanager
 from enum import Enum
 
+# Add Hunyuan3D-2 to Python path
+hunyuan3d_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Hunyuan3D-2")
+if hunyuan3d_path not in sys.path:
+    sys.path.append(hunyuan3d_path)
+
 from fastapi import FastAPI, Form, HTTPException, BackgroundTasks
 from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,8 +32,8 @@ import numpy as np
 import GPUtil
 
 # Import Hunyuan3D-2 components
-from Hunyuan3D_2.hy3dgen.rembg import BackgroundRemover
-from Hunyuan3D_2.hy3dgen.shapegen import (
+from hy3dgen.rembg import BackgroundRemover
+from hy3dgen.shapegen import (
     Hunyuan3DDiTFlowMatchingPipeline, 
     FaceReducer, 
     FloaterRemover, 

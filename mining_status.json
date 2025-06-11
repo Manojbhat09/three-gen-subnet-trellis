@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-06-10T18:50:32.121732",
+  "processes": {
+    "generation_server": {
+      "state": "running",
+      "pid": 640313,
+      "uptime": 6.151199340820312e-05,
+      "restart_count": 0,
+      "last_health_check": null,
+      "health_status": null
+    },
+    "validation_server": {
+      "state": "running",
+      "pid": 640312,
+      "uptime": 0.0005862712860107422,
+      "restart_count": 0,
+      "last_health_check": null,
+      "health_status": null
+    },
+    "subnet17_miner": {
+      "state": "stopped",
+      "pid": null,
+      "uptime": 0,
+      "restart_count": 0,
+      "last_health_check": null,
+      "health_status": null
+    },
+    "performance_optimizer": {
+      "state": "stopped",
+      "pid": null,
+      "uptime": 0,
+      "restart_count": 0,
+      "last_health_check": null,
+      "health_status": null
+    }
+  }
+}

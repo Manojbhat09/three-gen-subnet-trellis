@@ -1,0 +1,53 @@
+{
+  "processes": {
+    "generation_server": {
+      "name": "generation_server",
+      "script_path": "robust_generation_server.py",
+      "port": 8093,
+      "health_endpoint": "http://127.0.0.1:8093/health",
+      "startup_time": 60,
+      "restart_delay": 30,
+      "max_restarts": 3,
+      "restart_window": 300,
+      "environment": {},
+      "working_directory": "."
+    },
+    "validation_server": {
+      "name": "validation_server",
+      "script_path": "validation_server.py",
+      "port": 8094,
+      "health_endpoint": "http://127.0.0.1:8094/health",
+      "startup_time": 30,
+      "restart_delay": 15,
+      "max_restarts": 5,
+      "restart_window": 300,
+      "environment": {},
+      "working_directory": "."
+    },
+    "subnet17_miner": {
+      "name": "subnet17_miner",
+      "script_path": "robust_subnet17_miner.py",
+      "port": null,
+      "health_endpoint": null,
+      "startup_time": 20,
+      "restart_delay": 10,
+      "max_restarts": 10,
+      "restart_window": 300,
+      "environment": {},
+      "working_directory": "."
+    },
+    "performance_optimizer": {
+      "name": "performance_optimizer",
+      "script_path": "performance_optimizer.py",
+      "port": null,
+      "health_endpoint": null,
+      "startup_time": 10,
+      "restart_delay": 5,
+      "max_restarts": 3,
+      "restart_window": 300,
+      "environment": {},
+      "working_directory": "."
+    }
+  },
+  "last_updated": 1749581706.7663093
+}

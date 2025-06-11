@@ -1,0 +1,31 @@
+# Hybrid TRELLIS + Hunyuan3D-2 Pipeline Requirements
+
+# Core dependencies
+torch>=2.0.0
+torchvision
+numpy
+pillow
+trimesh
+opencv-python
+
+# TRELLIS specific
+spconv-cu118  # or spconv-cu121 depending on CUDA version
+flash-attn>=2.0.0  # or xformers as alternative
+open3d
+transformers
+accelerate
+diffusers
+
+# Hunyuan3D-2 specific  
+xatlas
+dataclasses-json
+safetensors
+
+# Mesh processing
+pymeshlab
+scikit-image
+
+# Utilities
+tqdm
+matplotlib
+imageio 

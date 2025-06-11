@@ -48,7 +48,6 @@ outputs-old2/
 outputs-no-xformer/
 ckpts/
 pretrained/
-TRELLIS/
 
 # Large model files
 *.pt

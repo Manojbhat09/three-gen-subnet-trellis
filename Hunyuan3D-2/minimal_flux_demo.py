@@ -21,7 +21,7 @@ from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline, FaceReducer, Floa
 # Import Flux components
 from diffusers import FluxTransformer2DModel, FluxPipeline, BitsAndBytesConfig, GGUFQuantizationConfig
 from transformers import T5EncoderModel, BitsAndBytesConfig as BitsAndBytesConfigTF
-
+import random 
 # Constants
 NUM_INFERENCE_STEPS = 8
 MAX_SEED = np.iinfo(np.int32).max
@@ -33,7 +33,7 @@ def clear_gpu_memory():
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
 
-def text_to_3d(prompt='a car', output_dir='outputs', seed=42):
+def text_to_3d(prompt='a car', output_dir='outputs', seed=42): # seed=42random.randint(1, 100)
     # Create output directory
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
@@ -93,7 +93,8 @@ def text_to_3d(prompt='a car', output_dir='outputs', seed=42):
         
         # Generate image using Flux
         print(f"Generating image from prompt: {prompt}")
-        prompt = "wbgmsst, " + prompt + ", 3D isometric, white background"
+        # prompt = "wbgmsst, " + prompt + ", 3D isometric cute object asset, white background"
+        prompt = "wbgmsst, " + prompt + ", 3D isometric asset, clean white background, isolated object"
         generator = torch.Generator(device=device).manual_seed(seed)
         image = flux_pipeline(
             prompt=prompt,
@@ -180,4 +181,14 @@ def text_to_3d(prompt='a car', output_dir='outputs', seed=42):
         clear_gpu_memory()
 
 if __name__ == '__main__':
-    text_to_3d("a blue monkey sitting on temple") 
+    # text_to_3d("a blue monkey sitting on temple") 
+    # text_to_3d("woman monkey with red breasts") 
+    # text_to_3d("football") 
+    # text_to_3d("purple durable robotic arm") 
+    # text_to_3d("3 eyed, red and green mystical creature with red horns guarding a big gate with spikes on it", seed=121) 
+    # text_to_3d("flying dragon")
+    # text_to_3d("a knight") 
+    # text_to_3d("a realistic darth vader") 
+    # text_to_3d("a animated skeleton ") 
+    # text_to_3d("tin whistle with wooden mouthpiece ") 
+    text_to_3d("charming red barn with weathered wood without any windows or base") 

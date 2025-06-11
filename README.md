@@ -274,11 +274,21 @@ conda activate trellis
 
 2. Install required conda packages:
 ```bash
+
+apt-get install gcc-12 g++-12
+export TORCH_CUDA_ARCH_LIST="8.6"
+export CC=/usr/bin/gcc-12
+export CXX=/usr/bin/g++-12
+export CUDAHOSTCXX=/usr/bin/g++-12
+export NVCC_FLAGS="--allow-unsupported-compiler"
+
 # Install PyTorch with CUDA support
 conda install -c pytorch pytorch==2.4.0 torchvision==0.19.0 pytorch-cuda=11.8 -c pytorch -c nvidia
 
 # Install required compilers
 conda install -c conda-forge gcc=12 gxx=12
+
+
 
 # Install Kaolin
 git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
@@ -734,6 +744,27 @@ export HF_TOKEN=
 huggingface-cli login
 ```
 
+# Setup Hunyuan3d_2
+
+```
+export CC=/usr/bin/gcc-9
+export CXX=/usr/bin/g++-9
+export CUDA_HOME=/usr/local/cuda-11.8
+export TORCH_CUDA_ARCH_LIST="8.9;9.0;8.6"
+export PATH=/usr/local/cuda-11.8/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+export TORCH_CUDA_ARCH_LIST="8.6"  # Use 8.6 for most recent NVIDIA GPUs
+export FORCE_CUDA=1
+
+conda install pytorch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0  pytorch-cuda=11.8 -c pytorch -c nvidia
+
+pip install -r requirements.txt
+# for texture
+cd hy3dgen/texgen/custom_rasterizer
+python3 setup.py install
+cd hy3dgen/texgen/differentiable_renderer
+bash compile_mesh_painter.sh
+```
 
 <!-- 
 # # Then try installing cubvh again with specific flags

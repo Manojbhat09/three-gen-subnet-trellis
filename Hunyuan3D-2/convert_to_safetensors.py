@@ -53,8 +53,8 @@ def convert_text_encoder(model_dir):
         print(f"Text encoder model file not found: {bin_path}")
 
 def main():
-    # Use the HuggingFace cache path
-    model_dir = '/home/mbhat/miniconda/envs/hunyuan3d/.cache/huggingface/hub/models--jetx--Hunyuan3D-2/snapshots/bdc739e6add05a2393532a3b893c95f466c17cc3'
+    # Use the HuggingFace cache path - updated for current environment
+    model_dir = '/root/.cache/huggingface/hub/models--jetx--Hunyuan3D-2/snapshots/bdc739e6add05a2393532a3b893c95f466c17cc3'
     
     # Convert files in both model directories
     delight_dir = os.path.join(model_dir, 'hunyuan3d-delight-v2-0')
