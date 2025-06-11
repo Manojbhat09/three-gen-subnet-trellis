@@ -24,142 +24,136 @@ def print_status(message, success=True):
     symbol = "✓" if success else "✗"
     print(f"[{symbol}] {message}")
 
-async def run_generation(session: aiohttp.ClientSession, prompt: str, seed: int) -> tuple[bytes | None, float, int | None]:
+async def run_generation(session: aiohttp.ClientSession, prompt: str, seed: int) -> tuple:
     """Calls the generation server and returns the PLY bytes and generation time."""
-    print_status(f"Requesting generation for prompt: '{prompt}' (Seed: {seed})", success=True)
-    payload = aiohttp.FormData()
-    payload.add_field('prompt', prompt)
-    payload.add_field('seed', str(seed))
+    print_status(f"Requesting generation for prompt: '{prompt}' (seed: {seed})")
     
     start_time = time.time()
     try:
+    payload = {"prompt": prompt}
         async with session.post(GENERATION_SERVER_URL, data=payload, timeout=300) as response:
-            gen_time = time.time() - start_time
                 if response.status == 200:
                 ply_bytes = await response.read()
-                response_seed = int(response.headers.get("X-Seed", seed))
-                print_status(f"Generation successful in {gen_time:.2f}s. Received {len(ply_bytes)} bytes.", success=True)
-                return ply_bytes, gen_time, response_seed
+                generation_time = time.time() - start_time
+                print_status(f"Generation completed in {generation_time:.2f}s, PLY size: {len(ply_bytes)} bytes")
+                return ply_bytes, generation_time, response.status
                 else:
                     error_text = await response.text()
-                print_status(f"Generation failed. Status: {response.status}, Error: {error_text}", success=False)
-                return None, gen_time, None
-    except asyncio.TimeoutError:
-        gen_time = time.time() - start_time
-        print_status(f"Generation timed out after {gen_time:.2f}s", success=False)
-        return None, gen_time, None
+                print_status(f"Generation failed: HTTP {response.status} - {error_text}", success=False)
+                return None, time.time() - start_time, response.status
     except Exception as e:
-        gen_time = time.time() - start_time
-        print_status(f"An error occurred during generation: {e}", success=False)
-        return None, gen_time, None
+        generation_time = time.time() - start_time
+        print_status(f"Generation exception: {e}", success=False)
+        return None, generation_time, None
 
-async def run_validation(session: aiohttp.ClientSession, prompt: str, ply_bytes: bytes) -> dict | None:
-    """Calls the validation server and returns the validation result."""
-    import base64
-    print_status("Requesting local validation...", success=True)
+async def run_validation(session: aiohttp.ClientSession, prompt: str, ply_bytes: bytes) -> tuple:
+    """Calls the validation server and returns the validation score."""
+    print_status("Running local validation...")
     
-    # We send uncompressed base64 data
+    try:
+        import pyspz
+        import base64
+        
+        # Compress the PLY data
+        compressed_data = pyspz.compress(ply_bytes)
+        base64_data = base64.b64encode(compressed_data).decode('utf-8')
+        
         payload = {
             "prompt": prompt,
-        "data": base64.b64encode(ply_bytes).decode('utf-8'),
-        "compression": 0, # 0 = None
-        "generate_preview": True # Request preview images
-    }
-    
-    start_time = time.time()
-    try:
-        async with session.post(VALIDATION_SERVER_URL, json=payload, timeout=120) as response:
-            val_time = time.time() - start_time
+            "data": base64_data,
+            "compression": 2,
+            "data_ver": 0
+        }
+        
+        start_time = time.time()
+        async with session.post(VALIDATION_SERVER_URL, json=payload, timeout=60) as response:
+            validation_time = time.time() - start_time
                 if response.status == 200:
                 result = await response.json()
-                print_status(f"Validation successful in {val_time:.2f}s. Score: {result.get('score', 0.0):.4f}", success=True)
-                return result
+                score = result.get("score", 0.0)
+                print_status(f"Validation completed in {validation_time:.2f}s, Score: {score:.4f}")
+                return score, validation_time, response.status
                 else:
                     error_text = await response.text()
-                print_status(f"Validation failed. Status: {response.status}, Error: {error_text}", success=False)
-        return None
-    except Exception as e:
-        print_status(f"An error occurred during validation: {e}", success=False)
-        return None
-
-def save_asset(prompt: str, ply_bytes: bytes, validation_result: dict, seed: int) -> str:
-    """Saves the generated PLY file and validation results."""
-    output_path = Path(OUTPUT_DIR)
-    output_path.mkdir(exist_ok=True)
-    
-    score = validation_result.get('score', 0.0)
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    
-    # Sanitize prompt for filename
-    sanitized_prompt = "".join([c if c.isalnum() else "_" for c in prompt])[:50]
-    
-    # Save PLY file
-    ply_filename = f"{timestamp}_{sanitized_prompt}_seed{seed}_score{score:.2f}.ply"
-    ply_filepath = output_path / ply_filename
-    with open(ply_filepath, "wb") as f:
-        f.write(ply_bytes)
-    print_status(f"Saved generated model to: {ply_filepath}", success=True)
-    
-    # Save validation report
-    report_filename = f"{timestamp}_{sanitized_prompt}_seed{seed}_report.json"
-    report_filepath = output_path / report_filename
-    import json
-    with open(report_filepath, "w") as f:
-        json.dump(validation_result, f, indent=4)
-    print_status(f"Saved validation report to: {report_filepath}", success=True)
-
-    # Save preview images
-    if validation_result.get('preview_images'):
-        import base64
-        image_dir = output_path / f"{timestamp}_{sanitized_prompt}_seed{seed}_previews"
-        image_dir.mkdir(exist_ok=True)
-        for i, img_b64 in enumerate(validation_result['preview_images']):
-            img_bytes = base64.b64decode(img_b64)
-            img_filepath = image_dir / f"view_{i+1}.png"
-            with open(img_filepath, "wb") as f:
-                f.write(img_bytes)
-        print_status(f"Saved {len(validation_result['preview_images'])} preview images to: {image_dir}", success=True)
+                print_status(f"Validation failed: HTTP {response.status} - {error_text}", success=False)
+                return -1.0, validation_time, response.status
         
-    return str(ply_filepath)
+    except Exception as e:
+        print_status(f"Validation exception: {e}", success=False)
+        return -1.0, 0.0, None
+
+def save_ply_file(ply_bytes: bytes, prompt: str, score: float) -> str:
+    """Save PLY file to local directory."""
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    # Create safe filename
+    safe_prompt = "".join(c for c in prompt if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    safe_prompt = safe_prompt.replace(' ', '_')[:50]  # Limit length
+    
+    timestamp = int(time.time())
+    filename = f"{safe_prompt}_{score:.3f}_{timestamp}.ply"
+    filepath = Path(OUTPUT_DIR) / filename
+    
+    with open(filepath, 'wb') as f:
+        f.write(ply_bytes)
+    
+    print_status(f"PLY file saved: {filepath}")
+    return str(filepath)
 
 async def main():
-    parser = argparse.ArgumentParser(description="Run local generation and validation for a single prompt.")
-    parser.add_argument("prompt", type=str, help="The text prompt to generate a 3D model from.")
-    parser.add_argument("--seed", type=int, default=None, help="A specific seed to use for generation. Random if not set.")
-    parser.add_argument("--no-save", action="store_true", help="If set, the generated asset will not be saved to disk.")
+    parser = argparse.ArgumentParser(description="Local Validation Runner for Subnet 17")
+    parser.add_argument("prompt", help="Text prompt for 3D generation")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for generation")
+    parser.add_argument("--save", action="store_true", help="Save generated PLY file")
     
     args = parser.parse_args()
-
-    seed = args.seed if args.seed is not None else int(time.time())
-
-    print_header("Local Validation Runner")
+    
+    print_header("Subnet 17 Local Validation Runner")
     print(f"Prompt: {args.prompt}")
-    print(f"Seed: {seed}")
-    print("-" * 60)
-
+    print(f"Seed: {args.seed}")
+    print()
+    
     async with aiohttp.ClientSession() as session:
-        # Step 1: Generation
-        print_header("Step 1: Generation")
-        ply_bytes, gen_time, final_seed = await run_generation(session, args.prompt, seed)
+        # Step 1: Generate 3D model
+        print_status("Step 1: Generating 3D model")
+        ply_bytes, gen_time, gen_status = await run_generation(session, args.prompt, args.seed)
         
         if ply_bytes is None:
-            print_status("Aborting due to generation failure.", success=False)
-            return
-
-        # Step 2: Validation
-        print_header("Step 2: Validation")
-        validation_result = await run_validation(session, args.prompt, ply_bytes)
-
-        if validation_result is None:
-            print_status("Aborting due to validation failure.", success=False)
-            return
-            
-        # Step 3: Save results
-        if not args.no_save:
-            print_header("Step 3: Saving Assets")
-            save_asset(args.prompt, ply_bytes, validation_result, final_seed)
+            print_status("Generation failed, cannot proceed to validation", success=False)
+            return 1
         
-        print_header("Run Complete")
+        # Step 2: Validate model
+        print_status("Step 2: Validating 3D model")
+        score, val_time, val_status = await run_validation(session, args.prompt, ply_bytes)
+        
+        if score < 0:
+            print_status("Validation failed", success=False)
+            return 1
+        
+        # Step 3: Save file if requested
+        if args.save:
+            print_status("Step 3: Saving PLY file")
+            filepath = save_ply_file(ply_bytes, args.prompt, score)
+        
+        # Final results
+        print()
+        print_header("RESULTS")
+        print(f"Generation Time: {gen_time:.2f}s")
+        print(f"Validation Time: {val_time:.2f}s")
+        print(f"Total Time: {gen_time + val_time:.2f}s")
+        print(f"Validation Score: {score:.4f}")
+        print(f"PLY File Size: {len(ply_bytes):,} bytes")
+        
+        if score >= 0.8:
+            print_status("EXCELLENT quality score!", success=True)
+        elif score >= 0.7:
+            print_status("GOOD quality score", success=True)
+        elif score >= 0.6:
+            print_status("ACCEPTABLE quality score", success=True)
+        else:
+            print_status("LOW quality score - consider adjusting generation parameters", success=False)
+        
+        return 0
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    exit_code = asyncio.run(main()) 

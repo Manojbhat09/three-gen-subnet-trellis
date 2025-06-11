@@ -1,11 +1,8 @@
 #  "a blue monkey sitting on temple"
 '''
-python generate_3d.py "a blue monkey sitting on temple" \
-    --guidance-scale 3.5 \                       
-    --ss-guidance-strength 7.5 \
-    --ss-sampling-steps 12 \
-    --slat-guidance-strength 3.0 \
-    --slat-sampling-steps 12
+python generate_3d.py "a blue monkey sitting on temple" --guidance-scale 3.5 --ss-guidance-strength 7.5 --ss-sampling-steps 12 --slat-guidance-strength 3.0 --slat-sampling-steps 12
+python generate_3d.py "football" --guidance-scale 3.5 --ss-guidance-strength 7.5 --ss-sampling-steps 12 --slat-guidance-strength 3.0 --slat-sampling-steps 12
+
 '''
 import os
 import sys
@@ -85,7 +82,9 @@ def generate_3d_model(prompt, output_dir="outputs", seed=42, width=1024, height=
     
     # Generate image using Flux with exact settings from app.py
     print(f"Generating image from prompt: {prompt}")
-    prompt = "wbgmsst, " + prompt + ", 3D isometric, white background"
+    # prompt = "wbgmsst, " + prompt + ", 3D isometric, white background"
+    # prompt = "wbgmsst, " + prompt + ", 3D isometric cute object asset, white background"
+    prompt = "wbgmsst, " + prompt + ", 3D isometric object asset, white background"
     generator = torch.Generator(device=device).manual_seed(seed)
     image = flux_pipeline(
         prompt=prompt,
