@@ -46,7 +46,7 @@ def create_bpt_config():
     """Create BPT model configuration"""
     config = {
         'dim': 1024,
-        'max_seq_len': 8192,
+        'max_seq_len': 10000,  # Fixed: match checkpoint parameter size
         'flash_attn': True,
         'attn_depth': 24,
         'attn_dim_head': 64,
@@ -93,6 +93,9 @@ def load_bpt_model(model_path=None, config=None, device="cuda"):
             model.load_state_dict(checkpoint['model_state_dict'])
         elif 'state_dict' in checkpoint:
             model.load_state_dict(checkpoint['state_dict'])
+        elif 'model' in checkpoint:
+            # Handle nested checkpoint structure
+            model.load_state_dict(checkpoint['model'])
         else:
             # Assume the checkpoint is the state dict itself
             model.load_state_dict(checkpoint)
@@ -131,6 +134,7 @@ def enhance_mesh_with_bpt(mesh_path, bpt_model, device="cuda", temperature=0.5, 
                     filter_kwargs={'k': 50, 'p': 0.95},
                     max_seq_len=bpt_model.max_seq_len,
                     cache_kv=True,
+                    return_codes=True,  # Return raw codes to bypass missing decode_codes method
                 )
                 
                 print(f"Generated codes shape: {codes.shape}")

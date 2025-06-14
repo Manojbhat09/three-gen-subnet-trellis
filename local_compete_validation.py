@@ -1,191 +1,448 @@
 #!/usr/bin/env python3
-# Subnet 17 (404-GEN) - Local Competition Runner
-# Purpose: A tool to generate multiple models for the same prompt with different
-#          seeds and compare their local validation scores to find the best one.
+# Subnet 17 (404-GEN) - Local Competitive Validation
+# Purpose: Run multiple generations with different seeds to find the best model for a prompt
 
 import asyncio
 import aiohttp
 import argparse
 import time
 import os
-import base64
+import sys
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
-import random
+from typing import List, Dict, Tuple
+from dataclasses import dataclass, asdict
 
-# --- Configuration ---
+# Add current directory to path for asset manager import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from generation_asset_manager import (
+        global_asset_manager, AssetType, GenerationStatus,
+        prepare_for_mining_submission
+    )
+    ASSET_MANAGER_AVAILABLE = True
+except ImportError:
+    print("⚠️ Asset manager not available - running in basic mode")
+    ASSET_MANAGER_AVAILABLE = False
+
+# Configuration
+ENHANCED_GENERATION_URL = "http://127.0.0.1:8095/generate/"
 GENERATION_SERVER_URL = "http://127.0.0.1:8093/generate/"
-VALIDATION_SERVER_URL = "http://127.0.0.1:8094/validate_txt_to_3d_ply/"
-OUTPUT_DIR = "competition_results"
+VALIDATION_SERVER_URL = "http://127.0.0.1:10006/validate_txt_to_3d_ply/"
+COMPETITION_DIR = "competition_results"
 
-# --- Data Structures ---
 @dataclass
-class CompetitionEntry:
+class CompetitionResult:
+    """Single competition result"""
     seed: int
-    ply_bytes: bytes
     generation_time: float
-    validation_score: float = -1.0
-    validation_details: Optional[Dict[str, Any]] = None
-    filepath: Optional[str] = None
+    validation_time: float
+    validation_score: float
+    ply_size: int
+    face_count: int = 0
+    compression_ratio: float = 1.0
+    generation_id: str = ""
+    error: str = ""
+    success: bool = True
 
-# --- Helper Functions ---
-def print_header(title):
-    print("\n" + "=" * 70)
-    print(f" {title}")
-    print("=" * 70)
-
-def print_status(message, success=True):
-    symbol = "✓" if success else "✗"
-    print(f"[{symbol}] {message}")
-
-async def run_single_generation(
-    session: aiohttp.ClientSession, 
-    prompt: str, 
-    seed: int,
-    run_index: int,
-    total_runs: int
-) -> Optional[CompetitionEntry]:
-    """Runs one generation-validation cycle."""
-    print_header(f"Run {run_index}/{total_runs} | Seed: {seed}")
+class CompetitionRunner:
+    """Manages competitive validation runs"""
     
-    # 1. Generation
-    payload = aiohttp.FormData()
-    payload.add_field('prompt', prompt)
-    payload.add_field('seed', str(seed))
-    
-    gen_start_time = time.time()
-    try:
-        async with session.post(GENERATION_SERVER_URL, data=payload, timeout=300) as response:
-            gen_time = time.time() - gen_start_time
-            if response.status != 200:
-                error_text = await response.text()
-                print_status(f"Generation failed. Status: {response.status}, Error: {error_text}", success=False)
-                return None
-            
-            ply_bytes = await response.read()
-            print_status(f"Generation successful in {gen_time:.2f}s.", success=True)
-            
-            entry = CompetitionEntry(seed=seed, ply_bytes=ply_bytes, generation_time=gen_time)
-            
-    except Exception as e:
-        print_status(f"An error occurred during generation: {e}", success=False)
-        return None
+    def __init__(self, prompt: str, num_variants: int = 5, use_enhanced: bool = True):
+        self.prompt = prompt
+        self.num_variants = num_variants
+        self.use_enhanced = use_enhanced
+        self.results: List[CompetitionResult] = []
+        self.session = None
 
-    # 2. Validation
-    val_payload = {
-        "prompt": prompt,
-        "data": base64.b64encode(ply_bytes).decode('utf-8'),
-        "compression": 0
-    }
-    try:
-        async with session.post(VALIDATION_SERVER_URL, json=val_payload, timeout=120) as response:
-            if response.status == 200:
-                result = await response.json()
-                entry.validation_score = result.get('score', 0.0)
-                entry.validation_details = result.get('details', {})
-                print_status(f"Validation successful. Score: {entry.validation_score:.4f}", success=True)
-            else:
-                error_text = await response.text()
-                print_status(f"Validation failed. Status: {response.status}, Error: {error_text}", success=False)
-    except Exception as e:
-        print_status(f"An error occurred during validation: {e}", success=False)
-
-    return entry
-
-def save_best_asset(prompt: str, entry: CompetitionEntry, run_dir: Path):
-    """Saves the winning asset and its report."""
-    if not entry.ply_bytes:
-        return
+        # Create competition directory
+        timestamp = int(time.time())
+        safe_prompt = "".join(c for c in prompt if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_prompt = safe_prompt.replace(' ', '_')[:50]
         
-    sanitized_prompt = "".join([c if c.isalnum() else "_" for c in prompt])[:50]
-    
-    # Save PLY file
-    ply_filename = f"BEST_{sanitized_prompt}_seed{entry.seed}_score{entry.validation_score:.2f}.ply"
-    ply_filepath = run_dir / ply_filename
-    with open(ply_filepath, "wb") as f:
-        f.write(entry.ply_bytes)
-    entry.filepath = str(ply_filepath)
-    print_status(f"Saved best model to: {ply_filepath}", success=True)
-    
-    # Save validation report
-    report_filename = f"BEST_{sanitized_prompt}_seed{entry.seed}_report.json"
-    report_filepath = run_dir / report_filename
-    with open(report_filepath, "w") as f:
-        json.dump(entry.validation_details, f, indent=4)
-    print_status(f"Saved best model's report to: {report_filepath}", success=True)
+        self.competition_dir = Path(COMPETITION_DIR) / f"{safe_prompt}_{timestamp}"
+        self.competition_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"🏁 Competition initialized: {self.competition_dir}")
+
+    async def test_server_connectivity(self) -> bool:
+        """Test if servers are available"""
+        servers = [
+            ("Enhanced Generation", ENHANCED_GENERATION_URL + "../health/"),
+            ("Generation", GENERATION_SERVER_URL.replace("/generate/", "/health/")),
+            ("Validation", "http://127.0.0.1:8094/version/")
+        ]
+        
+        all_online = True
+        for name, url in servers:
+            try:
+                async with self.session.get(url, timeout=5) as response:
+                    if response.status == 200:
+                        print(f"✓ {name} server: Online")
+                    else:
+                        print(f"❌ {name} server: Error {response.status}")
+                        all_online = False
+            except Exception as e:
+                print(f"❌ {name} server: Offline ({e})")
+                all_online = False
+        
+        return all_online
+
+    async def run_single_generation(self, seed: int) -> CompetitionResult:
+        """Run a single generation and validation"""
+        print(f"🎲 Running seed {seed}...")
+        
+        result = CompetitionResult(
+            seed=seed,
+            generation_time=0.0,
+            validation_time=0.0,
+            validation_score=0.0,
+            ply_size=0
+        )
+        
+        try:
+            # Step 1: Generate
+            start_time = time.time()
+            
+            if self.use_enhanced:
+                ply_bytes, gen_metadata = await self._run_enhanced_generation(seed)
+            else:
+                ply_bytes, gen_metadata = await self._run_basic_generation(seed)
+            
+            result.generation_time = time.time() - start_time
+            
+            if ply_bytes is None:
+                result.error = "Generation failed"
+                result.success = False
+                return result
+            
+            result.ply_size = len(ply_bytes)
+            result.face_count = gen_metadata.get('face_count', 0)
+            result.compression_ratio = gen_metadata.get('compression_ratio', 1.0)
+            result.generation_id = gen_metadata.get('generation_id', '')
+            
+            # Step 2: Validate
+            start_time = time.time()
+            score = await self._run_validation(ply_bytes)
+            result.validation_time = time.time() - start_time
+            result.validation_score = score
+            
+            if score < 0:
+                result.error = "Validation failed"
+                result.success = False
+                return result
+            
+            # Step 3: Save PLY for successful generations
+            if score > 0.5:  # Only save decent results
+                await self._save_result_ply(ply_bytes, seed, score)
+            
+            print(f"  ✓ Seed {seed}: Score {score:.4f}, Time {result.generation_time:.1f}s+{result.validation_time:.1f}s")
+            
+        except Exception as e:
+            result.error = str(e)
+            result.success = False
+            print(f"  ❌ Seed {seed}: {e}")
+        
+        return result
+
+    async def _run_enhanced_generation(self, seed: int) -> Tuple[bytes, dict]:
+        """Run enhanced generation"""
+        form_data = aiohttp.FormData()
+        form_data.add_field('prompt', self.prompt)
+        form_data.add_field('seed', str(seed))
+        form_data.add_field('use_bpt', 'false')
+        form_data.add_field('return_compressed', 'true')
+        
+        async with self.session.post(ENHANCED_GENERATION_URL, data=form_data, timeout=300) as response:
+            if response.status == 200:
+                ply_bytes = await response.read()
+                metadata = {
+                    'generation_id': response.headers.get('X-Generation-ID', ''),
+                    'compression_ratio': float(response.headers.get('X-Compression-Ratio', '1.0')),
+                    'face_count': int(response.headers.get('X-Face-Count', '0'))
+                }
+                return ply_bytes, metadata
+            else:
+                return None, {}
+
+    async def _run_basic_generation(self, seed: int) -> Tuple[bytes, dict]:
+        """Run basic generation"""
+        payload = {"prompt": self.prompt, "seed": seed}
+        async with self.session.post(GENERATION_SERVER_URL, data=payload, timeout=300) as response:
+            if response.status == 200:
+                ply_bytes = await response.read()
+                return ply_bytes, {}
+            else:
+                return None, {}
+
+    async def _run_validation(self, ply_bytes: bytes) -> float:
+        """Run validation"""
+        try:
+            import pyspz
+            import base64
+            
+            # Try compression
+            try:
+                compressed_data = pyspz.compress(ply_bytes, 1, 1)
+                compression_type = 2
+            except:
+                compressed_data = ply_bytes
+                compression_type = 0
+            
+            base64_data = base64.b64encode(compressed_data).decode('utf-8')
+            
+            payload = {
+                "prompt": self.prompt,
+                "data": base64_data,
+                "compression": compression_type,
+                "data_ver": 0
+            }
+            
+            async with self.session.post(VALIDATION_SERVER_URL, json=payload, timeout=60) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result.get("score", 0.0)
+                else:
+                    return -1.0
+        except:
+            return -1.0
+
+    async def _save_result_ply(self, ply_bytes: bytes, seed: int, score: float):
+        """Save PLY file for a result"""
+        filename = f"seed_{seed}_score_{score:.4f}.ply"
+        filepath = self.competition_dir / filename
+        
+        with open(filepath, 'wb') as f:
+            f.write(ply_bytes)
+
+    async def run_competition(self) -> Dict:
+        """Run the full competition"""
+        print(f"🏆 Starting competition for: '{self.prompt}'")
+        print(f"📊 Running {self.num_variants} variants")
+        print(f"🎯 Server mode: {'Enhanced' if self.use_enhanced else 'Basic'}")
+        print()
+        
+        async with aiohttp.ClientSession() as session:
+            self.session = session
+            
+            # Test connectivity
+            if not await self.test_server_connectivity():
+                print("❌ Server connectivity issues detected!")
+                return {"error": "Server connectivity failed"}
+            
+            print()
+            
+            # Generate seeds (use time-based with spacing for variety)
+            base_seed = int(time.time()) % 10000
+            seeds = [base_seed + i * 1000 for i in range(self.num_variants)]
+            
+            # Run all generations
+            tasks = [self.run_single_generation(seed) for seed in seeds]
+            self.results = await asyncio.gather(*tasks)
+            
+            # Analyze results
+            return await self._analyze_results()
+
+    async def _analyze_results(self) -> Dict:
+        """Analyze competition results"""
+        print(f"\n📈 Competition Analysis")
+        print("=" * 60)
+        
+        # Filter successful results
+        successful_results = [r for r in self.results if r.success and r.validation_score > 0]
+        
+        if not successful_results:
+            print("❌ No successful generations!")
+            return {"error": "No successful generations"}
+        
+        # Find best result
+        best_result = max(successful_results, key=lambda x: x.validation_score)
+        
+        # Calculate statistics
+        scores = [r.validation_score for r in successful_results]
+        times = [r.generation_time + r.validation_time for r in successful_results]
+        
+        avg_score = sum(scores) / len(scores)
+        avg_time = sum(times) / len(times)
+        
+        # Print detailed results
+        print(f"Results: {len(successful_results)}/{len(self.results)} successful")
+        print(f"Best Score: {best_result.validation_score:.4f} (seed {best_result.seed})")
+        print(f"Average Score: {avg_score:.4f}")
+        print(f"Average Time: {avg_time:.2f}s")
+        print()
+        
+        # Print all results sorted by score
+        print("🏅 Leaderboard:")
+        sorted_results = sorted(successful_results, key=lambda x: x.validation_score, reverse=True)
+        
+        for i, result in enumerate(sorted_results[:10]):  # Top 10
+            medal = ["🥇", "🥈", "🥉"][i] if i < 3 else f"{i+1:2d}."
+            print(f"  {medal} Seed {result.seed:5d}: {result.validation_score:.4f} "
+                  f"({result.generation_time:.1f}s+{result.validation_time:.1f}s) "
+                  f"[{result.ply_size:,} bytes, {result.face_count:,} faces]")
+        
+        # Save results
+        await self._save_competition_results(best_result, successful_results, avg_score, avg_time)
+        
+        # Test mining integration with best result
+        if ASSET_MANAGER_AVAILABLE and best_result.generation_id:
+            await self._test_mining_integration(best_result)
+        
+        return {
+            "best_result": asdict(best_result),
+            "successful_count": len(successful_results),
+            "total_count": len(self.results),
+            "average_score": avg_score,
+            "average_time": avg_time,
+            "competition_dir": str(self.competition_dir)
+        }
+
+    async def _save_competition_results(self, best_result: CompetitionResult, 
+                                      all_results: List[CompetitionResult], 
+                                      avg_score: float, avg_time: float):
+        """Save competition summary"""
+        summary = {
+            "prompt": self.prompt,
+            "num_variants": self.num_variants,
+            "server_mode": "enhanced" if self.use_enhanced else "basic",
+            "timestamp": time.time(),
+            "best_result": asdict(best_result),
+            "average_score": avg_score,
+            "average_time": avg_time,
+            "successful_count": len(all_results),
+            "total_count": len(self.results),
+            "all_results": [asdict(r) for r in self.results]
+        }
+        
+        # Save summary
+        summary_path = self.competition_dir / "competition_summary.json"
+        with open(summary_path, 'w') as f:
+            json.dump(summary, f, indent=2)
+        
+        # Save best PLY as separate file
+        if best_result.generation_id and self.use_enhanced:
+            await self._copy_best_result_assets(best_result)
+        
+        print(f"💾 Results saved to: {self.competition_dir}")
+
+    async def _copy_best_result_assets(self, best_result: CompetitionResult):
+        """Copy additional assets for the best result"""
+        if not best_result.generation_id:
+            return
+        
+        try:
+            # Download additional assets for the best result
+            asset_types = ['original_image', 'background_removed_image', 'initial_mesh_glb']
+            
+            for asset_type in asset_types:
+                url = f"http://127.0.0.1:8095/generate/{best_result.generation_id}/download/{asset_type}"
+                try:
+                    async with self.session.get(url, timeout=30) as response:
+                        if response.status == 200:
+                            data = await response.read()
+                            
+                            # Determine extension
+                            if 'image' in asset_type:
+                                ext = '.png'
+                            elif 'glb' in asset_type:
+                                ext = '.glb'
+                            else:
+                                ext = '.bin'
+                            
+                            filename = f"best_{asset_type}{ext}"
+                            filepath = self.competition_dir / filename
+                            
+                            with open(filepath, 'wb') as f:
+                                f.write(data)
+                            
+                            print(f"💎 Saved best {asset_type}: {len(data)} bytes")
+                except Exception as e:
+                    print(f"⚠️ Could not download {asset_type}: {e}")
+                    
+        except Exception as e:
+            print(f"⚠️ Error copying best result assets: {e}")
+
+    async def _test_mining_integration(self, best_result: CompetitionResult):
+        """Test mining integration with the best result"""
+        if not best_result.generation_id:
+            return
+        
+        print(f"\n⛏️ Testing mining integration with best result...")
+        
+        try:
+            asset = global_asset_manager.get_asset(best_result.generation_id)
+            if asset:
+                submission_data = prepare_for_mining_submission(
+                    asset,
+                    task_id="competition_best",
+                    validator_hotkey="competition_validator",
+                    validator_uid=1000
+                )
+                
+                print(f"✓ Mining submission prepared for best result:")
+                print(f"  - Score: {submission_data.get('local_validation_score', 'N/A')}")
+                print(f"  - Compressed PLY: {len(submission_data.get('compressed_ply_b64', ''))} chars")
+                print(f"  - Face count: {submission_data.get('face_count', 'N/A')}")
+            else:
+                print(f"⚠️ Asset {best_result.generation_id} not found in asset manager")
+                
+        except Exception as e:
+            print(f"❌ Mining integration test failed: {e}")
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Run a competition for a single prompt with multiple seeds.")
-    parser.add_argument("prompt", type=str, help="The text prompt to generate a 3D model from.")
-    parser.add_argument("-n", "--num_runs", type=int, default=5, help="Number of different seeds to try.")
-    parser.add_argument("--save-all", action="store_true", help="Save all generated assets, not just the best one.")
+    parser = argparse.ArgumentParser(description="Competitive validation for Subnet 17")
+    parser.add_argument("prompt", help="Text prompt for 3D generation")
+    parser.add_argument("-n", "--num-variants", type=int, default=5, 
+                       help="Number of variants to generate (default: 5)")
+    parser.add_argument("--server", choices=['enhanced', 'basic'], default='enhanced',
+                       help="Server type to use (default: enhanced)")
+    parser.add_argument("--max-variants", type=int, default=20,
+                       help="Maximum number of variants allowed (default: 20)")
     
     args = parser.parse_args()
 
-    # Create a unique directory for this competition run
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    sanitized_prompt = "".join([c if c.isalnum() else "_" for c in args.prompt])[:50]
-    run_dir = Path(OUTPUT_DIR) / f"{timestamp}_{sanitized_prompt}"
-    run_dir.mkdir(exist_ok=True, parents=True)
-
-    print_header("Local Competition Runner")
-    print(f"Prompt: '{args.prompt}'")
-    print(f"Number of Runs: {args.num_runs}")
-    print(f"Results will be saved in: {run_dir}")
-    print("-" * 70)
-
-    # Generate a list of unique random seeds
-    seeds = [random.randint(0, 2**32 - 1) for _ in range(args.num_runs)]
+    # Validate arguments
+    if args.num_variants > args.max_variants:
+        print(f"❌ Too many variants requested. Maximum: {args.max_variants}")
+        return 1
     
-    results: List[CompetitionEntry] = []
+    if args.num_variants < 2:
+        print(f"❌ Minimum 2 variants required for competition")
+        return 1
     
-    async with aiohttp.ClientSession() as session:
-        for i, seed in enumerate(seeds):
-            entry = await run_single_generation(session, args.prompt, seed, i + 1, args.num_runs)
-            if entry:
-                results.append(entry)
-
-    if not results:
-        print_header("Competition Finished - No Successful Runs")
-        print("Could not generate or validate any models.")
-        return
-
-    # Sort results by validation score (highest first)
-    results.sort(key=lambda x: x.validation_score, reverse=True)
-
-    # --- Print Summary ---
-    print_header("Competition Results Summary")
-    print(f"{'Rank':<5} | {'Seed':<12} | {'Score':<10} | {'Gen Time (s)':<15}")
-    print("-" * 70)
-    for i, res in enumerate(results):
-        rank = i + 1
-        print(f"{rank:<5} | {res.seed:<12} | {res.validation_score:<10.4f} | {res.generation_time:<15.2f}")
-
-    # --- Save Assets ---
-    print_header("Saving Assets")
-    best_entry = results[0]
+    print("🚀 Subnet 17 Competitive Validation")
+    print("=" * 60)
+    print(f"Prompt: {args.prompt}")
+    print(f"Variants: {args.num_variants}")
+    print(f"Server: {args.server}")
+    print(f"Asset Manager: {'Available' if ASSET_MANAGER_AVAILABLE else 'Not Available'}")
+    print()
     
-    if best_entry.validation_score > 0:
-        print(f"Best score was {best_entry.validation_score:.4f} from seed {best_entry.seed}.")
-        save_best_asset(args.prompt, best_entry, run_dir)
-    else:
-        print("No entries achieved a positive score. Not saving a 'best' asset.")
-
-    if args.save_all:
-        print("\nSaving all other assets as requested...")
-        for i, entry in enumerate(results):
-            if entry.seed != best_entry.seed and entry.ply_bytes:
-                 ply_filename = f"rank{i+1}_{sanitized_prompt}_seed{entry.seed}_score{entry.validation_score:.2f}.ply"
-                 ply_filepath = run_dir / ply_filename
-                 with open(ply_filepath, "wb") as f:
-                     f.write(entry.ply_bytes)
-                 print_status(f"Saved asset to: {ply_filepath}", success=True)
+    # Run competition
+    runner = CompetitionRunner(
+        prompt=args.prompt,
+        num_variants=args.num_variants,
+        use_enhanced=(args.server == 'enhanced')
+    )
     
-    print_header("Competition Complete")
+    start_time = time.time()
+    results = await runner.run_competition()
+    total_time = time.time() - start_time
+    
+    if "error" in results:
+        print(f"❌ Competition failed: {results['error']}")
+        return 1
+    
+    print(f"\n🎯 Competition completed in {total_time:.2f}s")
+    print(f"🏆 Best score: {results['best_result']['validation_score']:.4f}")
+    print(f"📁 Results directory: {results['competition_dir']}")
+    
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    exit_code = asyncio.run(main())
+    sys.exit(exit_code) 
