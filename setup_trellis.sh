@@ -86,6 +86,10 @@ git checkout v0.17.0  # Match your desired version
 pip install -r tools/requirements.txt
 python setup.py develop
 cd ..
+git clone --recursive https://github.com/404-Repo/spz
+cd spz
+pip install .
+cd ..
 
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
