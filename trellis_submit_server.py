@@ -652,11 +652,11 @@ class TrellisGenerator:
             # Step 2: Remove background
             logger.info("🎭 Step 2: Removing background...")
             
-            if self.background_remover is None:
-                self._load_background_remover()
+            # if self.background_remover is None:
+            #     self._load_background_remover()
             
-            image_no_bg = self.background_remover(image)
-            
+            # image_no_bg = self.background_remover(image)
+            image_no_bg = image
             # Free Flux memory
             self._unload_flux_models()
             self._clear_gpu_memory()
