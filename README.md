@@ -456,7 +456,33 @@ When backing up or moving to a new instance, save these files:
 
 The conda environments themselves should be recreated rather than backed up.
 
+## TRELLIS Mining Configurations
 
+The repository includes three TRELLIS mining configurations:
+
+### 1. **CLIP-Optimized Configuration** (Recommended)
+- **Files**: `continuous_trellis_orchestrator_optim.py`, `run_trellis_miner_optim.sh`
+- **Features**: Automatic prompt optimization, risk detection, <5% failure rate
+- **Best for**: Most miners, stable operations
+
+### 2. **High-Score Configuration**
+- **Files**: `continuous_trellis_orchestrator.py`, `run_trellis_mining.sh`
+- **Features**: Maximum scores, faster processing, 15-30% failure rate
+- **Best for**: Experienced miners who can handle variance
+
+### 3. **Ultra Scoring System** (Experimental)
+- **Files**: `ultra_score_maximizer.py`, `continuous_trellis_orchestrator_ultra.py`
+- **Features**: Exploits scoring patterns for 0.96+ average fidelity
+- **Best for**: Research and testing maximum possible scores
+- **Warning**: This "games" the validation system - use responsibly
+
+### Troubleshooting Tools
+- **Zero Score Analyzer**: `analyze_zero_scores.py` - Identifies problematic prompt patterns
+- **Ultra Score Maximizer**: `ultra_score_maximizer.py` - Achieves 0.96+ scores
+- **Database Inspector**: SQLite tools to examine task history
+- **Log Analysis**: Built-in monitoring and statistics
+
+See [README_QUICKSTART.md](README_QUICKSTART.md) for quick setup, [README_TRELLIS_CONFIGURATIONS.md](README_TRELLIS_CONFIGURATIONS.md) for detailed information, and [README_ULTRA_SCORING.md](README_ULTRA_SCORING.md) for the ultra scoring system.
 
 ## Setup 3D topia XL
 

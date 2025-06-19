@@ -46,24 +46,10 @@ import subprocess
 import queue
 import multiprocessing
 import imageio
-from io import BytesIO
 
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import Response, JSONResponse
 import uvicorn
-
-# Initialize logger
-logger = logging.getLogger(__name__)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('trellis_submit_server.log')
-    ]
-)
 
 seed = 42
 
@@ -196,26 +182,6 @@ class GenerationAsset:
             file_path = self.asset_directory / "compressed.ply.spz"
             with open(file_path, 'wb') as f:
                 f.write(data)
-    
-    def save_metadata(self) -> Path:
-        """Save metadata to JSON file"""
-        metadata_path = self.asset_directory / "metadata.json"
-        
-        # Prepare metadata with all relevant information
-        full_metadata = {
-            "generation_id": self.generation_id,
-            "prompt": self.prompt,
-            "seed": self.seed,
-            "timestamp": self.timestamp,
-            "assets": [asset_type.value for asset_type in self.assets.keys()],
-            **self.metadata  # Include any additional metadata
-        }
-        
-        # Write to JSON file
-        with open(metadata_path, 'w') as f:
-            json.dump(full_metadata, f, indent=2)
-        
-        return metadata_path
 
 class AssetManager:
     """Manages generation assets"""
@@ -276,7 +242,6 @@ class TrellisGenerator:
         
         self.metrics = GenerationMetrics()
         self.generation_lock = threading.Lock()
-        self.recent_generations = {}  # Store recent generations for retrieval
         
         # Initialize asset manager
         self.asset_manager = AssetManager(GENERATION_CONFIG['output_dir'])
@@ -592,189 +557,210 @@ class TrellisGenerator:
             print("   Continuing with original image...")
             return image
 
-    def generate_3d_model(self, prompt: str, seed: int = None, dynamic_config: Dict[str, Any] = None) -> Optional[bytes]:
+    def generate_3d_model(self, prompt: str, seed: int = 42) -> Optional[bytes]:
         """Generate 3D model from text prompt using FLUX + TRELLIS pipeline"""
         
-        if dynamic_config is None:
-            dynamic_config = {}
-        
-        # Handle seed
-        if seed is None:
-            seed = random.randint(0, MAX_SEED)
-        
-        # Update metrics
-        self.metrics.total_generations += 1
-        self.metrics.last_generation_time = time.time()
-        
-        generation_start = time.time()
-        logger.info(f"🎨 Starting generation for prompt: '{prompt}' (seed: {seed})")
-        
-        # Create generation asset
-        self.current_asset = self.asset_manager.create_asset(prompt, seed)
-        
-        try:
-            # Step 1: Generate image with FLUX
-            logger.info("🖼️ Step 1: Generating image with FLUX...")
+        job_id = f"gen_{int(time.time())}_{seed}"
+        generation_job_status.update({
+            "current_job_id": job_id,
+            "status": "processing",
+            "prompt": prompt,
+            "seed": seed,
+            "start_time": time.time(),
+            "end_time": None,
+            "ply_path": None,
+            "error": None
+        })
+
+        with self.generation_lock:
+            start_time = time.time()
             
-            # Load FLUX models if not already loaded
-            if self.flux_pipeline is None:
+            try:
+                print(f"🎯 Starting TRELLIS generation for: '{prompt}' (seed: {seed})")
+                
+                # Initialize asset manager for this generation
+                generation_asset = self.asset_manager.create_asset(prompt, seed)
+                
+                # Step 1: Generate image with FLUX
+                print("Step 1: Generating image with FLUX...")
                 self._load_flux_models()
-            
-            # Enhanced prompt for FLUX
-            enhanced_prompt = f"{prompt}, game asset, 3d model, isometric view, white background, high quality, detailed"
-            
-            generator = torch.Generator("cuda").manual_seed(seed)
-            
-            with torch.inference_mode():
+                
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                # enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric, white background"
+                # enhanced_prompt = prompt + " 3D isometric, white background"
+                # enhanced_prompt = prompt + " 3D isometric, accurate, white background"
+                enhanced_prompt = "wbgmsst, " + prompt + ", 3D isometric object, accurate, clean, practical, white background"
+                generator = torch.Generator(device=device).manual_seed(seed)
+                
                 image = self.flux_pipeline(
                     prompt=enhanced_prompt,
-                    guidance_scale=dynamic_config.get('guidance_scale', GENERATION_CONFIG['guidance_scale']),
+                    guidance_scale=GENERATION_CONFIG['guidance_scale'],
                     num_inference_steps=NUM_INFERENCE_STEPS,
                     width=1024,
                     height=1024,
                     generator=generator,
                 ).images[0]
-            
-            # Apply centering if enabled
-            if GENERATION_CONFIG['enable_object_centering']:
-                logger.info("📐 Centering object in image...")
-                image = self.center_object_in_image(
-                    image,
-                    white_threshold=GENERATION_CONFIG['centering_white_threshold'],
-                    padding=GENERATION_CONFIG['centering_padding']
-                )
-            
-            # Save Flux image if configured
-            if GENERATION_CONFIG['save_intermediate_outputs']:
-                self.current_asset.add_asset(AssetType.FLUX_IMAGE, image)
-                logger.info(f"✅ Flux image saved to asset directory")
-            
-            # Step 2: Remove background
-            logger.info("🎭 Step 2: Removing background...")
-            
-            if self.background_remover is None:
+                
+                print("✓ Image generated successfully")
+                generation_asset.add_asset(AssetType.FLUX_IMAGE, image)
+                
+                # Unload FLUX models
+                self._unload_flux_models()
+                
+                # Step 1.3: Center object in image before background removal
+                if GENERATION_CONFIG.get('enable_object_centering', True):
+                    print("Step 1.3: Centering object in image...")
+                    try:
+                        centered_image = self.center_object_in_image(
+                            image, 
+                            white_threshold=GENERATION_CONFIG.get('centering_white_threshold', 240),
+                            padding=GENERATION_CONFIG.get('centering_padding', 40)
+                        )
+                        print("✓ Object centered successfully")
+                        image = centered_image  # Use the centered image for next steps
+                        generation_asset.add_asset(AssetType.FLUX_IMAGE, centered_image)  # Update asset with centered version
+                    except Exception as e:
+                        print(f"⚠️ Object centering failed: {e}")
+                        print("   Continuing with original image...")
+                else:
+                    print("Step 1.3: Object centering disabled, skipping...")
+                
+                # Step 1.5: Remove background from image
+                print("Step 1.5: Removing background from image...")
                 self._load_background_remover()
-            
-            image_no_bg = self.background_remover(image)
-            
-            # Free Flux memory
-            self._unload_flux_models()
-            self._clear_gpu_memory()
-            
-            # Step 3: Generate 3D with TRELLIS
-            logger.info("🏗️ Step 3: Generating 3D model with TRELLIS...")
-            
-            if self.trellis_pipeline is None:
+                
+                try:
+                    image_no_bg = self.background_remover(image)
+                    print("✓ Background removed successfully")
+                    # Save the background-removed image as well
+                    generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
+                    image = image_no_bg  # Use the cleaned image for TRELLIS
+                except Exception as e:
+                    print(f"⚠️ Background removal failed: {e}")
+                    print("   Continuing with original image...")
+                
+                # Unload background remover
+                self._unload_background_remover()
+                
+                # Step 2: Generate 3D model with TRELLIS
+                print("Step 2: Generating 3D model with TRELLIS...")
                 self._load_trellis_pipeline()
-            
-            # Use provided parameters or defaults
-            outputs = self.trellis_pipeline.run(
-                image_no_bg,
-                seed=seed,
-                preprocess_image=False,
-                sparse_structure_sampler_params={
-                    "steps": dynamic_config.get('ss_sampling_steps', GENERATION_CONFIG['ss_sampling_steps']),
-                    "cfg_strength": dynamic_config.get('ss_guidance_strength', GENERATION_CONFIG['ss_guidance_strength']),
-                },
-                slat_sampler_params={
-                    "steps": dynamic_config.get('slat_sampling_steps', GENERATION_CONFIG['slat_sampling_steps']),
-                    "cfg_strength": dynamic_config.get('slat_guidance_strength', GENERATION_CONFIG['slat_guidance_strength']),
-                },
-            )
-            
-            # Get Gaussian splatting representation
-            gs = outputs['gaussian'][0]
-            
-            # Save PLY file to memory
-            ply_buffer = BytesIO()
-            gs.save_ply(ply_buffer)
-            ply_data = ply_buffer.getvalue()
-            
-            # Store uncompressed PLY
-            if GENERATION_CONFIG['save_intermediate_outputs']:
-                self.current_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
-            
-            # Compress using pyspz
-            compressed_data = None
-            if GENERATION_CONFIG['auto_compress_ply']:
-                try:
-                    import pyspz
-                    compressed_data = pyspz.compress(ply_data, workers=-1)
-                    compression_ratio = len(compressed_data) / len(ply_data)
-                    logger.info(f"🗜️ Compressed PLY: {len(ply_data):,} → {len(compressed_data):,} bytes ({compression_ratio:.1%})")
-                    
-                    # Store compressed version
-                    if GENERATION_CONFIG['save_intermediate_outputs']:
-                        self.current_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
-                except Exception as e:
-                    logger.error(f"❌ SPZ compression failed: {e}")
-                    compressed_data = ply_data  # Fall back to uncompressed
-            else:
-                compressed_data = ply_data
-            
-            # Generate preview if enabled
-            if GENERATION_CONFIG['save_preview']:
-                logger.info("🎬 Generating preview video...")
-                try:
-                    video_frames = render_utils.render_video(
-                        outputs['gaussian'][0], 
-                        output_size=256
-                    )['frames']
-                    self.current_asset.add_asset(AssetType.PREVIEW_VIDEO, video_frames)
-                except Exception as e:
-                    logger.error(f"❌ Preview generation failed: {e}")
-            
-            # Free TRELLIS memory
-            self._unload_trellis_pipeline()
-            self._clear_gpu_memory()
-            
-            generation_time = time.time() - generation_start
-            
-            # Update metrics
-            self.metrics.successful_generations += 1
-            self.metrics.average_generation_time = (
-                (self.metrics.average_generation_time * (self.metrics.successful_generations - 1) + generation_time) /
-                self.metrics.successful_generations
-            )
-            
-            # Store generation metadata
-            self.current_asset.metadata = {
-                'generation_time': generation_time,
-                'seed': seed,
-                'original_ply_size': len(ply_data),
-                'compressed_size': len(compressed_data) if compressed_data else 0,
-                'compression_ratio': len(compressed_data) / len(ply_data) if compressed_data else 1.0,
-                'dynamic_params_used': bool(dynamic_config)
-            }
-            
-            logger.info(f"✅ Generation completed in {generation_time:.2f}s")
-            
-            # Save metadata to JSON file
-            metadata_path = self.current_asset.save_metadata()
-            logger.info(f"💾 Metadata saved: {metadata_path}")
-            
-            # Store in recent generations
-            self.recent_generations[seed] = {
-                'prompt': prompt,
-                'timestamp': time.time(),
-                'ply_data': compressed_data,
-                'asset': self.current_asset
-            }
-            
-            # Return compressed data
-            return compressed_data
-            
-        except Exception as e:
-            logger.error(f"❌ Generation failed: {e}")
-            traceback.print_exc()
-            
-            # Update failure metrics
-            self.metrics.failed_generations += 1
-            
-            # Clear models on error
-            self._clear_gpu_memory()
-            
-            return None
+                
+                outputs = self.trellis_pipeline.run(
+                    image,
+                    seed=seed,
+                    formats=["gaussian", "mesh"],
+                    preprocess_image=False,
+                    sparse_structure_sampler_params={
+                        "steps": GENERATION_CONFIG['ss_sampling_steps'],
+                        "cfg_strength": GENERATION_CONFIG['ss_guidance_strength'],
+                    },
+                    slat_sampler_params={
+                        "steps": GENERATION_CONFIG['slat_sampling_steps'],
+                        "cfg_strength": GENERATION_CONFIG['slat_guidance_strength'],
+                    },
+                )
+                
+                print("✓ 3D model generated successfully")
+                
+                # Step 3: Extract Gaussian Splatting PLY
+                print("Step 3: Extracting Gaussian Splatting PLY...")
+                gaussian_output = outputs['gaussian'][0]
+                
+                # Save as PLY file
+                import io
+                ply_buffer = io.BytesIO()
+                gaussian_output.save_ply(ply_buffer)
+                ply_data = ply_buffer.getvalue()
+                
+                print(f"✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
+                generation_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
+                
+                # Step 4: Generate preview video (optional)
+                if GENERATION_CONFIG.get('save_intermediate_outputs', False) and GENERATION_CONFIG.get('save_preview', False):
+                    print("Step 4: Generating preview video...")
+                    try:
+                        video = render_utils.render_video(outputs['gaussian'][0], num_frames=120)['color']
+                        video_geo = render_utils.render_video(outputs['mesh'][0], num_frames=120)['normal']
+                        combined_video = [np.concatenate([video[i], video_geo[i]], axis=1) for i in range(len(video))]
+                        generation_asset.add_asset(AssetType.PREVIEW_VIDEO, combined_video)
+                        print("✓ Preview video generated")
+                    except Exception as e:
+                        print(f"⚠️ Preview video generation failed: {e}")
+                
+                # Step 5: Compress PLY if enabled
+                compressed_data = None
+                if GENERATION_CONFIG.get('auto_compress_ply', True):
+                    print("Step 5: Compressing PLY with SPZ...")
+                    try:
+                        import pyspz
+                        compressed_data = pyspz.compress(ply_data, workers=-1)
+                        print(f"🗜️ SPZ Compression successful:")
+                        print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                        print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                        print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                        print(f"   Space saved: {(len(ply_data)-len(compressed_data))/1024/1024:.1f} MB")
+                        
+                        generation_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
+                    except Exception as e:
+                        print(f"⚠️ SPZ compression failed: {e}")
+                        compressed_data = None
+                
+                # Unload TRELLIS pipeline
+                self._unload_trellis_pipeline()
+                
+                generation_time = time.time() - start_time
+                
+                # Update metrics
+                self.metrics.total_generations += 1
+                self.metrics.successful_generations += 1
+                self.metrics.last_generation_time = generation_time
+                self.metrics.average_generation_time = (
+                    (self.metrics.average_generation_time * (self.metrics.successful_generations - 1) + generation_time) 
+                    / self.metrics.successful_generations
+                )
+                
+                print(f"🎉 TRELLIS generation completed in {generation_time:.2f}s")
+                
+                # Save metadata
+                if GENERATION_CONFIG.get('save_intermediate_outputs', False):
+                    metadata_path = generation_asset.asset_directory / "metadata.json"
+                    with open(metadata_path, 'w') as f:
+                        json.dump({
+                            **generation_asset.metadata,
+                            "generation_time": generation_time,
+                            "ply_size_bytes": len(ply_data),
+                            "compressed_size_bytes": len(compressed_data) if compressed_data else None,
+                            "compression_ratio": len(compressed_data)/len(ply_data) if compressed_data else None,
+                        }, f, indent=2)
+                    print(f"💾 Metadata saved: {metadata_path}")
+
+                generation_job_status.update({
+                    "status": "completed",
+                    "end_time": time.time(),
+                    "ply_path": f"generated_model_{seed}.ply"
+                })
+                            
+                return ply_data, compressed_data
+                
+            except Exception as e:
+                self.metrics.total_generations += 1
+                self.metrics.failed_generations += 1
+                print(f"❌ TRELLIS generation failed: {e}")
+                traceback.print_exc()
+                
+                # Cleanup on failure
+                self._unload_flux_models()
+                self._unload_trellis_pipeline()
+                self._unload_background_remover()
+                
+                generation_job_status.update({
+                    "status": "failed",
+                    "end_time": time.time(),
+                    "error": str(e)
+                })
+                
+                return None
 
     def get_status(self) -> Dict[str, Any]:
         """Get server status and metrics"""
@@ -919,89 +905,62 @@ async def reset_job_status():
 async def generate_3d_model_endpoint(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True),
-    # Dynamic TRELLIS parameters
-    guidance_scale: Optional[float] = Form(None),
-    ss_guidance_strength: Optional[float] = Form(None),
-    ss_sampling_steps: Optional[int] = Form(None),
-    slat_guidance_strength: Optional[float] = Form(None),
-    slat_sampling_steps: Optional[int] = Form(None)
+    return_compressed: Optional[bool] = Form(True)
 ):
-    """
-    Generate a 3D model from a text prompt.
+    """Generate 3D model from text prompt using FLUX + TRELLIS pipeline."""
     
-    Args:
-        prompt: Text description of the 3D model
-        seed: Random seed (optional, will be generated if not provided)
-        return_compressed: Whether to return SPZ compressed data
-        guidance_scale: TRELLIS guidance scale (optional)
-        ss_guidance_strength: Sparse structure guidance strength (optional)
-        ss_sampling_steps: Sparse structure sampling steps (optional)
-        slat_guidance_strength: Structured latent guidance strength (optional)
-        slat_sampling_steps: Structured latent sampling steps (optional)
-    """
-    try:
-        # Log dynamic parameters if provided
-        if any([guidance_scale, ss_guidance_strength, ss_sampling_steps, 
-                slat_guidance_strength, slat_sampling_steps]):
-            logger.info(f"🎯 Using dynamic parameters for generation:")
-            if guidance_scale: logger.info(f"   guidance_scale: {guidance_scale}")
-            if ss_guidance_strength: logger.info(f"   ss_guidance_strength: {ss_guidance_strength}")
-            if ss_sampling_steps: logger.info(f"   ss_sampling_steps: {ss_sampling_steps}")
-            if slat_guidance_strength: logger.info(f"   slat_guidance_strength: {slat_guidance_strength}")
-            if slat_sampling_steps: logger.info(f"   slat_sampling_steps: {slat_sampling_steps}")
-        
-        # Override default parameters with dynamic ones if provided
-        dynamic_config = {}
-        if guidance_scale is not None:
-            dynamic_config['guidance_scale'] = guidance_scale
-        if ss_guidance_strength is not None:
-            dynamic_config['ss_guidance_strength'] = ss_guidance_strength
-        if ss_sampling_steps is not None:
-            dynamic_config['ss_sampling_steps'] = ss_sampling_steps
-        if slat_guidance_strength is not None:
-            dynamic_config['slat_guidance_strength'] = slat_guidance_strength
-        if slat_sampling_steps is not None:
-            dynamic_config['slat_sampling_steps'] = slat_sampling_steps
-        
-        # Generate model with dynamic configuration
-        ply_data = generator.generate_3d_model(prompt, seed, dynamic_config=dynamic_config)
-        
-        if ply_data is None:
-            raise HTTPException(status_code=500, detail="Generation failed")
-        
-        # Return the appropriate data based on compression preference
-        if return_compressed:
-            # Data is already compressed
-            headers = {
-                "Content-Type": "application/octet-stream",
-                "Content-Disposition": f"attachment; filename=model_{seed}.ply.spz",
-                "X-Compression-Ratio": f"{len(ply_data) / 1000000:.2f}MB"  # Approximate ratio
-            }
-            return Response(content=ply_data, headers=headers)
-        else:
-            # Decompress if requested
-            try:
+    # Handle seed
+    if seed is None:
+        seed = random.randint(0, MAX_SEED)
+    
+    # Generate model
+    compressed_data = None
+    ply_data, compressed_data = generator.generate_3d_model(prompt, seed)
+    
+    if ply_data is None:
+        raise HTTPException(status_code=500, detail="Generation failed")
+    
+    # Apply SPZ compression if requested
+    if return_compressed:
+        try:
+            if compressed_data is None:
                 import pyspz
-                decompressed_data = pyspz.decompress(ply_data)
-                headers = {
-                    "Content-Type": "application/octet-stream",
-                    "Content-Disposition": f"attachment; filename=model_{seed}.ply"
+                compressed_data = pyspz.compress(ply_data, workers=-1)
+                print(f"🗜️ SPZ Compression for response:")
+                print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+            
+            return Response(
+                content=compressed_data,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply.spz",
+                    "X-Generation-Seed": str(seed),
+                    "X-Generation-Prompt": prompt,
+                    "X-Model-Format": "gaussian_splatting_ply",
+                    "X-Pipeline": "flux_trellis",
+                    "X-Compression": "spz",
+                    "X-Compression-Ratio": f"{len(compressed_data)/len(ply_data)*100:.1f}%"
                 }
-                return Response(content=decompressed_data, headers=headers)
-            except:
-                # If decompression fails, return compressed
-                headers = {
-                    "Content-Type": "application/octet-stream",
-                    "Content-Disposition": f"attachment; filename=model_{seed}.ply.spz",
-                    "X-Compression-Format": "spz"
-                }
-                return Response(content=ply_data, headers=headers)
-        
-    except Exception as e:
-        logger.error(f"❌ Generation endpoint error: {e}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+            )
+        except Exception as e:
+            print(f"⚠️ SPZ compression failed: {e}")
+            # Fall back to uncompressed
+    
+    # Return uncompressed PLY data
+    return Response(
+        content=ply_data,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
+            "X-Generation-Seed": str(seed),
+            "X-Generation-Prompt": prompt,
+            "X-Model-Format": "gaussian_splatting_ply",
+            "X-Pipeline": "flux_trellis",
+            "X-Compression": "none"
+        }
+    )
 
 @app.post("/validate/")
 async def validate_generation(

@@ -23,12 +23,9 @@ import traceback
 import hashlib
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional, Any, Set
+from typing import List, Dict, Optional, Any, Set, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
-
-# Import the prompt optimizer
-from prompt_optimizer import TrellisPromptOptimizer
 
 # Make bittensor optional for environments without it
 try:
@@ -219,14 +216,16 @@ class TaskDatabase:
         
         successful_submissions = cursor.fetchone()[0]
         
-        # Also check for any recent attempts (successful or not) but with shorter window
-        recent_cutoff = time.time() - (1 * 3600)  # 1 hour for failed attempts (more forgiving)
+        # Check for very recent failed attempts (to avoid immediate retry loops)
+        # Only check last 15 minutes for failed attempts to allow quicker retries
+        recent_failed_cutoff = time.time() - (0.25 * 3600)  # 15 minutes for failed attempts
         cursor.execute('''
             SELECT COUNT(*) FROM tasks 
             WHERE prompt_hash = ? AND validator_uid = ? AND pulled_at > ?
-        ''', (prompt_hash, validator_uid, recent_cutoff))
+            AND (submission_success = 0 OR feedback_received = 0 OR processed_at IS NULL)
+        ''', (prompt_hash, validator_uid, recent_failed_cutoff))
         
-        recent_attempts = cursor.fetchone()[0]
+        recent_failed_attempts = cursor.fetchone()[0]
         
         conn.close()
         
@@ -234,8 +233,8 @@ class TaskDatabase:
         if successful_submissions > 0:
             return True
         
-        # Allow retry after 1 hour if previous attempts failed (more aggressive retry)
-        if recent_attempts > 0:
+        # Only skip if there was a very recent failed attempt (15 minute cooldown)
+        if recent_failed_attempts > 0:
             return True
             
         return False
@@ -462,9 +461,27 @@ class ContinuousTrellisOrchestrator:
         self.start_time = time.time()
         
         # Initialize prompt optimizer
-        self.prompt_optimizer = TrellisPromptOptimizer()
+        try:
+            # Try to use V2 optimizer first
+            from prompt_optimizer_v2 import TrellisPromptOptimizerV2
+            self.prompt_optimizer = TrellisPromptOptimizerV2()
+            self.logger.info("✅ Using TrellisPromptOptimizerV2 (advanced optimization)")
+            
+            # Enable CLIP optimization if configured
+            if self.config.get('enable_clip_optimization', True):
+                try:
+                    self.prompt_optimizer.enable_clip_optimization()
+                    self.logger.info("🚀 CLIP optimization enabled for maximum alignment scores")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Could not enable CLIP optimization: {e}")
+                    
+        except ImportError:
+            # Fall back to V1 optimizer
+            from prompt_optimizer import TrellisPromptOptimizer
+            self.prompt_optimizer = TrellisPromptOptimizer()
+            self.logger.info("✅ Using TrellisPromptOptimizer (standard optimization)")
         
-        # Statistics
+        # Initialize session statistics
         self.stats = {
             'session_start': time.time(),
             'tasks_pulled': 0,
@@ -472,12 +489,12 @@ class ContinuousTrellisOrchestrator:
             'successful_generations': 0,
             'successful_validations': 0,
             'successful_submissions': 0,
+            'total_rewards': 0.0,
             'total_generation_time': 0.0,
             'total_validation_time': 0.0,
-            'total_rewards': 0.0,
             'idle_validations': 0,
             'prompts_optimized': 0,
-            'optimization_improvements': 0,
+            'optimization_improvements': 0
         }
         
         self.logger.info("🎯 Continuous TRELLIS Orchestrator initialized")
@@ -530,8 +547,9 @@ class ContinuousTrellisOrchestrator:
             
             # Prompt optimization settings
             'enable_prompt_optimization': True,
-            'optimization_aggressive_mode': False,
+            'optimization_aggressive_mode': True,
             'log_optimization_details': True,
+            'enable_clip_optimization': True,  # Enable CLIP-based optimization
         }
     
     def _setup_bittensor(self) -> bool:
@@ -773,19 +791,26 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Error pulling from UID {validator.uid}: {e}")
             return None
     
-    def optimize_prompt_for_generation(self, task: TaskRecord) -> str:
-        """Optimize prompt to reduce zero fidelity risk"""
+    def optimize_prompt_for_generation(self, task: TaskRecord) -> Tuple[str, Dict[str, any]]:
+        """Optimize prompt to reduce zero fidelity risk and return parameter adjustments"""
         try:
             # Check if optimization is enabled
             if not self.config.get('enable_prompt_optimization', True):
-                return task.prompt
+                return task.prompt, {}
             
             # Analyze and optimize the prompt
             optimization_result = self.prompt_optimizer.optimize_prompt(
                 task.prompt, 
-                aggressive=self.config.get('optimization_aggressive_mode', False)
+                aggressive=self.config.get('optimization_aggressive_mode', True)  # Default to aggressive
             )
             analysis = optimization_result['analysis']
+            
+            # Get parameter adjustments if available (from V2 optimizer)
+            param_adjustments = {}
+            if hasattr(self.prompt_optimizer, '_optimize_prompt_v2'):
+                # V2 optimizer provides parameter adjustments
+                v2_result = self.prompt_optimizer._optimize_prompt_v2(task.prompt, aggressive=True)
+                param_adjustments = v2_result.parameter_adjustments
             
             # Log the analysis if enabled
             if self.config.get('log_optimization_details', True):
@@ -796,9 +821,14 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"   Risk Factors:")
                     for factor in analysis['risk_factors']:
                         self.logger.info(f"     • {factor}")
+                
+                if param_adjustments:
+                    self.logger.info(f"   📊 Parameter Adjustments:")
+                    for param, value in param_adjustments.items():
+                        self.logger.info(f"     • {param}: {value}")
             
             # Check if optimization is needed
-            if 0: #optimization_result['improvement_expected']:
+            if optimization_result['improvement_expected']:
                 optimized_prompt = optimization_result['optimized_prompt']
                 applied_strategies = optimization_result['applied_strategies']
                 
@@ -815,42 +845,57 @@ class ContinuousTrellisOrchestrator:
                 self.stats['prompts_optimized'] += 1
                 self.stats['optimization_improvements'] += 1
                 
-                return optimized_prompt
+                return optimized_prompt, param_adjustments
             else:
                 if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"✅ Prompt is low risk - no optimization needed")
+                    self.logger.info(f"✅ Prompt is low risk - minimal optimization applied")
                 
                 self.stats['prompts_optimized'] += 1
-                # return f"wbgmsst, {task.prompt} detailed 3D isometric asset, accurate, continuous, practical, white background",
-                # return f"wbgmsst, {task.prompt}, detailed 3D isometric gaming asset, accurate, practical, white background",
-                # return f"wbgmsst, {task.prompt}, highly detailed 3D isometric object, accurate, white background"
-                # return f"wbgmsst, {task.prompt}, HD, 3D, isometric, white background"
-                return f"wbgmsst, {task.prompt} ,white background"
-                # return f"{task.prompt}, 3d isometric, white background"
-                # return task.prompt
+                # Still add basic optimization for low-risk prompts
+                optimized = f"{task.prompt}, 3D model, detailed object, high quality"
+                return optimized, param_adjustments
                 
         except Exception as e:
             self.logger.error(f"❌ Prompt optimization failed: {e}")
-            return task.prompt
+            return task.prompt, {}
 
     async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
-        """Generate 3D model using TRELLIS server with prompt optimization"""
+        """Generate 3D model using TRELLIS server with prompt optimization and dynamic parameters"""
         self.logger.info(f"🎨 Generating 3D model: '{task.prompt}' (task: {task.task_id})")
         
         try:
-            # Step 1: Optimize prompt to reduce zero fidelity risk
-            optimized_prompt = self.optimize_prompt_for_generation(task)
+            # Step 1: Optimize prompt and get parameter adjustments
+            optimized_prompt, param_adjustments = self.optimize_prompt_for_generation(task)
             
             generation_start = time.time()
             
-            # Call TRELLIS generation server with optimized prompt
+            # Prepare generation parameters
+            generation_params = {
+                'prompt': optimized_prompt,
+                'seed': random.randint(0, 2**32 - 1),
+                'return_compressed': True
+            }
+            
+            # Add dynamic parameter adjustments if available
+            if param_adjustments:
+                # Map optimizer parameters to server parameters
+                if 'guidance_scale' in param_adjustments:
+                    generation_params['guidance_scale'] = param_adjustments['guidance_scale']
+                if 'ss_guidance_strength' in param_adjustments:
+                    generation_params['ss_guidance_strength'] = param_adjustments['ss_guidance_strength']
+                if 'ss_sampling_steps' in param_adjustments:
+                    generation_params['ss_sampling_steps'] = param_adjustments['ss_sampling_steps']
+                if 'slat_guidance_strength' in param_adjustments:
+                    generation_params['slat_guidance_strength'] = param_adjustments['slat_guidance_strength']
+                if 'slat_sampling_steps' in param_adjustments:
+                    generation_params['slat_sampling_steps'] = param_adjustments['slat_sampling_steps']
+                
+                self.logger.info(f"   🎯 Using custom parameters for high-risk prompt")
+            
+            # Call TRELLIS generation server with optimized prompt and parameters
             response = requests.post(
                 f"{self.config['generation_server_url']}/generate/",
-                data={
-                    'prompt': optimized_prompt,  # Use optimized prompt
-                    'seed': random.randint(0, 2**32 - 1),
-                    'return_compressed': True
-                },
+                data=generation_params,
                 timeout=self.config['generation_timeout']
             )
             
@@ -1249,6 +1294,53 @@ class ContinuousTrellisOrchestrator:
         
         self.logger.info("="*60)
     
+    async def retry_unfinished_tasks(self):
+        """Retry tasks that failed to submit in recent hours"""
+        self.logger.info("🔄 Checking for unfinished tasks to retry...")
+        
+        try:
+            # Get unfinished tasks from the last 2 hours (older than 15 minutes to avoid immediate retry)
+            unfinished_tasks = self.db.get_unfinished_tasks(hours=2)
+            
+            if not unfinished_tasks:
+                return
+            
+            # Filter tasks older than 15 minutes
+            current_time = time.time()
+            retry_cutoff = current_time - (0.25 * 3600)  # 15 minutes
+            
+            tasks_to_retry = []
+            for task in unfinished_tasks:
+                if task.pulled_at < retry_cutoff and not task.submission_success:
+                    tasks_to_retry.append(task)
+            
+            if not tasks_to_retry:
+                return
+            
+            self.logger.info(f"🔁 Found {len(tasks_to_retry)} unfinished tasks to retry")
+            
+            # Retry up to 3 tasks per cycle to avoid overwhelming
+            for task in tasks_to_retry[:3]:
+                if not self.running:
+                    break
+                
+                self.logger.info(f"🔁 Retrying task {task.task_id} from UID {task.validator_uid}: '{task.prompt[:50]}...'")
+                
+                # Process the task again
+                success = await self.process_task(task)
+                
+                if success:
+                    self.logger.info(f"✅ Successfully retried task {task.task_id}")
+                else:
+                    self.logger.warning(f"⚠️ Retry failed for task {task.task_id}")
+                
+                # Small delay between retries
+                await asyncio.sleep(2)
+        
+        except Exception as e:
+            self.logger.error(f"❌ Failed to retry unfinished tasks: {e}")
+            traceback.print_exc()
+    
     async def continuous_mining_loop(self):
         """Main continuous mining loop"""
         self.logger.info("🚀 Starting continuous TRELLIS mining...")
@@ -1273,6 +1365,7 @@ class ContinuousTrellisOrchestrator:
         last_cleanup = 0
         last_idle_validation = 0
         last_validator_refresh = 0
+        last_retry_check = 0  # Track last retry check
         
         try:
             while self.running:
@@ -1282,6 +1375,11 @@ class ContinuousTrellisOrchestrator:
                 if current_time - last_validator_refresh > 600:
                     self.refresh_validators()
                     last_validator_refresh = current_time
+                
+                # Check for unfinished tasks to retry (every 5 minutes)
+                if current_time - last_retry_check > 300:
+                    await self.retry_unfinished_tasks()
+                    last_retry_check = current_time
                 
                 # Pull tasks from all available validators
                 new_task_found = False
@@ -1341,6 +1439,7 @@ async def main():
     parser.add_argument("--no-optimize", action="store_true", help="Disable prompt optimization")
     parser.add_argument("--aggressive-optimize", action="store_true", help="Enable aggressive optimization mode")
     parser.add_argument("--quiet-optimize", action="store_true", help="Reduce optimization logging detail")
+    parser.add_argument("--no-clip", action="store_true", help="Disable CLIP-based prompt optimization")
     
     args = parser.parse_args()
     
@@ -1366,6 +1465,8 @@ async def main():
         config['optimization_aggressive_mode'] = True
     if args.quiet_optimize:
         config['log_optimization_details'] = False
+    if args.no_clip:
+        config['enable_clip_optimization'] = False
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)
