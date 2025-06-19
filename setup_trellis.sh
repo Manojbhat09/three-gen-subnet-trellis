@@ -90,6 +90,7 @@ git clone --recursive https://github.com/404-Repo/spz
 cd spz
 pip install .
 cd ..
+pip install open-clip-torch
 
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
