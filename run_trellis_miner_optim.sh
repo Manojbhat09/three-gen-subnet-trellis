@@ -7,9 +7,9 @@ set -e
 
 # --- Environment Setup ---
 # Check if we're in the correct conda environment
-if [[ "$CONDA_DEFAULT_ENV" != "trellis_text" ]]; then
+if [[ "$CONDA_DEFAULT_ENV" != "trellis_new" ]]; then
     echo "⚠️  Wrong environment detected. Current: $CONDA_DEFAULT_ENV"
-    echo "   Activating trellis_text environment..."
+    echo "   Activating trellis_new environment..."
     
     # Initialize conda for bash if needed
     if ! command -v conda &> /dev/null; then
@@ -21,11 +21,11 @@ if [[ "$CONDA_DEFAULT_ENV" != "trellis_text" ]]; then
     eval "$(conda shell.bash hook)"
     
     # Try to activate the environment
-    if conda activate trellis_text 2>/dev/null; then
-        echo "✅ Activated environment: trellis_text"
+    if conda activate trellis_new 2>/dev/null; then
+        echo "✅ Activated environment: trellis_new"
     else
-        print_error "Failed to activate trellis_text environment"
-        print_error "Please ensure the environment exists: conda env list | grep trellis_text"
+        print_error "Failed to activate trellis_new environment"
+        print_error "Please ensure the environment exists: conda env list | grep trellis_new"
         exit 1
     fi
 fi
