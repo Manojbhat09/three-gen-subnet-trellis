@@ -28,6 +28,11 @@ source "$WORKSPACE_DIR/miniconda/bin/activate"
 git clone https://github.com/Manojbhat09/three-gen-subnet-trellis --recursive
 cd three-gen-subnet-trellis
 git checkout -b trellis
+git config pull.rebase true
+git config --global user.email "manojbhat09@gmail.com"
+git config --global user.name "manojbhat09"
+git pull origin trellis
+
 
 echo "Installing system dependencies..."
 apt-get install -y \
@@ -73,8 +78,18 @@ cd "$WORKSPACE_DIR/three-gen-subnet-trellis/TRELLIS-TextoImagen3D"
 pip install -r requirements.txt
 cd ..
 
+pip install bittensor 
+pip install numpy==1.24
+git clone --recursive https://github.com/NVIDIAGameWorks/kaolin
+cd kaolin
+git checkout v0.17.0  # Match your desired version
+pip install -r tools/requirements.txt
+python setup.py develop
+cd ..
+
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
+apt-get install tmux --yes
 tmux new-session -d -s trellis_session
 
 # Pane 0: Run the server
@@ -84,6 +99,8 @@ tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activat
 # Pane 1: Run the mining script
 echo "Starting mining script in tmux pane 1..."
 tmux split-window -v -t trellis_session
+tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && curl -d "prompt=pink bicycle" -X POST http://127.0.0.1:8096/generate/" C-m
+sleep 5m
 tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh" C-m
 
 echo "Attaching to tmux session..."
