@@ -16,6 +16,11 @@ conda activate trellis_text
 bash run_trellis_miner_optim.sh --continuous --harvest --submit
 ```
 
+- test with
+```bash
+curl -d "prompt=pink bicycle" -X POST http://127.0.0.1:8096/generate/
+```
+
 **Features:**
 - ✅ Automatic prompt optimization using CLIP
 - ✅ Detects and fixes problematic prompts
