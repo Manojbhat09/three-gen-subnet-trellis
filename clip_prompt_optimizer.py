@@ -13,16 +13,18 @@ import random
 
 class CLIPPromptOptimizer:
     def __init__(self, model_name: str = "ViT-B-32", pretrained: str = "openai"):
-        """Initialize CLIP model for prompt optimization"""
+        """Initialize CLIP optimizer without loading the model"""
+        self.model_name = model_name
+        self.pretrained = pretrained
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"🔧 Initializing CLIP optimizer on {self.device}")
         
-        # Load CLIP model
-        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
-            model_name, pretrained=pretrained, device=self.device
-        )
-        self.tokenizer = open_clip.get_tokenizer(model_name)
-        self.model.eval()
+        # Model components (will be loaded on demand)
+        self.model = None
+        self.preprocess = None
+        self.tokenizer = None
+        self._model_loaded = False
+        
+        print(f"🔧 CLIP optimizer initialized (model will be loaded on demand)")
         
         # Optimization components
         self.style_variations = {
@@ -95,11 +97,60 @@ class CLIPPromptOptimizer:
             'detail': ['intricate details', 'fine details', 'sharp edges', 'smooth surfaces'],
             'scale': ['detailed', 'high resolution', 'crisp', 'sharp']
         }
+    
+    def load_model(self):
+        """Load CLIP model into memory"""
+        if self._model_loaded:
+            return
         
-        print("✅ CLIP optimizer ready")
+        print(f"📥 Loading CLIP model ({self.model_name}) on {self.device}...")
+        
+        # Load CLIP model
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            self.model_name, pretrained=self.pretrained, device=self.device
+        )
+        self.tokenizer = open_clip.get_tokenizer(self.model_name)
+        self.model.eval()
+        
+        self._model_loaded = True
+        print("✅ CLIP model loaded")
+    
+    def unload_model(self):
+        """Unload CLIP model from memory and free GPU resources"""
+        if not self._model_loaded:
+            return
+        
+        print("📤 Unloading CLIP model...")
+        
+        # Delete model references
+        if self.model is not None:
+            del self.model
+            self.model = None
+        
+        if self.preprocess is not None:
+            del self.preprocess
+            self.preprocess = None
+        
+        if self.tokenizer is not None:
+            del self.tokenizer
+            self.tokenizer = None
+        
+        # Clear GPU cache
+        if self.device.type == 'cuda':
+            torch.cuda.empty_cache()
+        
+        self._model_loaded = False
+        print("✅ CLIP model unloaded, GPU memory freed")
+    
+    def _ensure_model_loaded(self):
+        """Ensure model is loaded before using it"""
+        if not self._model_loaded:
+            self.load_model()
     
     def score_prompt(self, prompt: str) -> float:
         """Score a single prompt using CLIP text encoder"""
+        self._ensure_model_loaded()
+        
         with torch.no_grad():
             text_tokens = self.tokenizer([prompt]).to(self.device)
             text_features = self.model.encode_text(text_tokens)
@@ -113,6 +164,8 @@ class CLIPPromptOptimizer:
     
     def score_prompt_similarity(self, prompt: str, reference_prompts: List[str]) -> float:
         """Score prompt based on similarity to high-quality reference prompts"""
+        self._ensure_model_loaded()
+        
         with torch.no_grad():
             # Encode prompt
             prompt_tokens = self.tokenizer([prompt]).to(self.device)
@@ -184,6 +237,9 @@ class CLIPPromptOptimizer:
         """Find the best prompt variation using CLIP scoring"""
         print(f"\n🔍 Optimizing prompt: '{base_prompt}'")
         
+        # Ensure model is loaded
+        self._ensure_model_loaded()
+        
         # Generate high-quality reference prompts (these typically score well)
         references = [
             "high quality 3D render on white background",
@@ -245,6 +301,8 @@ class CLIPPromptOptimizer:
     
     def test_prompt_quality(self, prompt: str) -> Dict:
         """Test a prompt and provide detailed CLIP analysis"""
+        self._ensure_model_loaded()
+        
         with torch.no_grad():
             # Tokenize and encode
             tokens = self.tokenizer([prompt]).to(self.device)
@@ -281,6 +339,10 @@ class CLIPPromptOptimizer:
             'pattern_compatibility': pattern_scores,
             'overall_quality': feature_magnitude * 0.5 + np.mean(list(pattern_scores.values())) * 0.5
         }
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        self.unload_model()
 
 def main():
     """Test the CLIP optimizer"""
@@ -312,6 +374,9 @@ def main():
             print(f"{i+1}. Score: {var['combined_score']:.4f} - '{var['prompt']}'")
         
         print("-" * 60)
+    
+    # Explicitly unload model at the end
+    optimizer.unload_model()
 
 if __name__ == "__main__":
     main() 

@@ -207,6 +207,16 @@ class TrellisPromptOptimizerV2:
             print(f"⚠️ Could not enable CLIP optimization: {e}")
             self.use_clip_optimization = False
     
+    def load_clip_model(self):
+        """Load CLIP model if optimization is enabled"""
+        if self.use_clip_optimization and self.clip_optimizer:
+            self.clip_optimizer.load_model()
+    
+    def unload_clip_model(self):
+        """Unload CLIP model to free GPU memory"""
+        if self.use_clip_optimization and self.clip_optimizer:
+            self.clip_optimizer.unload_model()
+    
     def detect_multi_object_scene(self, prompt: str) -> Tuple[bool, List[str]]:
         """Detect if prompt describes multiple distinct objects"""
         # Common object separators
@@ -584,6 +594,9 @@ class TrellisPromptOptimizerV2:
         # Apply CLIP optimization if enabled
         if self.use_clip_optimization and self.clip_optimizer:
             try:
+                # Ensure CLIP model is loaded
+                self.clip_optimizer.load_model()
+                
                 clip_result = self.clip_optimizer.optimize_prompt(optimized, num_iterations=20)
                 if clip_result['improvement_percent'] > 5:  # Only use if significant improvement
                     optimized = clip_result['optimized_prompt']

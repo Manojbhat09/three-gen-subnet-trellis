@@ -798,65 +798,78 @@ class ContinuousTrellisOrchestrator:
             if not self.config.get('enable_prompt_optimization', True):
                 return task.prompt, {}
             
-            # Analyze and optimize the prompt
-            optimization_result = self.prompt_optimizer.optimize_prompt(
-                task.prompt, 
-                aggressive=self.config.get('optimization_aggressive_mode', True)  # Default to aggressive
-            )
-            analysis = optimization_result['analysis']
+            # Load CLIP model if needed (for V2 optimizer)
+            if hasattr(self.prompt_optimizer, 'load_clip_model'):
+                self.prompt_optimizer.load_clip_model()
             
-            # Get parameter adjustments if available (from V2 optimizer)
-            param_adjustments = {}
-            if hasattr(self.prompt_optimizer, '_optimize_prompt_v2'):
-                # V2 optimizer provides parameter adjustments
-                v2_result = self.prompt_optimizer._optimize_prompt_v2(task.prompt, aggressive=True)
-                param_adjustments = v2_result.parameter_adjustments
-            
-            # Log the analysis if enabled
-            if self.config.get('log_optimization_details', True):
-                self.logger.info(f"🔍 Prompt Analysis for '{task.prompt[:50]}...':")
-                self.logger.info(f"   Risk Level: {analysis['risk_level']}")
+            try:
+                # Analyze and optimize the prompt
+                optimization_result = self.prompt_optimizer.optimize_prompt(
+                    task.prompt, 
+                    aggressive=self.config.get('optimization_aggressive_mode', True)  # Default to aggressive
+                )
+                analysis = optimization_result['analysis']
                 
-                if analysis['risk_factors']:
-                    self.logger.info(f"   Risk Factors:")
-                    for factor in analysis['risk_factors']:
-                        self.logger.info(f"     • {factor}")
+                # Get parameter adjustments if available (from V2 optimizer)
+                param_adjustments = {}
+                if hasattr(self.prompt_optimizer, '_optimize_prompt_v2'):
+                    # V2 optimizer provides parameter adjustments
+                    v2_result = self.prompt_optimizer._optimize_prompt_v2(task.prompt, aggressive=True)
+                    param_adjustments = v2_result.parameter_adjustments
                 
-                if param_adjustments:
-                    self.logger.info(f"   📊 Parameter Adjustments:")
-                    for param, value in param_adjustments.items():
-                        self.logger.info(f"     • {param}: {value}")
-            
-            # Check if optimization is needed
-            if optimization_result['improvement_expected']:
-                optimized_prompt = optimization_result['optimized_prompt']
-                applied_strategies = optimization_result['applied_strategies']
-                
+                # Log the analysis if enabled
                 if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"🔧 Prompt Optimization Applied:")
-                    self.logger.info(f"   Original: {task.prompt}")
-                    self.logger.info(f"   Optimized: {optimized_prompt}")
-                    self.logger.info(f"   Strategies: {', '.join(applied_strategies)}")
+                    self.logger.info(f"🔍 Prompt Analysis for '{task.prompt[:50]}...':")
+                    self.logger.info(f"   Risk Level: {analysis['risk_level']}")
+                    
+                    if analysis['risk_factors']:
+                        self.logger.info(f"   Risk Factors:")
+                        for factor in analysis['risk_factors']:
+                            self.logger.info(f"     • {factor}")
+                    
+                    if param_adjustments:
+                        self.logger.info(f"   📊 Parameter Adjustments:")
+                        for param, value in param_adjustments.items():
+                            self.logger.info(f"     • {param}: {value}")
+                
+                # Check if optimization is needed
+                if optimization_result['improvement_expected']:
+                    optimized_prompt = optimization_result['optimized_prompt']
+                    applied_strategies = optimization_result['applied_strategies']
+                    
+                    if self.config.get('log_optimization_details', True):
+                        self.logger.info(f"🔧 Prompt Optimization Applied:")
+                        self.logger.info(f"   Original: {task.prompt}")
+                        self.logger.info(f"   Optimized: {optimized_prompt}")
+                        self.logger.info(f"   Strategies: {', '.join(applied_strategies)}")
+                    else:
+                        # Minimal logging when details are disabled
+                        self.logger.info(f"🔧 Optimized prompt (risk: {analysis['risk_level']}): '{task.prompt[:30]}...' → '{optimized_prompt[:50]}...'")
+                    
+                    # Update statistics
+                    self.stats['prompts_optimized'] += 1
+                    self.stats['optimization_improvements'] += 1
+                    
+                    return optimized_prompt, param_adjustments
                 else:
-                    # Minimal logging when details are disabled
-                    self.logger.info(f"🔧 Optimized prompt (risk: {analysis['risk_level']}): '{task.prompt[:30]}...' → '{optimized_prompt[:50]}...'")
-                
-                # Update statistics
-                self.stats['prompts_optimized'] += 1
-                self.stats['optimization_improvements'] += 1
-                
-                return optimized_prompt, param_adjustments
-            else:
-                if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"✅ Prompt is low risk - minimal optimization applied")
-                
-                self.stats['prompts_optimized'] += 1
-                # Still add basic optimization for low-risk prompts
-                optimized = f"{task.prompt}, 3D model, detailed object, high quality"
-                return optimized, param_adjustments
-                
+                    if self.config.get('log_optimization_details', True):
+                        self.logger.info(f"✅ Prompt is low risk - minimal optimization applied")
+                    
+                    self.stats['prompts_optimized'] += 1
+                    # Still add basic optimization for low-risk prompts
+                    optimized = f"{task.prompt}, 3D model, detailed object, high quality"
+                    return optimized, param_adjustments
+            
+            finally:
+                # Always unload CLIP model after optimization to free GPU memory
+                if hasattr(self.prompt_optimizer, 'unload_clip_model'):
+                    self.prompt_optimizer.unload_clip_model()
+                    
         except Exception as e:
             self.logger.error(f"❌ Prompt optimization failed: {e}")
+            # Ensure CLIP model is unloaded even on error
+            if hasattr(self.prompt_optimizer, 'unload_clip_model'):
+                self.prompt_optimizer.unload_clip_model()
             return task.prompt, {}
 
     async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
