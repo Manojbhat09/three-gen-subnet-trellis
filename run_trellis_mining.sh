@@ -96,6 +96,7 @@ Options:
   
   --max-tasks N           (One-shot mode only) Max tasks to process. Default: 5.
   --start-server          Auto-start TRELLIS server if not running.
+  --min-processing-time N Minimum seconds between task pull and submission. Default: 15.
   --help                  Show this help message.
 
 Database:
@@ -123,6 +124,7 @@ main() {
     local validate=true
     local max_tasks=5
     local start_server=false
+    local min_processing_time=15
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -136,6 +138,7 @@ main() {
             --no-validate) validate=false; shift ;;
             --max-tasks) max_tasks="$2"; shift 2 ;;
             --start-server) start_server=true; shift ;;
+            --min-processing-time) min_processing_time="$2"; shift 2 ;;
             --help) show_usage; exit 0 ;;
             *) print_error "Unknown option: $1"; show_usage; exit 1 ;;
         esac
@@ -167,8 +170,9 @@ main() {
         [ "$harvest" = false ] && script_args+=(--no-harvest)
         [ "$submit" = false ] && script_args+=(--no-submit)
         [ "$validate" = false ] && script_args+=(--no-validate)
+        script_args+=(--min-processing-time "$min_processing_time")
         
-        python3 continuous_trellis_orchestrator.py "${script_args[@]}"
+        python3 continuous_trellis_orchestrator_optim.py "${script_args[@]}"
     else
         print_status "Starting ONE-SHOT orchestrator..."
         
