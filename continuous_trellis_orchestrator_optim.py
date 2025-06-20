@@ -514,8 +514,8 @@ class ContinuousTrellisOrchestrator:
         """Get default configuration"""
         return {
             # Bittensor settings
-            'wallet_name': 'test2m3b2',
-            'hotkey_name': 't2m3b21',
+            'wallet_name': 'manbeast3b',
+            'hotkey_name': 'm3b',
             'netuid': 17,
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
@@ -538,6 +538,7 @@ class ContinuousTrellisOrchestrator:
             'stats_report_interval': 600,  # 10 minutes
             'cleanup_interval': 3600,  # 1 hour
             'duplicate_check_hours': 24,
+            'min_processing_time': 15.0,  # minimum seconds between task pull and submission
             
             # Quality settings
             'min_local_score': 0.3,
@@ -1009,6 +1010,15 @@ class ContinuousTrellisOrchestrator:
         """Submit result to validator and process feedback"""
         if not self.config['submit_results']:
             return True
+        
+        # Check minimum processing time to avoid anti-fraud rejection
+        time_since_pull = time.time() - task.pulled_at
+        min_processing_time = self.config.get('min_processing_time', 18.0)  # Default 15 seconds
+        
+        if time_since_pull < min_processing_time:
+            wait_time = min_processing_time - time_since_pull
+            self.logger.info(f"⏱️ Waiting {wait_time:.1f}s to meet minimum processing time...")
+            await asyncio.sleep(wait_time)
         
         self.logger.info(f"📤 Submitting result: {task.task_id}")
         
