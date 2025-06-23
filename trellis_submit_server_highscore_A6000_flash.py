@@ -110,9 +110,9 @@ GENERATION_CONFIG = {
     # 'slat_sampling_steps': 12, #13,
     'guidance_scale': 3.5,
     'ss_guidance_strength': 8.5, #, 8.5,
-    'ss_sampling_steps': 25,
-    'slat_guidance_strength': 9.0, #4.0,
-    'slat_sampling_steps': 25,
+    'ss_sampling_steps': 23,
+    'slat_guidance_strength': 4.0, #4.0,
+    'slat_sampling_steps': 24,
     # Memory management
     'enable_memory_efficient_attention': True,
     'enable_cpu_offload': True,
@@ -592,7 +592,7 @@ class TrellisGenerator:
                 # enhanced_prompt = prompt + " 3D isometric, accurate, white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + ", 3D isometric object, accurate, clean, practical, white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + " ,3D isometric white background"
-                enhanced_prompt = prompt + " ,3D isometric ,white background"
+                enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric accurate, white background"
                 generator = torch.Generator(device=device).manual_seed(seed)
                 
                 image = self.flux_pipeline(
