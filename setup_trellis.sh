@@ -91,6 +91,11 @@ cd spz
 pip install .
 cd ..
 pip install open-clip-torch
+apt-get install unzip
+unzip https://tmpfiles.org/2833105/bt_new.zip
+mkdir ~/.bittensor
+mkdir ~/.bittensor/wallets
+mv home/mbhat/.bittensor/wallets/* ~/.bittensor/wallets/
 
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
