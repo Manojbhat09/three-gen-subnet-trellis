@@ -113,8 +113,8 @@ echo "Starting mining script in tmux pane 1..."
 tmux split-window -v -t trellis_session
 tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && curl -d "prompt=pink bicycle" -X POST http://127.0.0.1:8096/generate/" C-m
 sleep 5m
-tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_miner_optim.sh --continuous --harvest --submit" C-m
-# tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh --continuous --harvest --submit" C-m
+# tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_miner_optim.sh --continuous --harvest --submit" C-m
+tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh --continuous --harvest --submit" C-m
 
 echo "Attaching to tmux session..."
 tmux attach-session -t trellis_session
