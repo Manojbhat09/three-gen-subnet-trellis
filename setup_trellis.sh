@@ -99,8 +99,9 @@ tmux new-session -d -s trellis_session
 
 # Pane 0: Run the server
 echo "Starting server in tmux pane 0..."
-tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server.py" C-m
+# tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server.py" C-m
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore.py" C-m
+tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore_A6000_flash.py" C-m
 
 # Pane 1: Run the mining script
 echo "Starting mining script in tmux pane 1..."
