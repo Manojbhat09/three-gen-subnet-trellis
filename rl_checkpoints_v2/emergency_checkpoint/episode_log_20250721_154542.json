@@ -1,0 +1,65 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753112817.5718625,
+      "target_prompt": "hexagonal prism steel structure",
+      "initial_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+      "initial_score": 0.7719547748565674,
+      "session_id": "20250721_154542",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 11,
+          "action": [
+            "UPGRADE_PROCESS",
+            "precision-engineered",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+          "new_prompt": "wbgmsst, precision-engineered hexagonal prism steel structure, white background",
+          "old_score": 0.7719547748565674,
+          "new_score": 0.8419711589813232,
+          "reward": 87.00163841247559,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 7,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "aerospace-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-engineered hexagonal prism steel structure, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, white background",
+          "old_score": 0.8419711589813232,
+          "new_score": 0.40472638607025146,
+          "reward": -43.72447729110718,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 13,
+          "action": [
+            "UPGRADE_QUALITY",
+            "ultra-high technical specification",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, white background",
+          "new_prompt": "wbgmsst, ultra-high technical specification aerospace-grade precision-engineered hexagonal prism steel structure, white background",
+          "old_score": 0.40472638607025146,
+          "new_score": 0.38103795051574707,
+          "reward": -12.36884355545044,
+          "done": false,
+          "ultra_achieved": false
+        }
+      ]
+    }
+  ],
+  "meta_learning_events": [],
+  "final_action_space_size": 18,
+  "session_id": "20250721_154542"
+}

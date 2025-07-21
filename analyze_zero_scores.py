@@ -1,150 +1,227 @@
 #!/usr/bin/env python3
 """
-Analyze zero score patterns from continuous TRELLIS mining
-Helps identify problematic prompt patterns
+Zero Score Analysis Tool
+Purpose: Analyze the exact conditions that cause zero validation scores
+         and test if our validation setup matches the subnet behavior
 """
-
-import sqlite3
+import sys
 import json
+import time
 from pathlib import Path
-from collections import Counter, defaultdict
-from datetime import datetime, timedelta
 
-def analyze_zero_scores(db_path: str = "continuous_trellis_tasks.db", hours: int = 24):
-    """Analyze tasks with zero fidelity scores"""
-    
-    if not Path(db_path).exists():
-        print(f"❌ Database not found: {db_path}")
-        return
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Get recent tasks
-    cutoff_time = datetime.now() - timedelta(hours=hours)
-    cutoff_timestamp = cutoff_time.timestamp()
-    
-    # Fetch all tasks with scores
-    cursor.execute("""
-        SELECT prompt, task_fidelity_score, average_fidelity_score, 
-               submission_success, validation_failed, processed_at
-        FROM tasks 
-        WHERE processed_at > ? AND submission_success = 1
-        ORDER BY processed_at DESC
-    """, (cutoff_timestamp,))
-    
-    tasks = cursor.fetchall()
-    
-    # Categorize tasks
-    zero_scores = []
-    low_scores = []  # 0.0 < score < 0.5
-    good_scores = []  # score >= 0.5
-    
-    for task in tasks:
-        prompt, task_score, avg_score, success, val_failed, timestamp = task
-        
-        if task_score == 0.0:
-            zero_scores.append(prompt)
-        elif task_score < 0.5:
-            low_scores.append((prompt, task_score))
-        else:
-            good_scores.append((prompt, task_score))
-    
-    print(f"\n📊 Task Analysis (last {hours} hours)")
+# Add validation directory to path
+validation_path = Path(__file__).parent / "validation"
+sys.path.insert(0, str(validation_path))
+
+try:
+    from engine.validation_engine import ValidationEngine
+    from engine.io.ply import PlyLoader
+    from engine.rendering.renderer import Renderer
+    print("✅ Validation engine imports successful")
+except ImportError as e:
+    print(f"❌ Failed to import validation engine: {e}")
+    sys.exit(1)
+
+def analyze_validation_scoring_logic():
+    """Analyze the exact scoring logic to understand zero-score conditions"""
+    print("🔍 ANALYZING VALIDATION SCORING LOGIC")
     print("=" * 60)
-    print(f"Total tasks submitted: {len(tasks)}")
-    print(f"Zero scores (0.0): {len(zero_scores)} ({len(zero_scores)/len(tasks)*100:.1f}%)")
-    print(f"Low scores (<0.5): {len(low_scores)} ({len(low_scores)/len(tasks)*100:.1f}%)")
-    print(f"Good scores (≥0.5): {len(good_scores)} ({len(good_scores)/len(tasks)*100:.1f}%)")
     
-    if zero_scores:
-        print(f"\n🔍 Analyzing {len(zero_scores)} zero-score prompts...")
+    # Key insights from validation_engine.py analysis:
+    print("📊 Zero-Score Conditions:")
+    print(f"   1. Raw alignment score < 0.3 → Final score = 0.0")
+    print(f"   2. Alignment normalization: score / 0.35")
+    print(f"   3. Effective threshold: 0.3 × 0.35 = 0.105 (raw CLIP)")
+    print()
+    
+    print("📊 Final Score Formula:")
+    print(f"   final_score = 0.75 × quality + 0.2 × alignment + 0.025 × ssim + 0.025 × lpips")
+    print(f"   BUT: if alignment < 0.3 → final_score = 0.0 (override)")
+    print()
+    
+    print("📊 Quality Requirements:")
+    print(f"   - Minimum 7000 Gaussian points")
+    print(f"   - <80% zero opacity points") 
+    print(f"   - <80% zero scale points")
+    print()
+
+def test_alignment_threshold(prompt: str, ply_data: bytes) -> dict:
+    """Test if a specific prompt/model falls below the alignment threshold"""
+    try:
+        print(f"🧪 Testing alignment threshold for: '{prompt}'")
         
-        # Common words in zero scores
-        word_counter = Counter()
-        material_keywords = ['glass', 'crystal', 'diamond', 'emerald', 'ruby', 'sapphire',
-                           'transparent', 'translucent', 'liquid', 'water', 'mirror',
-                           'jewelry', 'gem', 'pendant', 'necklace', 'bracelet']
+        # Initialize validation components
+        validator = ValidationEngine()
+        validator.load_pipelines()
         
-        material_counts = defaultdict(int)
+        ply_loader = PlyLoader()
+        renderer = Renderer()
         
-        for prompt in zero_scores:
-            words = prompt.lower().split()
-            word_counter.update(words)
-            
-            # Check for problematic materials
-            for keyword in material_keywords:
-                if keyword in prompt.lower():
-                    material_counts[keyword] += 1
+        # Load PLY data
+        import io
+        ply_buffer = io.BytesIO(ply_data)
+        gs_data = ply_loader.from_buffer(ply_buffer)
         
-        print("\n📌 Most common words in zero-score prompts:")
-        for word, count in word_counter.most_common(20):
-            if count > 1:  # Only show words that appear multiple times
-                print(f"   '{word}': {count} times")
+        # Move to GPU
+        gs_data_gpu = gs_data.send_to_device(validator.device)
         
-        if material_counts:
-            print("\n⚠️  Problematic materials detected:")
-            for material, count in sorted(material_counts.items(), key=lambda x: x[1], reverse=True):
-                percentage = (count / len(zero_scores)) * 100
-                print(f"   '{material}': {count} prompts ({percentage:.1f}%)")
+        # Render views
+        rendered_images = renderer.render_gs(gs_data_gpu, views_number=16, img_width=224, img_height=224)
         
-        print("\n📝 Recent zero-score examples:")
-        for prompt in zero_scores[:10]:
-            print(f"   • {prompt}")
+        # Get raw validation scores BEFORE final score calculation
+        # We need to access the internal metrics directly
+        alignment_score_raw = validator._text_vs_image_metric.score_text_alignment(
+            rendered_images, prompt, mean_op="geometric_mean", use_filter_outliers=True
+        )
         
-        # Pattern detection
-        patterns = {
-            'multi_object': 0,
-            'with_keyword': 0,
-            'liquid_related': 0,
-            'transparent': 0,
-            'jewelry': 0,
-            'abstract': 0
+        # Apply the normalization that happens in validate_text_to_gs
+        alignment_score_normalized = alignment_score_raw / 0.35
+        
+        print(f"   📊 Raw alignment score: {alignment_score_raw:.6f}")
+        print(f"   📊 Normalized alignment: {alignment_score_normalized:.6f}")
+        print(f"   📊 Threshold check: {alignment_score_normalized:.6f} < 0.3 = {alignment_score_normalized < 0.3}")
+        
+        # Now get the full validation result
+        validation_results = validator.validate_text_to_gs(prompt, rendered_images)
+        
+        print(f"   📊 Final score: {validation_results.final_score:.6f}")
+        print(f"   📊 Quality score: {validation_results.combined_quality_score:.6f}")
+        print(f"   📊 SSIM score: {validation_results.ssim_score:.6f}")
+        print(f"   📊 LPIPS score: {validation_results.lpips_score:.6f}")
+        
+        # Determine if this would be zero-score
+        is_zero_score = alignment_score_normalized < 0.3
+        print(f"   🎯 Would produce ZERO score: {is_zero_score}")
+        
+        return {
+            'prompt': prompt,
+            'raw_alignment': float(alignment_score_raw),
+            'normalized_alignment': float(alignment_score_normalized),
+            'final_score': float(validation_results.final_score),
+            'quality_score': float(validation_results.combined_quality_score),
+            'ssim_score': float(validation_results.ssim_score), 
+            'lpips_score': float(validation_results.lpips_score),
+            'is_zero_score': is_zero_score,
+            'gaussian_count': int(gs_data.points.shape[0])
         }
         
-        for prompt in zero_scores:
-            prompt_lower = prompt.lower()
-            if any(word in prompt_lower for word in ['with', 'holding', 'beside', 'and']):
-                patterns['multi_object'] += 1
-            if 'with' in prompt_lower:
-                patterns['with_keyword'] += 1
-            if any(word in prompt_lower for word in ['water', 'liquid', 'juice', 'fluid']):
-                patterns['liquid_related'] += 1
-            if any(word in prompt_lower for word in ['glass', 'crystal', 'transparent', 'clear']):
-                patterns['transparent'] += 1
-            if any(word in prompt_lower for word in ['jewelry', 'necklace', 'bracelet', 'ring', 'pendant']):
-                patterns['jewelry'] += 1
-            if any(word in prompt_lower for word in ['abstract', 'contemporary', 'artistic']):
-                patterns['abstract'] += 1
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
+        return {'error': str(e), 'prompt': prompt}
+
+def test_problematic_prompts():
+    """Test a selection of prompts that should trigger zero scores"""
+    
+    # These prompts are designed to have very low CLIP alignment
+    low_alignment_prompts = [
+        "glass jug filled juice",  # Grammatically incomplete
+        "silver chalice with leafy vine pattern",  # Complex descriptive text
+        "translucent crystalline formation",  # Abstract concepts
+        "amorphous blob of metallic substance",  # Vague, hard to visualize
+        "thing with parts and stuff",  # Extremely vague
+        "geometric abstract conceptual entity",  # Abstract, non-concrete
+        "transparent invisible object floating",  # Contradictory concepts
+        "the essence of blueness manifested",  # Philosophical concepts
+        "quantum mechanical probability cloud",  # Scientific abstractions
+        "ineffable mystical energy construct"  # Mystical/abstract
+    ]
+    
+    print("🧪 TESTING PROBLEMATIC PROMPTS FOR ZERO SCORES")
+    print("=" * 60)
+    
+    results = []
+    
+    for i, prompt in enumerate(low_alignment_prompts, 1):
+        print(f"\n[{i}/{len(low_alignment_prompts)}]")
         
-        print("\n🎯 Pattern Analysis:")
-        for pattern, count in sorted(patterns.items(), key=lambda x: x[1], reverse=True):
-            if count > 0:
-                percentage = (count / len(zero_scores)) * 100
-                print(f"   {pattern}: {count} prompts ({percentage:.1f}%)")
+        # Generate using simple_local_validator approach
+        try:
+            import subprocess
+            result = subprocess.run([
+                'python3', 'simple_local_validator.py', prompt
+            ], capture_output=True, text=True, timeout=180)
+            
+            if result.returncode == 0:
+                # Parse the score from output
+                lines = result.stdout.strip().split('\n')
+                score_line = [line for line in lines if 'Final Score:' in line]
+                if score_line:
+                    score = float(score_line[0].split('Final Score:')[1].strip())
+                    print(f"✅ Score: {score:.6f}")
+                    
+                    results.append({
+                        'prompt': prompt,
+                        'score': score,
+                        'is_zero_equivalent': score < 0.1,  # Practically zero
+                        'success': True
+                    })
+                else:
+                    print(f"❌ Could not parse score from output")
+                    results.append({'prompt': prompt, 'success': False, 'error': 'parse_error'})
+            else:
+                print(f"❌ Generation failed: {result.stderr}")
+                results.append({'prompt': prompt, 'success': False, 'error': result.stderr})
+                
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            results.append({'prompt': prompt, 'success': False, 'error': str(e)})
+        
+        # Small delay between tests
+        time.sleep(1)
     
-    # Successful prompts analysis
-    if good_scores:
-        print(f"\n✅ Top scoring prompts:")
-        good_scores.sort(key=lambda x: x[1], reverse=True)
-        for prompt, score in good_scores[:10]:
-            print(f"   • {prompt} (score: {score:.3f})")
+    return results
+
+def main():
+    print("🔬 ZERO-FIDELITY ANALYSIS TOOL")
+    print("=" * 60)
     
-    conn.close()
+    # First, analyze the scoring logic
+    analyze_validation_scoring_logic()
     
-    # Recommendations
-    print("\n💡 Recommendations:")
-    print("   1. Avoid transparent materials (glass, crystal, gems)")
-    print("   2. Avoid multi-object scenes with 'with' or 'holding'")
-    print("   3. Focus on single, solid, opaque objects")
-    print("   4. Use concrete material descriptions")
-    print("   5. Test problematic prompt types locally first")
+    # Test problematic prompts
+    results = test_problematic_prompts()
+    
+    # Analyze results
+    print("\n📊 ANALYSIS SUMMARY")
+    print("=" * 60)
+    
+    successful_tests = [r for r in results if r.get('success', False)]
+    zero_score_tests = [r for r in successful_tests if r.get('is_zero_equivalent', False)]
+    
+    print(f"Total tests: {len(results)}")
+    print(f"Successful: {len(successful_tests)}")
+    print(f"Zero/near-zero scores: {len(zero_score_tests)}")
+    
+    if zero_score_tests:
+        print("\n🎯 ZERO-SCORE PROMPTS FOUND:")
+        for test in zero_score_tests:
+            print(f"   Score: {test['score']:.6f} | Prompt: '{test['prompt']}'")
+    else:
+        print("\n⚠️  NO ZERO SCORES DETECTED")
+        print("This suggests our validation setup differs from the actual subnet!")
+        
+        avg_score = sum(r['score'] for r in successful_tests) / len(successful_tests) if successful_tests else 0
+        print(f"Average score: {avg_score:.6f}")
+        
+        print("\n🔧 POTENTIAL ISSUES:")
+        print("   1. Different CLIP model version")
+        print("   2. Different normalization factor (not 0.35)")
+        print("   3. Different quality models")
+        print("   4. Missing subnet-specific configurations")
+    
+    # Save results
+    with open('zero_score_analysis_results.json', 'w') as f:
+        json.dump({
+            'analysis_timestamp': time.time(),
+            'test_results': results,
+            'summary': {
+                'total_tests': len(results),
+                'successful_tests': len(successful_tests),
+                'zero_score_tests': len(zero_score_tests)
+            }
+        }, f, indent=2)
+    
+    print(f"\n💾 Results saved to: zero_score_analysis_results.json")
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Analyze zero scores from TRELLIS mining")
-    parser.add_argument("--db", default="continuous_trellis_tasks.db", help="Database path")
-    parser.add_argument("--hours", type=int, default=24, help="Hours to look back")
-    
-    args = parser.parse_args()
-    analyze_zero_scores(args.db, args.hours) 
+    main() 

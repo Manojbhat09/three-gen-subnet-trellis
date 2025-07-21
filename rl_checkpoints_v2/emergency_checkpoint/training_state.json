@@ -1,0 +1,52 @@
+{
+  "episode": 9,
+  "total_episodes_completed": 9,
+  "current_prompt_index": 1,
+  "training_prompts": [
+    "hexagonal prism steel structure",
+    "elegant silk fabric draping",
+    "rusty metal gear mechanism"
+  ],
+  "episodes_per_prompt": 8,
+  "episode_rewards": [
+    -48.690505623817444,
+    -178.39077472686768,
+    -235.96666812896729,
+    -237.19799876213074,
+    -157.06738859415054,
+    -140.7897925376892,
+    -185.5436760187149,
+    -14.929782450199127,
+    451.6747832298279
+  ],
+  "episode_scores": [
+    0.848051130771637,
+    0.7631736993789673,
+    0.7596666812896729,
+    0.7719799876213074,
+    0.8101949095726013,
+    0.7703225016593933,
+    0.7736906409263611,
+    0.8121532797813416,
+    0.869446873664856
+  ],
+  "ultra_achievements": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "epsilon": 0.5770536264662333,
+  "step_count": 0,
+  "learn_count": 22,
+  "best_overall_score": 0.869446873664856,
+  "training_start_time": 1753111487.1824176,
+  "last_checkpoint_time": 1753120468.763996,
+  "new_actions_learned": 0,
+  "action_space_size": 18
+}

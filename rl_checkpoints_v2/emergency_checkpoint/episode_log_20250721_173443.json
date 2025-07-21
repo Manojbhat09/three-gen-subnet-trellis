@@ -1,0 +1,33 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753119357.1006474,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8274582624435425,
+      "session_id": "20250721_173443",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 4,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-precision masterpiece-quality {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, ultra-precision masterpiece-quality elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8274582624435425,
+          "new_score": 0.0,
+          "reward": -112.74582624435425,
+          "done": false,
+          "ultra_achieved": false
+        }
+      ]
+    }
+  ],
+  "meta_learning_events": [],
+  "final_action_space_size": 18,
+  "session_id": "20250721_173443"
+}

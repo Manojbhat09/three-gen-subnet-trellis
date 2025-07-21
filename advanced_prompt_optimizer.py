@@ -1,325 +1,345 @@
 #!/usr/bin/env python3
-
 """
-Advanced TRELLIS Prompt Optimizer v2.0
-Integrates structured object enhancement for 0.96+ fidelity targeting
+Advanced Prompt Optimizer for Subnet 17
+Purpose: Automatically optimize prompts to score above 0.6 threshold while preserving semantic intent
 """
-
 import re
+import json
+import time
 from typing import Dict, List, Tuple, Optional
-from structured_object_enhancer import StructuredObjectEnhancer
+from dataclasses import dataclass
+from pathlib import Path
+from risk_analyzer import PromptRiskAnalyzer, RiskAssessment
 
-class AdvancedTrellisPromptOptimizer:
-    """
-    Next-generation prompt optimizer combining zero-fidelity prevention 
-    with structured object enhancement for maximum fidelity scores.
-    """
+@dataclass
+class OptimizationResult:
+    """Result of prompt optimization"""
+    original_prompt: str
+    optimized_prompt: str
+    optimization_strategy: str
+    predicted_improvement: float  # Predicted score increase
+    confidence: float  # How confident we are in the optimization
+    risk_reduction: str  # Risk level change
+
+class AdvancedPromptOptimizer:
+    """Advanced prompt optimization using multiple strategies"""
     
     def __init__(self):
-        # Initialize the structured object enhancer
-        self.structured_enhancer = StructuredObjectEnhancer()
+        self.risk_analyzer = PromptRiskAnalyzer()
         
-        # Original risk factors from zero-fidelity analysis
-        self.risk_factors = {
-            'transparent_materials': [
-                'glass', 'crystal', 'diamond', 'sapphire', 'ruby', 'emerald', 
-                'amethyst', 'transparent', 'clear', 'translucent'
-            ],
-            'complex_scene_words': [
-                'beside', 'holding', 'with', 'and', 'on', 'in', 'around', 
-                'near', 'next to', 'featuring', 'containing'
-            ],
-            'weapons': [
-                'sword', 'katana', 'dagger', 'knife', 'revolver', 'gun', 
-                'rifle', 'pistol', 'blade', 'spear'
-            ],
-            'tools': [
-                'drill', 'hammer', 'wrench', 'scissors', 'screwdriver', 
-                'saw', 'pliers', 'chisel'
-            ],
-            'reflective_effects': [
-                'shiny', 'polished', 'glossy', 'reflective', 'metallic', 
-                'chrome', 'mirror', 'sparkling'
-            ]
+        # Material replacement mappings (problematic -> safe alternatives)
+        self.material_replacements = {
+            'glass': ['ceramic', 'polished wood', 'brushed metal', 'stone'],
+            'crystal': ['carved stone', 'polished marble', 'solid metal', 'ceramic'],
+            'transparent': ['opaque', 'solid', 'matte'],
+            'translucent': ['solid', 'opaque', 'matte'],
+            'clear': ['solid', 'opaque'],
+            'liquid': ['granular', 'powdered', 'solid'],
+            'water': ['sand', 'powder', 'granules'],
+            'juice': ['colored powder', 'granular substance'],
+            'fluid': ['granular material', 'solid substance'],
+            'mirror': ['polished metal', 'reflective metal'],
+            'diamond': ['cut crystal', 'faceted stone', 'polished gem'],
+            'emerald': ['green stone', 'jade carving'],
+            'ruby': ['red stone', 'garnet'],
+            'sapphire': ['blue stone', 'lapis lazuli'],
+            'gem': ['carved stone', 'polished rock'],
+            'jewel': ['decorative stone', 'ornamental element']
         }
         
-        # Enhanced optimization strategies
-        self.optimization_strategies = {
-            'transparent_objects': [
-                'wbgmsst', 'solid detailed structure', 'well-defined edges',
-                'opaque rendering style', 'matte surface finish'
-            ],
-            'complex_scenes': [
-                'single object focus', 'isolated subject', 'clean background',
-                'centered composition', 'minimal context'
-            ],
-            'weapons': [
-                'detailed craftsmanship', 'professional product photography',
-                'museum quality', 'historical accuracy', 'ceremonial design'
-            ],
-            'tools': [
-                'professional grade', 'precision engineering', 'industrial design',
-                'ergonomic construction', 'commercial quality'
-            ],
-            'structured_objects': [
-                '3D isometric object', 'clean design', 'geometric precision',
-                'technical illustration', 'product render'
-            ],
-            'general_quality': [
-                'high resolution', 'detailed texture', 'perfect lighting',
-                'studio photography', 'pristine condition'
-            ]
+        # Grammar enhancement patterns
+        self.grammar_fixes = [
+            # "X filled Y" -> "X filled with Y"
+            (r'(\w+)\s+filled\s+(\w+)', r'\1 filled with \2'),
+            # "thing with" -> "object with" or specific object
+            (r'\bthing\s+with\b', 'object with'),
+            # "stuff" -> "elements" or "components"
+            (r'\bstuff\b', 'components'),
+            # Add "a" or "an" if missing
+            (r'^([bcdfghjklmnpqrstvwxyz]\w+)', r'a \1'),
+            (r'^([aeiou]\w+)', r'an \1'),
+        ]
+        
+        # Abstract concept replacements
+        self.abstraction_replacements = {
+            'essence': 'representation',
+            'concept': 'model',
+            'energy': 'glowing orb',
+            'mystical': 'glowing',
+            'spiritual': 'ethereal',
+            'quantum': 'swirling',
+            'ineffable': 'mysterious',
+            'conceptual': 'artistic',
+            'philosophical': 'thoughtful',
+            'abstract': 'artistic',
+            'probability cloud': 'swirling mist effect',
+            'energy construct': 'glowing geometric shape'
         }
         
-        # Fidelity boost modifiers for different score targets
-        self.fidelity_boosters = {
-            'ultra_high': [  # For 0.96+ targeting
-                'museum exhibition quality', 'photorealistic detail',
-                'precision crafted', 'flawless construction',
-                'professional studio lighting'
-            ],
-            'high': [  # For 0.90+ targeting
-                'high quality', 'detailed design', 'well crafted',
-                'clean finish', 'professional grade'
-            ],
-            'standard': [  # For general improvement
-                'good quality', 'neat design', 'solid construction'
-            ]
+        # Scene simplification patterns
+        self.simplification_patterns = [
+            # "X with Y pattern" -> "patterned X" or just "X"
+            (r'(\w+)\s+with\s+\w+\s+pattern', r'patterned \1'),
+            # "X with Y design" -> "designed X"
+            (r'(\w+)\s+with\s+\w+\s+design', r'designed \1'),
+            # "X holding Y" -> just "X" (simplify scene)
+            (r'(\w+)\s+holding\s+\w+', r'\1'),
+            # "X beside Y" -> just "X"
+            (r'(\w+)\s+beside\s+\w+', r'\1'),
+            # "X and Y" -> just "X" (focus on first object)
+            (r'(\w+)\s+and\s+\w+', r'\1'),
+        ]
+        
+        # Color and material enhancement
+        self.color_materials = {
+            'red': ['crimson', 'scarlet', 'cherry'],
+            'blue': ['sapphire blue', 'navy', 'cobalt'],
+            'green': ['emerald green', 'forest green', 'jade'],
+            'yellow': ['golden', 'amber', 'honey-colored'],
+            'purple': ['violet', 'amethyst', 'lavender'],
+            'black': ['obsidian', 'charcoal', 'ebony'],
+            'white': ['pearl white', 'ivory', 'marble white'],
+            'brown': ['mahogany', 'walnut', 'chestnut']
         }
-
-    def analyze_prompt_comprehensive(self, prompt: str) -> Dict:
-        """Comprehensive analysis including both risk and enhancement opportunities."""
-        analysis = {
-            'original_prompt': prompt,
-            'risk_score': 0,
-            'risk_factors': [],
-            'is_structured_object': False,
-            'object_category': None,
-            'enhancement_opportunities': [],
-            'recommended_target': 'standard'
-        }
-        
-        prompt_lower = prompt.lower()
-        
-        # 1. Risk factor analysis
-        for factor_type, keywords in self.risk_factors.items():
-            matches = [word for word in keywords if word in prompt_lower]
-            if matches:
-                analysis['risk_factors'].append({
-                    'type': factor_type,
-                    'matches': matches,
-                    'weight': self._get_risk_weight(factor_type)
-                })
-                analysis['risk_score'] += len(matches) * self._get_risk_weight(factor_type)
-        
-        # 2. Structured object analysis
-        category, main_object = self.structured_enhancer.identify_object_category(prompt)
-        if category:
-            analysis['is_structured_object'] = True
-            analysis['object_category'] = category
-            analysis['main_object'] = main_object
-            analysis['recommended_target'] = 'ultra_high'  # Structured objects can achieve 0.96+
-        
-        # 3. Enhancement opportunities
-        analysis['enhancement_opportunities'] = self._identify_enhancement_opportunities(prompt, analysis)
-        
-        return analysis
-
-    def _get_risk_weight(self, factor_type: str) -> int:
-        """Get risk weight for different factor types."""
-        weights = {
-            'transparent_materials': 3,
-            'complex_scene_words': 2,
-            'weapons': 2,
-            'tools': 1,
-            'reflective_effects': 2
-        }
-        return weights.get(factor_type, 1)
-
-    def _identify_enhancement_opportunities(self, prompt: str, analysis: Dict) -> List[str]:
-        """Identify specific enhancement opportunities."""
-        opportunities = []
-        prompt_lower = prompt.lower()
-        
-        # Check for missing material specification
-        if analysis['is_structured_object']:
-            cat_data = self.structured_enhancer.object_categories[analysis['object_category']]
-            has_material = any(mat in prompt_lower for mat in cat_data['materials'])
-            if not has_material:
-                opportunities.append('material_specification')
-        
-        # Check for missing functional details
-        if analysis['is_structured_object']:
-            cat_data = self.structured_enhancer.object_categories[analysis['object_category']]
-            has_functional = any(part in prompt_lower for part in cat_data['functional_parts'])
-            if not has_functional:
-                opportunities.append('functional_details')
-        
-        # Check for missing surface quality
-        surface_words = ['smooth', 'rough', 'textured', 'polished', 'matte', 'glossy']
-        if not any(word in prompt_lower for word in surface_words):
-            opportunities.append('surface_quality')
-        
-        # Check for missing size/quality descriptors
-        quality_words = ['professional', 'high-quality', 'premium', 'detailed', 'precision']
-        if not any(word in prompt_lower for word in quality_words):
-            opportunities.append('quality_descriptors')
-        
-        return opportunities
-
-    def optimize_prompt_advanced(self, prompt: str, target_fidelity: str = 'auto', 
-                                aggressive: bool = False) -> Tuple[str, Dict]:
-        """
-        Advanced prompt optimization with structured object enhancement.
-        
-        Args:
-            prompt: Original prompt
-            target_fidelity: 'ultra_high' (0.96+), 'high' (0.90+), 'standard', or 'auto'
-            aggressive: Apply aggressive optimizations
-            
-        Returns:
-            Tuple of (optimized_prompt, analysis_data)
-        """
-        # Comprehensive analysis
-        analysis = self.analyze_prompt_comprehensive(prompt)
-        
-        # Determine target fidelity
-        if target_fidelity == 'auto':
-            if analysis['is_structured_object']:
-                target_fidelity = 'ultra_high'
-            elif analysis['risk_score'] > 5:
-                target_fidelity = 'high'
-            else:
-                target_fidelity = 'standard'
-        
-        analysis['target_fidelity'] = target_fidelity
-        
-        # Start with original prompt
-        optimized = prompt
-        applied_strategies = []
-        
-        # 1. Apply structured object enhancement if applicable
-        if analysis['is_structured_object']:
-            if target_fidelity == 'ultra_high':
-                optimized = self.structured_enhancer.enhance_structured_object(optimized, aggressive=True)
-                applied_strategies.append('structured_object_ultra_enhancement')
-            else:
-                optimized = self.structured_enhancer.enhance_structured_object(optimized, aggressive=False)
-                applied_strategies.append('structured_object_enhancement')
-        
-        # 2. Apply risk mitigation strategies
-        for risk_factor in analysis['risk_factors']:
-            factor_type = risk_factor['type']
-            if factor_type in self.optimization_strategies:
-                strategies = self.optimization_strategies[factor_type]
-                if aggressive:
-                    # Apply more strategies for aggressive mode
-                    selected_strategies = strategies[:3]
-                else:
-                    selected_strategies = strategies[:2]
-                
-                optimized += f", {', '.join(selected_strategies)}"
-                applied_strategies.extend(selected_strategies)
-        
-        # 3. Apply fidelity boosters based on target
-        if target_fidelity in self.fidelity_boosters:
-            boosters = self.fidelity_boosters[target_fidelity]
-            if aggressive:
-                selected_boosters = boosters[:3]
-            else:
-                selected_boosters = boosters[:2]
-            
-            optimized += f", {', '.join(selected_boosters)}"
-            applied_strategies.extend(selected_boosters)
-        
-        # 4. Always add general quality improvements
-        general_strategies = self.optimization_strategies['general_quality']
-        if target_fidelity == 'ultra_high':
-            optimized += f", {', '.join(general_strategies[:2])}"
-            applied_strategies.extend(general_strategies[:2])
-        
-        # Update analysis with optimization results
-        analysis['optimized_prompt'] = optimized
-        analysis['applied_strategies'] = applied_strategies
-        analysis['optimization_applied'] = len(applied_strategies) > 0
-        analysis['estimated_improvement'] = self._estimate_improvement(analysis)
-        
-        return optimized, analysis
-
-    def _estimate_improvement(self, analysis: Dict) -> str:
-        """Estimate the expected fidelity improvement."""
-        if analysis['is_structured_object'] and analysis['target_fidelity'] == 'ultra_high':
-            return "Expected: 0.95-0.97+ (Ultra-high structured object)"
-        elif analysis['risk_score'] > 5:
-            return "Expected: 0.85-0.92 (High-risk mitigation)"
-        elif analysis['is_structured_object']:
-            return "Expected: 0.90-0.95 (Structured object enhancement)"
-        else:
-            return "Expected: 0.88-0.93 (General optimization)"
-
-    def generate_multiple_variants(self, prompt: str) -> List[Tuple[str, str, Dict]]:
-        """Generate multiple optimized variants for A/B testing."""
-        variants = []
-        
-        # Standard optimization
-        opt_standard, analysis_standard = self.optimize_prompt_advanced(
-            prompt, target_fidelity='standard', aggressive=False
-        )
-        variants.append((opt_standard, "Standard optimization", analysis_standard))
-        
-        # High-fidelity optimization
-        opt_high, analysis_high = self.optimize_prompt_advanced(
-            prompt, target_fidelity='high', aggressive=False
-        )
-        variants.append((opt_high, "High-fidelity optimization", analysis_high))
-        
-        # Ultra-high aggressive (if structured object)
-        analysis_base = self.analyze_prompt_comprehensive(prompt)
-        if analysis_base['is_structured_object']:
-            opt_ultra, analysis_ultra = self.optimize_prompt_advanced(
-                prompt, target_fidelity='ultra_high', aggressive=True
-            )
-            variants.append((opt_ultra, "Ultra-high aggressive", analysis_ultra))
-        
-        return variants
-
-def main():
-    """Demo the advanced prompt optimizer."""
-    optimizer = AdvancedTrellisPromptOptimizer()
     
-    # Test prompts covering different scenarios
+    def optimize_materials(self, prompt: str) -> str:
+        """Replace problematic materials with rendering-friendly alternatives"""
+        optimized = prompt.lower()
+        
+        for problematic, alternatives in self.material_replacements.items():
+            pattern = r'\b' + re.escape(problematic) + r'\b'
+            if re.search(pattern, optimized):
+                # Choose the best alternative (first one is usually best)
+                replacement = alternatives[0]
+                optimized = re.sub(pattern, replacement, optimized)
+        
+        return optimized
+    
+    def enhance_grammar(self, prompt: str) -> str:
+        """Fix grammatical issues and improve clarity"""
+        enhanced = prompt
+        
+        for pattern, replacement in self.grammar_fixes:
+            enhanced = re.sub(pattern, replacement, enhanced, flags=re.IGNORECASE)
+        
+        return enhanced
+    
+    def reduce_abstraction(self, prompt: str) -> str:
+        """Replace abstract concepts with concrete objects"""
+        concrete = prompt.lower()
+        
+        for abstract, concrete_replacement in self.abstraction_replacements.items():
+            pattern = r'\b' + re.escape(abstract) + r'\b'
+            concrete = re.sub(pattern, concrete_replacement, concrete)
+        
+        return concrete
+    
+    def simplify_scene(self, prompt: str) -> str:
+        """Simplify complex scenes to focus on single objects"""
+        simplified = prompt
+        
+        for pattern, replacement in self.simplification_patterns:
+            simplified = re.sub(pattern, replacement, simplified, flags=re.IGNORECASE)
+        
+        return simplified
+    
+    def enhance_specificity(self, prompt: str) -> str:
+        """Add specific details that improve 3D generation"""
+        enhanced = prompt
+        
+        # Add geometric details if not present
+        if not any(word in enhanced.lower() for word in ['round', 'square', 'rectangular', 'cylindrical', 'spherical']):
+            # Add basic shape descriptor for simple objects
+            if any(word in enhanced.lower() for word in ['ball', 'sphere']):
+                enhanced = enhanced.replace('ball', 'spherical ball').replace('sphere', 'spherical object')
+            elif any(word in enhanced.lower() for word in ['box', 'cube']):
+                enhanced = enhanced.replace('box', 'cubic box').replace('cube', 'cubic object')
+        
+        # Add material texture if missing
+        if not any(word in enhanced.lower() for word in ['smooth', 'rough', 'textured', 'polished', 'matte']):
+            # Add texture based on material
+            if any(word in enhanced.lower() for word in ['wood', 'wooden']):
+                enhanced = enhanced.replace('wood', 'polished wood').replace('wooden', 'polished wooden')
+            elif any(word in enhanced.lower() for word in ['metal', 'metallic']):
+                enhanced = enhanced.replace('metal', 'brushed metal').replace('metallic', 'brushed metallic')
+        
+        return enhanced
+    
+    def optimize_prompt(self, prompt: str, strategy: str = "comprehensive") -> OptimizationResult:
+        """Apply optimization strategy to a prompt"""
+        
+        # Get initial risk assessment
+        initial_assessment = self.risk_analyzer.analyze_prompt(prompt)
+        
+        if strategy == "materials_only":
+            optimized = self.optimize_materials(prompt)
+            strategy_name = "Material Replacement"
+            
+        elif strategy == "grammar_only":
+            optimized = self.enhance_grammar(prompt) 
+            strategy_name = "Grammar Enhancement"
+            
+        elif strategy == "simplification_only":
+            optimized = self.simplify_scene(prompt)
+            strategy_name = "Scene Simplification"
+            
+        elif strategy == "comprehensive":
+            # Apply all optimizations in sequence
+            optimized = prompt
+            optimized = self.optimize_materials(optimized)
+            optimized = self.enhance_grammar(optimized)
+            optimized = self.reduce_abstraction(optimized)
+            optimized = self.simplify_scene(optimized)
+            optimized = self.enhance_specificity(optimized)
+            strategy_name = "Comprehensive Optimization"
+            
+        elif strategy == "aggressive":
+            # More aggressive optimization for high-risk prompts
+            optimized = prompt
+            optimized = self.optimize_materials(optimized)
+            optimized = self.enhance_grammar(optimized)
+            optimized = self.reduce_abstraction(optimized)
+            optimized = self.simplify_scene(optimized)
+            optimized = self.enhance_specificity(optimized)
+            
+            # Additional aggressive changes
+            if initial_assessment.risk_level == "CRITICAL":
+                # Replace with completely safe template if needed
+                if len(optimized.split()) <= 3:
+                    optimized = f"solid {optimized.split()[-1]} object"
+            
+            strategy_name = "Aggressive Optimization"
+        
+        else:
+            optimized = prompt
+            strategy_name = "No Optimization"
+        
+        # Ensure proper capitalization
+        optimized = optimized.strip()
+        if optimized and not optimized[0].isupper():
+            optimized = optimized[0].upper() + optimized[1:]
+        
+        # Get post-optimization risk assessment
+        final_assessment = self.risk_analyzer.analyze_prompt(optimized)
+        
+        # Calculate predicted improvement
+        initial_score_avg = sum(initial_assessment.predicted_score_range) / 2
+        final_score_avg = sum(final_assessment.predicted_score_range) / 2
+        predicted_improvement = final_score_avg - initial_score_avg
+        
+        # Calculate confidence based on risk reduction
+        risk_levels = {"LOW": 4, "MEDIUM": 3, "HIGH": 2, "CRITICAL": 1}
+        initial_risk_num = risk_levels[initial_assessment.risk_level]
+        final_risk_num = risk_levels[final_assessment.risk_level]
+        confidence = min(1.0, max(0.1, (final_risk_num - initial_risk_num + 4) / 7))
+        
+        return OptimizationResult(
+            original_prompt=prompt,
+            optimized_prompt=optimized,
+            optimization_strategy=strategy_name,
+            predicted_improvement=predicted_improvement,
+            confidence=confidence,
+            risk_reduction=f"{initial_assessment.risk_level} → {final_assessment.risk_level}"
+        )
+    
+    def batch_optimize(self, prompts: List[str], strategy: str = "comprehensive") -> List[OptimizationResult]:
+        """Optimize multiple prompts"""
+        return [self.optimize_prompt(prompt, strategy) for prompt in prompts]
+
+def test_optimizer():
+    """Test the optimizer with problematic prompts"""
+    
+    optimizer = AdvancedPromptOptimizer()
+    
+    # Test prompts that we know have issues
     test_prompts = [
-        "hammer",  # Simple structured object
-        "glass vase with flowers",  # Transparent + complex scene
-        "metal sword with jeweled hilt",  # Weapon + complex
-        "shiny chrome robot",  # Reflective + structured
-        "wooden violin",  # High-performing category
-        "crystal dragon figurine"  # Transparent + complex
+        "glass jug filled juice",
+        "silver chalice with leafy vine pattern",
+        "transparent invisible object floating", 
+        "quantum mechanical probability cloud",
+        "thing with parts and stuff",
+        "abstract conceptual entity",
+        "crystal formation with light rays",
+        "liquid water in clear container",
+        "mystical energy construct floating",
+        "ineffable essence of blueness"
     ]
     
-    print("=== ADVANCED PROMPT OPTIMIZATION DEMO ===\n")
+    print("🚀 ADVANCED PROMPT OPTIMIZATION")
+    print("=" * 80)
     
-    for prompt in test_prompts:
-        print(f"🔍 ANALYZING: '{prompt}'")
-        print("-" * 50)
+    results = []
+    
+    for i, prompt in enumerate(test_prompts, 1):
+        print(f"\n[{i}/{len(test_prompts)}] Optimizing: '{prompt}'")
         
-        # Generate variants
-        variants = optimizer.generate_multiple_variants(prompt)
+        # Test different strategies
+        strategies = ["materials_only", "comprehensive", "aggressive"]
+        best_result = None
+        best_improvement = -999
         
-        for i, (optimized, variant_type, analysis) in enumerate(variants, 1):
-            print(f"\n{i}. {variant_type}:")
-            print(f"   Original: '{prompt}'")
-            print(f"   Optimized: '{optimized}'")
-            print(f"   {analysis['estimated_improvement']}")
-            
-            if analysis['risk_factors']:
-                risk_types = [rf['type'] for rf in analysis['risk_factors']]
-                print(f"   Risk factors: {', '.join(risk_types)}")
-            
-            if analysis['is_structured_object']:
-                print(f"   Category: {analysis['object_category']} (structured object)")
+        for strategy in strategies:
+            result = optimizer.optimize_prompt(prompt, strategy)
+            if result.predicted_improvement > best_improvement:
+                best_improvement = result.predicted_improvement
+                best_result = result
         
-        print("\n" + "="*70 + "\n")
+        results.append(best_result)
+        
+        print(f"   📈 Best Strategy: {best_result.optimization_strategy}")
+        print(f"   ✨ Optimized: '{best_result.optimized_prompt}'")
+        print(f"   📊 Risk Change: {best_result.risk_reduction}")
+        print(f"   📈 Predicted Improvement: +{best_result.predicted_improvement:.3f}")
+        print(f"   🎯 Confidence: {best_result.confidence:.1%}")
+    
+    # Summary analysis
+    print(f"\n📊 OPTIMIZATION SUMMARY")
+    print("=" * 80)
+    
+    successful_optimizations = [r for r in results if r.predicted_improvement > 0]
+    high_confidence = [r for r in results if r.confidence > 0.7]
+    
+    print(f"Total Prompts: {len(results)}")
+    print(f"Successful Optimizations: {len(successful_optimizations)} ({len(successful_optimizations)/len(results)*100:.1f}%)")
+    print(f"High Confidence Results: {len(high_confidence)} ({len(high_confidence)/len(results)*100:.1f}%)")
+    
+    avg_improvement = sum(r.predicted_improvement for r in successful_optimizations) / len(successful_optimizations) if successful_optimizations else 0
+    print(f"Average Improvement: +{avg_improvement:.3f}")
+    
+    # Show before/after examples
+    print(f"\n✨ BEST OPTIMIZATIONS:")
+    best_results = sorted(results, key=lambda x: x.predicted_improvement, reverse=True)[:5]
+    for result in best_results:
+        print(f"   Original: '{result.original_prompt}'")
+        print(f"   Optimized: '{result.optimized_prompt}' (+{result.predicted_improvement:.3f})")
+        print()
+    
+    # Save results
+    output_data = {
+        "optimization_timestamp": time.time(),
+        "results": [
+            {
+                "original_prompt": r.original_prompt,
+                "optimized_prompt": r.optimized_prompt,
+                "optimization_strategy": r.optimization_strategy,
+                "predicted_improvement": r.predicted_improvement,
+                "confidence": r.confidence,
+                "risk_reduction": r.risk_reduction
+            }
+            for r in results
+        ],
+        "summary": {
+            "total_prompts": len(results),
+            "successful_optimizations": len(successful_optimizations),
+            "high_confidence_results": len(high_confidence),
+            "average_improvement": avg_improvement
+        }
+    }
+    
+    with open("prompt_optimization_results.json", "w") as f:
+        json.dump(output_data, f, indent=2)
+    
+    print(f"💾 Results saved to: prompt_optimization_results.json")
 
 if __name__ == "__main__":
-    main() 
+    test_optimizer() 

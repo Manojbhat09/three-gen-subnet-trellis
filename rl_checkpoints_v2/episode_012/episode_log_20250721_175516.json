@@ -1,0 +1,582 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753120579.1122322,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.826695442199707,
+      "session_id": "20250721_175516",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.826695442199707,
+          "new_score": 0.8409938812255859,
+          "reward": 81.42984390258789,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8409938812255859,
+          "new_score": 0.8413585424423218,
+          "reward": 80.03646612167358,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8413585424423218,
+          "new_score": 0.8329366445541382,
+          "reward": 44.15781021118164,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8329366445541382,
+          "new_score": 0.8403785228729248,
+          "reward": 50.74418783187866,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8403785228729248,
+          "new_score": 0.8420337438583374,
+          "reward": 80.16552209854126,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8420337438583374,
+          "new_score": 0.8416849970817566,
+          "reward": 49.96512532234192,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 16,
+          "action": [
+            "SIMPLIFY",
+            "keep_best_only",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8416849970817566,
+          "new_score": 0.8301636576652527,
+          "reward": 43.84786605834961,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8301636576652527,
+          "new_score": 0.8402964472770691,
+          "reward": 51.01327896118164,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753121126.0549576,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8254615068435669,
+      "session_id": "20250721_175516",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 7,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "aerospace-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+          "old_score": 0.8254615068435669,
+          "new_score": 0.8327353596687317,
+          "reward": 80.72738528251648,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8327353596687317,
+          "new_score": 0.8410342931747437,
+          "reward": 80.8298933506012,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8410342931747437,
+          "new_score": 0.8422777652740479,
+          "reward": 80.12434720993042,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8422777652740479,
+          "new_score": 0.8408471941947937,
+          "reward": 49.856942892074585,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8408471941947937,
+          "new_score": 0.8408153653144836,
+          "reward": 49.996817111968994,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 9,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "military-spec",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8408153653144836,
+          "new_score": 0.8545312881469727,
+          "reward": 76.3715922832489,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8545312881469727,
+          "new_score": 0.8326188921928406,
+          "reward": 42.80876040458679,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 2,
+          "action": [
+            "APPLY_PATTERN",
+            "military-spec ultra-detailed {target}, premium manufacturing excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+          "old_score": 0.8326188921928406,
+          "new_score": 0.8286267518997192,
+          "reward": 44.600785970687866,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753121660.531924,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175516",
+      "action_space_size": 19,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 15,
+          "action": [
+            "SIMPLIFY",
+            "remove_duplicates",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 12,
+          "action": [
+            "UPGRADE_PROCESS",
+            "masterpiece-quality",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.8200162649154663,
+          "reward": 157.00162649154663,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8200162649154663,
+          "new_score": 0.841813325881958,
+          "reward": 82.17970609664917,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 1,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, advanced engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+          "old_score": 0.841813325881958,
+          "new_score": 0.8657968640327454,
+          "reward": 77.39835381507874,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-precision aerospace-grade elegant silk fabric draping, advanced engineering design, white background",
+          "old_score": 0.8657968640327454,
+          "new_score": 0.8286176323890686,
+          "reward": 41.282076835632324,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    }
+  ],
+  "meta_learning_events": [
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8409938812255859,
+      "timestamp": 1753120641.427138
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8413585424423218,
+      "timestamp": 1753120702.681463
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8329366445541382,
+      "timestamp": 1753120763.62629
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8403785228729248,
+      "timestamp": 1753120826.4139614
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8420337438583374,
+      "timestamp": 1753120888.5223815
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8416849970817566,
+      "timestamp": 1753120949.8167918
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8301636576652527,
+      "timestamp": 1753121008.0276582
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8402964472770691,
+      "timestamp": 1753121068.520976
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8327353596687317,
+      "timestamp": 1753121183.369888
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8410342931747437,
+      "timestamp": 1753121245.6158102
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8422777652740479,
+      "timestamp": 1753121307.5633624
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408471941947937,
+      "timestamp": 1753121368.0142405
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408153653144836,
+      "timestamp": 1753121428.877361
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "aerospace-grade precision-engineered {target}, high-tech finish",
+      "score_achieved": 0.8545312881469727,
+      "timestamp": 1753121491.415156
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8326188921928406,
+      "timestamp": 1753121549.812761
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8286267518997192,
+      "timestamp": 1753121607.4017665
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8200162649154663,
+      "timestamp": 1753121943.5946176
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.841813325881958,
+      "timestamp": 1753122006.622749
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8657968640327454,
+      "timestamp": 1753122068.6026993
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, ultra-precision aerospace-grade elegant silk fabric draping, advanced engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8286176323890686,
+      "timestamp": 1753122129.2486176
+    }
+  ],
+  "final_action_space_size": 19,
+  "session_id": "20250721_175516"
+}
