@@ -30,6 +30,11 @@ from dataclasses import dataclass, asdict
 # Import the prompt optimizer
 from prompt_optimizer import TrellisPromptOptimizer
 
+import torch
+seed = 42
+torch.manual_seed(seed)
+torch.use_deterministic_algorithms(True)
+
 # Make bittensor optional for environments without it
 try:
     import bittensor as bt
@@ -528,6 +533,9 @@ class ContinuousTrellisOrchestrator:
             'validation_timeout': 120,
             'submission_timeout': 60,
             
+            # Determinism settings
+            'use_fixed_seed': True,  # True = always seed 42, False = prompt-hash based seed
+            
             # Prompt optimization settings
             'enable_prompt_optimization': True,
             'optimization_aggressive_mode': False,
@@ -773,6 +781,17 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Error pulling from UID {validator.uid}: {e}")
             return None
     
+    def get_deterministic_seed(self, task: TaskRecord) -> int:
+        """Generate deterministic seed based on prompt for consistent results with variety"""
+        if self.config.get('use_fixed_seed', True):
+            return self.config.get('fixed_seed_value', 42)  # Use configured fixed seed
+        else:
+            # Generate deterministic seed from prompt hash for variety but determinism
+            import hashlib
+            hash_obj = hashlib.sha256(task.prompt.encode())
+            seed = int(hash_obj.hexdigest()[:8], 16) % (2**31)  # Convert to 32-bit int
+            return seed
+    
     def optimize_prompt_for_generation(self, task: TaskRecord) -> str:
         """Optimize prompt to reduce zero fidelity risk"""
         try:
@@ -825,7 +844,8 @@ class ContinuousTrellisOrchestrator:
                 # return f"wbgmsst, {task.prompt}, detailed 3D isometric gaming asset, accurate, practical, white background",
                 # return f"wbgmsst, {task.prompt}, highly detailed 3D isometric object, accurate, white background"
                 # return f"wbgmsst, {task.prompt}, HD, 3D, isometric, white background"
-                return f"wbgmsst, {task.prompt} ,white background"
+                # return f"wbgmsst, {task.prompt} ,white background"
+                return task.prompt
                 # return f"{task.prompt}, 3d isometric, white background"
                 # return task.prompt
                 
@@ -841,14 +861,18 @@ class ContinuousTrellisOrchestrator:
             # Step 1: Optimize prompt to reduce zero fidelity risk
             optimized_prompt = self.optimize_prompt_for_generation(task)
             
+            # Step 2: Get deterministic seed
+            deterministic_seed = self.get_deterministic_seed(task)
+            self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed}")
+            
             generation_start = time.time()
             
-            # Call TRELLIS generation server with optimized prompt
+            # Call TRELLIS generation server with optimized prompt and deterministic seed
             response = requests.post(
                 f"{self.config['generation_server_url']}/generate/",
                 data={
                     'prompt': optimized_prompt,  # Use optimized prompt
-                    'seed': random.randint(0, 2**32 - 1),
+                    'seed': deterministic_seed,  # Use deterministic seed
                     'return_compressed': True
                 },
                 timeout=self.config['generation_timeout']
@@ -1342,6 +1366,10 @@ async def main():
     parser.add_argument("--aggressive-optimize", action="store_true", help="Enable aggressive optimization mode")
     parser.add_argument("--quiet-optimize", action="store_true", help="Reduce optimization logging detail")
     
+    # Determinism arguments
+    parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
+    parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
+    
     args = parser.parse_args()
     
     # Build config
@@ -1366,6 +1394,11 @@ async def main():
         config['optimization_aggressive_mode'] = True
     if args.quiet_optimize:
         config['log_optimization_details'] = False
+    
+    # Determinism configuration
+    if args.variable_seeds:
+        config['use_fixed_seed'] = False
+    config['fixed_seed_value'] = args.seed
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)

@@ -50,8 +50,10 @@ import imageio
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import Response, JSONResponse
 import uvicorn
-
+import torch
 seed = 42
+torch.manual_seed(seed)
+# torch.use_deterministic_algorithms(True)
 
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)  # If using GPU
@@ -915,7 +917,8 @@ async def generate_3d_model_endpoint(
     
     # Handle seed
     if seed is None:
-        seed = random.randint(0, MAX_SEED)
+        #seed = random.randint(0, MAX_SEED)
+        seed = 42
     
     # Generate model
     compressed_data = None

@@ -1,0 +1,15 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753120465.0863838,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175327",
+      "action_space_size": 18
+    }
+  ],
+  "meta_learning_events": [],
+  "final_action_space_size": 18,
+  "session_id": "20250721_175327"
+}

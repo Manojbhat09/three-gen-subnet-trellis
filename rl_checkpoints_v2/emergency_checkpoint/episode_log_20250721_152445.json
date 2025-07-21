@@ -1,0 +1,283 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753111542.6545868,
+      "target_prompt": "hexagonal prism steel structure",
+      "initial_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+      "initial_score": 0.7665427327156067,
+      "session_id": "20250721_152445",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 1,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, advanced engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.7665427327156067,
+          "new_score": 0.4646616578102112,
+          "reward": -40.18810749053955,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 13,
+          "action": [
+            "UPGRADE_QUALITY",
+            "ultra-high technical specification",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-high technical specification aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.4646616578102112,
+          "new_score": 0.672455370426178,
+          "reward": 10.77937126159668,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-high technical specification aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "old_score": 0.672455370426178,
+          "new_score": 0.30852097272872925,
+          "reward": -46.39343976974487,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 17,
+          "action": [
+            "SIMPLIFY",
+            "ultra_minimal",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, aerospace-grade hexagonal prism steel structure, precision-engineered excellence, white background",
+          "old_score": 0.30852097272872925,
+          "new_score": 0.16158747673034668,
+          "reward": -39.69334959983826,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 1,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, advanced engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade hexagonal prism steel structure, precision-engineered excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.16158747673034668,
+          "new_score": 0.4650481343269348,
+          "reward": 20.346065759658813,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-precision aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.4650481343269348,
+          "new_score": 0.3321974277496338,
+          "reward": -18.285070657730103,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 12,
+          "action": [
+            "UPGRADE_PROCESS",
+            "masterpiece-quality",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-precision aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, masterpiece-quality aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.3321974277496338,
+          "new_score": 0.848051130771637,
+          "reward": 121.58537030220032,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, masterpiece-quality aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-precision aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.848051130771637,
+          "new_score": 0.32963767647743225,
+          "reward": -56.84134542942047,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753112112.2473161,
+      "target_prompt": "hexagonal prism steel structure",
+      "initial_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+      "initial_score": 0.7631736993789673,
+      "session_id": "20250721_152445",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 16,
+          "action": [
+            "SIMPLIFY",
+            "keep_best_only",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, hexagonal prism steel structure, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "old_score": 0.7631736993789673,
+          "new_score": 0.3069920837879181,
+          "reward": -55.61816155910492,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "old_score": 0.3069920837879181,
+          "new_score": 0.29281091690063477,
+          "reward": -31.418116688728333,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 12,
+          "action": [
+            "UPGRADE_PROCESS",
+            "masterpiece-quality",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision hexagonal prism steel structure, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, masterpiece-quality defense-grade hexagonal prism steel structure, ultra-high technical specification, white background",
+          "old_score": 0.29281091690063477,
+          "new_score": 0.6374902725219727,
+          "reward": 24.46793556213379,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 4,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-precision masterpiece-quality {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, masterpiece-quality defense-grade hexagonal prism steel structure, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, ultra-precision masterpiece-quality hexagonal prism steel structure, ultra-high technical specification, white background",
+          "old_score": 0.6374902725219727,
+          "new_score": 0.23050734400749207,
+          "reward": -70.69829285144806,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 3,
+          "action": [
+            "APPLY_PATTERN",
+            "laboratory-grade precision-forged {target}, aerospace-engineering excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-precision masterpiece-quality hexagonal prism steel structure, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, laboratory-grade precision-forged hexagonal prism steel structure, aerospace-engineering excellence, white background",
+          "old_score": 0.23050734400749207,
+          "new_score": -0.23369275033473969,
+          "reward": -76.42000943422318,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 1,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, advanced engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, laboratory-grade precision-forged hexagonal prism steel structure, aerospace-engineering excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": -0.23369275033473969,
+          "new_score": 0.45591047406196594,
+          "reward": 58.96032243967056,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 7,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "aerospace-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.45591047406196594,
+          "new_score": 0.45438218116760254,
+          "reward": -10.15282928943634,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered hexagonal prism steel structure, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-precision aerospace-grade hexagonal prism steel structure, advanced engineering design, white background",
+          "old_score": 0.45438218116760254,
+          "new_score": 0.3292659521102905,
+          "reward": -17.5116229057312,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    }
+  ],
+  "meta_learning_events": [],
+  "final_action_space_size": 18,
+  "session_id": "20250721_152445"
+}

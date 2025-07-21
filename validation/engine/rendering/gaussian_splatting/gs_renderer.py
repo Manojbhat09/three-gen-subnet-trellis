@@ -98,7 +98,7 @@ class GaussianSplattingRenderer:
             self._camera.image_height,
             self._camera.z_near,
             self._camera.z_far,
-            backgrounds=backgrounds,
+            # backgrounds=backgrounds,
             render_mode="RGB",
         )
 

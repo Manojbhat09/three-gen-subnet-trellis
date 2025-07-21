@@ -1,0 +1,2886 @@
+{
+  "episodes": [
+    {
+      "timestamp": 1753120579.1122322,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.826695442199707,
+      "session_id": "20250721_175516",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.826695442199707,
+          "new_score": 0.8409938812255859,
+          "reward": 81.42984390258789,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8409938812255859,
+          "new_score": 0.8413585424423218,
+          "reward": 80.03646612167358,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8413585424423218,
+          "new_score": 0.8329366445541382,
+          "reward": 44.15781021118164,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8329366445541382,
+          "new_score": 0.8403785228729248,
+          "reward": 50.74418783187866,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8403785228729248,
+          "new_score": 0.8420337438583374,
+          "reward": 80.16552209854126,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8420337438583374,
+          "new_score": 0.8416849970817566,
+          "reward": 49.96512532234192,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 16,
+          "action": [
+            "SIMPLIFY",
+            "keep_best_only",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8416849970817566,
+          "new_score": 0.8301636576652527,
+          "reward": 43.84786605834961,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8301636576652527,
+          "new_score": 0.8402964472770691,
+          "reward": 51.01327896118164,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753121126.0549576,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8254615068435669,
+      "session_id": "20250721_175516",
+      "action_space_size": 18,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 7,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "aerospace-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+          "old_score": 0.8254615068435669,
+          "new_score": 0.8327353596687317,
+          "reward": 80.72738528251648,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8327353596687317,
+          "new_score": 0.8410342931747437,
+          "reward": 80.8298933506012,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8410342931747437,
+          "new_score": 0.8422777652740479,
+          "reward": 80.12434720993042,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8422777652740479,
+          "new_score": 0.8408471941947937,
+          "reward": 49.856942892074585,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8408471941947937,
+          "new_score": 0.8408153653144836,
+          "reward": 49.996817111968994,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 9,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "military-spec",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8408153653144836,
+          "new_score": 0.8545312881469727,
+          "reward": 76.3715922832489,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8545312881469727,
+          "new_score": 0.8326188921928406,
+          "reward": 42.80876040458679,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 2,
+          "action": [
+            "APPLY_PATTERN",
+            "military-spec ultra-detailed {target}, premium manufacturing excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+          "old_score": 0.8326188921928406,
+          "new_score": 0.8286267518997192,
+          "reward": 44.600785970687866,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753121660.531924,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175516",
+      "action_space_size": 19,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 15,
+          "action": [
+            "SIMPLIFY",
+            "remove_duplicates",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 12,
+          "action": [
+            "UPGRADE_PROCESS",
+            "masterpiece-quality",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.8200162649154663,
+          "reward": 157.00162649154663,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8200162649154663,
+          "new_score": 0.841813325881958,
+          "reward": 82.17970609664917,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 1,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, advanced engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+          "old_score": 0.841813325881958,
+          "new_score": 0.8657968640327454,
+          "reward": 77.39835381507874,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+          "new_prompt": "wbgmsst, ultra-precision aerospace-grade elegant silk fabric draping, advanced engineering design, white background",
+          "old_score": 0.8657968640327454,
+          "new_score": 0.8286176323890686,
+          "reward": 41.282076835632324,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753122186.9489994,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8300206661224365,
+      "session_id": "20250721_175516",
+      "action_space_size": 19,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 13,
+          "action": [
+            "UPGRADE_QUALITY",
+            "ultra-high technical specification",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, ultra-high technical specification elegant silk fabric draping, white background",
+          "old_score": 0.8300206661224365,
+          "new_score": 0.7907878756523132,
+          "reward": 16.07672095298767,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-high technical specification elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.7907878756523132,
+          "new_score": 0.8423639535903931,
+          "reward": 85.15760779380798,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8423639535903931,
+          "new_score": 0.8426949977874756,
+          "reward": 80.03310441970825,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8426949977874756,
+          "new_score": 0.8420965671539307,
+          "reward": 49.94015693664551,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8420965671539307,
+          "new_score": 0.8411698937416077,
+          "reward": 49.9073326587677,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 3,
+          "action": [
+            "APPLY_PATTERN",
+            "laboratory-grade precision-forged {target}, aerospace-engineering excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, laboratory-grade precision-forged elegant silk fabric draping, aerospace-engineering excellence, white background",
+          "old_score": 0.8411698937416077,
+          "new_score": 0.8415393233299255,
+          "reward": 40.03694295883179,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, laboratory-grade precision-forged elegant silk fabric draping, aerospace-engineering excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8415393233299255,
+          "new_score": 0.8431372046470642,
+          "reward": 80.15978813171387,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8431372046470642,
+          "new_score": 0.8421074748039246,
+          "reward": 49.897027015686035,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753122722.9408445,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8272755742073059,
+      "session_id": "20250721_175516",
+      "action_space_size": 19,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8272755742073059,
+          "new_score": 0.8413861393928528,
+          "reward": 81.41105651855469,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 15,
+          "action": [
+            "SIMPLIFY",
+            "remove_duplicates",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8413861393928528,
+          "new_score": 0.84243243932724,
+          "reward": 80.10462999343872,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.84243243932724,
+          "new_score": 0.8418412804603577,
+          "reward": 49.94088411331177,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8418412804603577,
+          "new_score": 0.8415663242340088,
+          "reward": 49.97250437736511,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8415663242340088,
+          "new_score": 0.7949628233909607,
+          "reward": 10.33964991569519,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 10,
+          "action": [
+            "UPGRADE_PROCESS",
+            "ultra-precision",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, ultra-precision defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.7949628233909607,
+          "new_score": 0.8299295902252197,
+          "reward": 43.4966766834259,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-precision defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8299295902252197,
+          "new_score": 0.8420435190200806,
+          "reward": 51.211392879486084,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8420435190200806,
+          "new_score": 0.8418617844581604,
+          "reward": 49.98182654380798,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753123274.0377233,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.8262383341789246,
+      "session_id": "20250721_175516",
+      "action_space_size": 19,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8262383341789246,
+          "new_score": 0.8409007787704468,
+          "reward": 81.46624445915222,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8409007787704468,
+          "new_score": 0.8415607810020447,
+          "reward": 80.06600022315979,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8415607810020447,
+          "new_score": 0.8407401442527771,
+          "reward": 49.91793632507324,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "old_score": 0.8407401442527771,
+          "new_score": 0.8319945931434631,
+          "reward": 44.1254448890686,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 18,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, high-tech finish",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, high-tech finish, white background",
+          "old_score": 0.8319945931434631,
+          "new_score": 0.8160556554794312,
+          "reward": 43.4061062335968,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, high-tech finish, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8160556554794312,
+          "new_score": 0.8421570062637329,
+          "reward": 82.61013507843018,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 2,
+          "action": [
+            "APPLY_PATTERN",
+            "military-spec ultra-detailed {target}, premium manufacturing excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+          "old_score": 0.8421570062637329,
+          "new_score": 0.8293631076812744,
+          "reward": 43.72061014175415,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+          "old_score": 0.8293631076812744,
+          "new_score": 0.7699006199836731,
+          "reward": 9.053751230239868,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753123806.6162505,
+      "target_prompt": "elegant silk fabric draping",
+      "initial_prompt": "wbgmsst, elegant silk fabric draping, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175516",
+      "action_space_size": 20,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, elegant silk fabric draping, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 9,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "military-spec",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 6,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-military-spec {target}, precision-engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, ultra-military-spec elegant silk fabric draping, precision-engineering design, white background",
+          "old_score": 0.0,
+          "new_score": 0.8429971933364868,
+          "reward": 159.29971933364868,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-military-spec elegant silk fabric draping, precision-engineering design, white background",
+          "new_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8429971933364868,
+          "new_score": 0.8408878445625305,
+          "reward": 49.78906512260437,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 12,
+          "action": [
+            "UPGRADE_PROCESS",
+            "masterpiece-quality",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8408878445625305,
+          "new_score": 0.8176558613777161,
+          "reward": 42.676801681518555,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 11,
+          "action": [
+            "UPGRADE_PROCESS",
+            "precision-engineered",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-engineered precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+          "old_score": 0.8176558613777161,
+          "new_score": 0.8577538728713989,
+          "reward": 74.00980114936829,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753124325.4822118,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.8647395968437195,
+      "session_id": "20250721_175516",
+      "action_space_size": 20,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8647395968437195,
+          "new_score": 0.840103268623352,
+          "reward": 47.53636717796326,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.840103268623352,
+          "new_score": 0.8435565829277039,
+          "reward": 50.34533143043518,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 7,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "aerospace-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8435565829277039,
+          "new_score": 0.8827359080314636,
+          "reward": 78.91793251037598,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 15,
+          "action": [
+            "SIMPLIFY",
+            "remove_duplicates",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8827359080314636,
+          "new_score": 0.8826997876167297,
+          "reward": 44.99638795852661,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 14,
+          "action": [
+            "UPGRADE_QUALITY",
+            "advanced engineering design",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, advanced engineering design aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8826997876167297,
+          "new_score": 0.8696363568305969,
+          "reward": 38.69365692138672,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, advanced engineering design aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8696363568305969,
+          "new_score": 0.829312801361084,
+          "reward": 45.967644453048706,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.829312801361084,
+          "new_score": 0.8280792832374573,
+          "reward": 49.87664818763733,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 18,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, high-tech finish",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, high-tech finish, white background",
+          "old_score": 0.8280792832374573,
+          "new_score": 0.8651009798049927,
+          "reward": 48.70216965675354,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753124880.6737168,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.8603898882865906,
+      "session_id": "20250721_175516",
+      "action_space_size": 20,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 6,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-military-spec {target}, precision-engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "old_score": 0.8603898882865906,
+          "new_score": 0.8676859140396118,
+          "reward": 75.72960257530212,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8676859140396118,
+          "new_score": 0.8445946574211121,
+          "reward": 47.690874338150024,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 3,
+          "action": [
+            "APPLY_PATTERN",
+            "laboratory-grade precision-forged {target}, aerospace-engineering excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+          "old_score": 0.8445946574211121,
+          "new_score": 0.8588050007820129,
+          "reward": 41.42103433609009,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8588050007820129,
+          "new_score": 0.8400428891181946,
+          "reward": 48.123788833618164,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8400428891181946,
+          "new_score": 0.8306376934051514,
+          "reward": 49.05948042869568,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 18,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, high-tech finish",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, high-tech finish, white background",
+          "old_score": 0.8306376934051514,
+          "new_score": 0.8651353120803833,
+          "reward": 48.44976186752319,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, high-tech finish, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8651353120803833,
+          "new_score": 0.8343783617019653,
+          "reward": 46.9243049621582,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8343783617019653,
+          "new_score": 0.8378838300704956,
+          "reward": 50.35054683685303,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753125438.8119726,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.86215740442276,
+      "session_id": "20250721_175516",
+      "action_space_size": 20,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.86215740442276,
+          "new_score": 0.8408227562904358,
+          "reward": 47.86653518676758,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8408227562904358,
+          "new_score": 0.835235595703125,
+          "reward": 49.44128394126892,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.835235595703125,
+          "new_score": 0.8380860686302185,
+          "reward": 50.28504729270935,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8380860686302185,
+          "new_score": 0.8413206934928894,
+          "reward": 50.32346248626709,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 4,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-precision masterpiece-quality {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, ultra-precision masterpiece-quality rusty metal gear mechanism, ultra-high technical specification, white background",
+          "old_score": 0.8413206934928894,
+          "new_score": 0.8718153238296509,
+          "reward": 73.04946303367615,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 0,
+          "action": [
+            "APPLY_PATTERN",
+            "defense-grade ultra-precision {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-precision masterpiece-quality rusty metal gear mechanism, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+          "old_score": 0.8718153238296509,
+          "new_score": 0.8913295269012451,
+          "reward": 76.95142030715942,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8913295269012451,
+          "new_score": 0.8405045866966248,
+          "reward": 44.917505979537964,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 14,
+          "action": [
+            "UPGRADE_QUALITY",
+            "advanced engineering design",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, advanced engineering design precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8405045866966248,
+          "new_score": 0.8349302411079407,
+          "reward": 39.44256544113159,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753125997.7542763,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175516",
+      "action_space_size": 21,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 6,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-military-spec {target}, precision-engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.8429617881774902,
+          "reward": 164.29617881774902,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8429617881774902,
+          "new_score": 0.8392701148986816,
+          "reward": 49.63083267211914,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8392701148986816,
+          "new_score": 0.8373537063598633,
+          "reward": 49.808359146118164,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8373537063598633,
+          "new_score": 0.8349680304527283,
+          "reward": 49.7614324092865,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753126531.0179484,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.8630238771438599,
+      "session_id": "20250721_175516",
+      "action_space_size": 21,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 20,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+          "old_score": 0.8630238771438599,
+          "new_score": 0.8942599892616272,
+          "reward": 73.12361121177673,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8942599892616272,
+          "new_score": 0.840011715888977,
+          "reward": 44.575172662734985,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.840011715888977,
+          "new_score": 0.8398740291595459,
+          "reward": 49.986231327056885,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8398740291595459,
+          "new_score": 0.837002158164978,
+          "reward": 49.71281290054321,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.837002158164978,
+          "new_score": 0.8392391800880432,
+          "reward": 50.22370219230652,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8392391800880432,
+          "new_score": 0.8431538343429565,
+          "reward": 50.39146542549133,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 20,
+          "action": [
+            "APPLY_PATTERN",
+            "aerospace-grade precision-engineered {target}, ultra-high technical specification",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+          "old_score": 0.8431538343429565,
+          "new_score": 0.8942978382110596,
+          "reward": 75.1144003868103,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8942978382110596,
+          "new_score": 0.8355502486228943,
+          "reward": 44.12524104118347,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753127080.0115945,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.8649385571479797,
+      "session_id": "20250721_175516",
+      "action_space_size": 21,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8649385571479797,
+          "new_score": 0.8410388827323914,
+          "reward": 47.61003255844116,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8410388827323914,
+          "new_score": 0.8359580636024475,
+          "reward": 49.491918087005615,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8359580636024475,
+          "new_score": 0.8341554403305054,
+          "reward": 49.819737672805786,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8341554403305054,
+          "new_score": 0.8377171754837036,
+          "reward": 50.356173515319824,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8377171754837036,
+          "new_score": 0.838589072227478,
+          "reward": 50.08718967437744,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.838589072227478,
+          "new_score": 0.8418837785720825,
+          "reward": 50.32947063446045,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 8,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "defense-grade",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8418837785720825,
+          "new_score": 0.8539725542068481,
+          "reward": 46.20887756347656,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8539725542068481,
+          "new_score": 0.8418687582015991,
+          "reward": 48.7896203994751,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753127633.0617905,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.8637192845344543,
+      "session_id": "20250721_175516",
+      "action_space_size": 21,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 6,
+          "action": [
+            "APPLY_PATTERN",
+            "ultra-military-spec {target}, precision-engineering design",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "old_score": 0.8637192845344543,
+          "new_score": 0.8665569424629211,
+          "reward": 75.28376579284668,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 3,
+          "action": [
+            "APPLY_PATTERN",
+            "laboratory-grade precision-forged {target}, aerospace-engineering excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+          "new_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+          "old_score": 0.8665569424629211,
+          "new_score": 0.860412061214447,
+          "reward": 39.38551187515259,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.860412061214447,
+          "new_score": 0.8353978991508484,
+          "reward": 47.49858379364014,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8353978991508484,
+          "new_score": 0.8430720567703247,
+          "reward": 50.76741576194763,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8430720567703247,
+          "new_score": 0.8403336405754089,
+          "reward": 49.72615838050842,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8403336405754089,
+          "new_score": 0.8315374851226807,
+          "reward": 49.12038445472717,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8315374851226807,
+          "new_score": 0.8360360860824585,
+          "reward": 50.44986009597778,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8360360860824585,
+          "new_score": 0.8281771540641785,
+          "reward": 49.214106798172,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    },
+    {
+      "timestamp": 1753128178.1527412,
+      "target_prompt": "rusty metal gear mechanism",
+      "initial_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+      "initial_score": 0.0,
+      "session_id": "20250721_175516",
+      "action_space_size": 21,
+      "steps": [
+        {
+          "step": 1,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, rusty metal gear mechanism, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 2,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 3,
+          "action_idx": 9,
+          "action": [
+            "UPGRADE_AUTHORITY",
+            "military-spec",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, military-spec precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -25.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 4,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, military-spec precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.0,
+          "reward": -20.0,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 5,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.0,
+          "new_score": 0.8358507752418518,
+          "reward": 163.58507752418518,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 6,
+          "action_idx": 13,
+          "action": [
+            "UPGRADE_QUALITY",
+            "ultra-high technical specification",
+            "replace"
+          ],
+          "old_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, ultra-high technical specification precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8358507752418518,
+          "new_score": 0.8679954409599304,
+          "reward": 73.21446657180786,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 7,
+          "action_idx": 16,
+          "action": [
+            "SIMPLIFY",
+            "keep_best_only",
+            "clean"
+          ],
+          "old_prompt": "wbgmsst, ultra-high technical specification precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "new_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+          "old_score": 0.8679954409599304,
+          "new_score": 0.8913341164588928,
+          "reward": 77.33386754989624,
+          "done": false,
+          "ultra_achieved": false
+        },
+        {
+          "step": 8,
+          "action_idx": 5,
+          "action": [
+            "APPLY_PATTERN",
+            "precision-aerospace {target}, defense-grade excellence",
+            "full_replace"
+          ],
+          "old_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+          "new_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+          "old_score": 0.8913341164588928,
+          "new_score": 0.8469275832176208,
+          "reward": 45.5593466758728,
+          "done": true,
+          "ultra_achieved": false
+        }
+      ]
+    }
+  ],
+  "meta_learning_events": [
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8409938812255859,
+      "timestamp": 1753120641.427138
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8413585424423218,
+      "timestamp": 1753120702.681463
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8329366445541382,
+      "timestamp": 1753120763.62629
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8403785228729248,
+      "timestamp": 1753120826.4139614
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8420337438583374,
+      "timestamp": 1753120888.5223815
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8416849970817566,
+      "timestamp": 1753120949.8167918
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8301636576652527,
+      "timestamp": 1753121008.0276582
+    },
+    {
+      "episode": 1,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8402964472770691,
+      "timestamp": 1753121068.520976
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, aerospace-grade elegant silk fabric draping, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8327353596687317,
+      "timestamp": 1753121183.369888
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8410342931747437,
+      "timestamp": 1753121245.6158102
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8422777652740479,
+      "timestamp": 1753121307.5633624
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408471941947937,
+      "timestamp": 1753121368.0142405
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408153653144836,
+      "timestamp": 1753121428.877361
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, military-spec precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "aerospace-grade precision-engineered {target}, high-tech finish",
+      "score_achieved": 0.8545312881469727,
+      "timestamp": 1753121491.415156
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8326188921928406,
+      "timestamp": 1753121549.812761
+    },
+    {
+      "episode": 2,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8286267518997192,
+      "timestamp": 1753121607.4017665
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8200162649154663,
+      "timestamp": 1753121943.5946176
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.841813325881958,
+      "timestamp": 1753122006.622749
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, advanced engineering design, white background",
+      "extracted_pattern": "aerospace-grade precision-engineered {target}",
+      "score_achieved": 0.8657968640327454,
+      "timestamp": 1753122068.6026993
+    },
+    {
+      "episode": 3,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, ultra-precision aerospace-grade elegant silk fabric draping, advanced engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8286176323890686,
+      "timestamp": 1753122129.2486176
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8423639535903931,
+      "timestamp": 1753122302.6748314
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8426949977874756,
+      "timestamp": 1753122365.0385702
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8420965671539307,
+      "timestamp": 1753122427.7721772
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8411698937416077,
+      "timestamp": 1753122488.933509
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, laboratory-grade precision-forged elegant silk fabric draping, aerospace-engineering excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8415393233299255,
+      "timestamp": 1753122544.2961516
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8431372046470642,
+      "timestamp": 1753122604.6699917
+    },
+    {
+      "episode": 4,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8421074748039246,
+      "timestamp": 1753122666.8890903
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8413861393928528,
+      "timestamp": 1753122784.392836
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.84243243932724,
+      "timestamp": 1753122847.281182
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8418412804603577,
+      "timestamp": 1753122908.4819796
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8415663242340088,
+      "timestamp": 1753122970.5017605
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, ultra-precision defense-grade precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8299295902252197,
+      "timestamp": 1753123092.8913934
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8420435190200806,
+      "timestamp": 1753123154.6793816
+    },
+    {
+      "episode": 5,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8418617844581604,
+      "timestamp": 1753123216.090106
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8409007787704468,
+      "timestamp": 1753123336.105786
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8415607810020447,
+      "timestamp": 1753123397.5753734
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8407401442527771,
+      "timestamp": 1753123458.3548439
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision elegant silk fabric draping, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8319945931434631,
+      "timestamp": 1753123517.8376389
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered elegant silk fabric draping, high-tech finish, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8160556554794312,
+      "timestamp": 1753123575.3965497
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8421570062637329,
+      "timestamp": 1753123636.6624477
+    },
+    {
+      "episode": 6,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, military-spec ultra-detailed elegant silk fabric draping, premium manufacturing excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8293631076812744,
+      "timestamp": 1753123693.6964154
+    },
+    {
+      "episode": 7,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, ultra-military-spec elegant silk fabric draping, precision-engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8429971933364868,
+      "timestamp": 1753124082.709963
+    },
+    {
+      "episode": 7,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408878445625305,
+      "timestamp": 1753124145.8563652
+    },
+    {
+      "episode": 7,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, masterpiece-quality precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8176558613777161,
+      "timestamp": 1753124204.9363732
+    },
+    {
+      "episode": 7,
+      "original_prompt": "elegant silk fabric draping",
+      "successful_prompt": "wbgmsst, precision-engineered precision-aerospace elegant silk fabric draping, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8577538728713989,
+      "timestamp": 1753124264.1592076
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.840103268623352,
+      "timestamp": 1753124386.5129979
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8435565829277039,
+      "timestamp": 1753124448.5102403
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8827359080314636,
+      "timestamp": 1753124511.8979778
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8826997876167297,
+      "timestamp": 1753124570.9736435
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, advanced engineering design aerospace-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8696363568305969,
+      "timestamp": 1753124631.0374763
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.829312801361084,
+      "timestamp": 1753124690.9098463
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8280792832374573,
+      "timestamp": 1753124752.9966648
+    },
+    {
+      "episode": 8,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, high-tech finish, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8651009798049927,
+      "timestamp": 1753124819.6268923
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8676859140396118,
+      "timestamp": 1753124942.2149646
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8445946574211121,
+      "timestamp": 1753125004.1022158
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8588050007820129,
+      "timestamp": 1753125064.2220042
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8400428891181946,
+      "timestamp": 1753125127.982812
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8306376934051514,
+      "timestamp": 1753125188.4400618
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, high-tech finish, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8651353120803833,
+      "timestamp": 1753125255.1840062
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8343783617019653,
+      "timestamp": 1753125317.53398
+    },
+    {
+      "episode": 9,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8378838300704956,
+      "timestamp": 1753125378.385447
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8408227562904358,
+      "timestamp": 1753125500.4199085
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.835235595703125,
+      "timestamp": 1753125561.5214896
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8380860686302185,
+      "timestamp": 1753125623.3639374
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8413206934928894,
+      "timestamp": 1753125687.4582088
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, ultra-precision masterpiece-quality rusty metal gear mechanism, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8718153238296509,
+      "timestamp": 1753125750.2510612
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+      "extracted_pattern": "aerospace-grade precision-engineered {target}, ultra-high technical specification",
+      "score_achieved": 0.8913295269012451,
+      "timestamp": 1753125818.38635
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8405045866966248,
+      "timestamp": 1753125881.1298904
+    },
+    {
+      "episode": 10,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, advanced engineering design precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8349302411079407,
+      "timestamp": 1753125941.2393832
+    },
+    {
+      "episode": 11,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8429617881774902,
+      "timestamp": 1753126279.862839
+    },
+    {
+      "episode": 11,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8392701148986816,
+      "timestamp": 1753126342.0987911
+    },
+    {
+      "episode": 11,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8373537063598633,
+      "timestamp": 1753126404.4573648
+    },
+    {
+      "episode": 11,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8349680304527283,
+      "timestamp": 1753126468.4775746
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8942599892616272,
+      "timestamp": 1753126594.019714
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.840011715888977,
+      "timestamp": 1753126655.022343
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8398740291595459,
+      "timestamp": 1753126715.614671
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.837002158164978,
+      "timestamp": 1753126776.2739005
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8392391800880432,
+      "timestamp": 1753126836.064828
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8431538343429565,
+      "timestamp": 1753126895.9408839
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, aerospace-grade precision-engineered rusty metal gear mechanism, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8942978382110596,
+      "timestamp": 1753126960.424237
+    },
+    {
+      "episode": 12,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8355502486228943,
+      "timestamp": 1753127021.210359
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8410388827323914,
+      "timestamp": 1753127141.422172
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8359580636024475,
+      "timestamp": 1753127203.6566377
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8341554403305054,
+      "timestamp": 1753127264.0827947
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8377171754837036,
+      "timestamp": 1753127327.6318927
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.838589072227478,
+      "timestamp": 1753127388.9904885
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8418837785720825,
+      "timestamp": 1753127450.841931
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, defense-grade precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8539725542068481,
+      "timestamp": 1753127512.652656
+    },
+    {
+      "episode": 13,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8418687582015991,
+      "timestamp": 1753127572.6414697
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, ultra-military-spec rusty metal gear mechanism, precision-engineering design, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8665569424629211,
+      "timestamp": 1753127693.474535
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, laboratory-grade precision-forged rusty metal gear mechanism, aerospace-engineering excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.860412061214447,
+      "timestamp": 1753127752.5459483
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8353978991508484,
+      "timestamp": 1753127815.0820255
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8430720567703247,
+      "timestamp": 1753127878.2507553
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8403336405754089,
+      "timestamp": 1753127938.4177942
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8315374851226807,
+      "timestamp": 1753127999.2182808
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8360360860824585,
+      "timestamp": 1753128059.2912707
+    },
+    {
+      "episode": 14,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8281771540641785,
+      "timestamp": 1753128119.7242856
+    },
+    {
+      "episode": 15,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8358507752418518,
+      "timestamp": 1753128458.3147068
+    },
+    {
+      "episode": 15,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, ultra-high technical specification precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8679954409599304,
+      "timestamp": 1753128524.4138246
+    },
+    {
+      "episode": 15,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, defense-grade ultra-precision rusty metal gear mechanism, ultra-high technical specification, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8913341164588928,
+      "timestamp": 1753128592.0034986
+    },
+    {
+      "episode": 15,
+      "original_prompt": "rusty metal gear mechanism",
+      "successful_prompt": "wbgmsst, precision-aerospace rusty metal gear mechanism, defense-grade excellence, white background",
+      "extracted_pattern": "",
+      "score_achieved": 0.8469275832176208,
+      "timestamp": 1753128653.165608
+    }
+  ],
+  "final_action_space_size": 21,
+  "session_id": "20250721_175516"
+}
