@@ -1,0 +1,81 @@
+EPISODIC MEMORY ANALYSIS REPORT
+==================================================
+Generated: 2025-07-24 11:31:21
+
+OVERALL STATISTICS
+--------------------
+Total attempts: 493
+Total sessions: 50
+Unique prompts: 12
+Date range: 2025-07-24 02:06:36.453863621 to 2025-07-24 10:36:42.855176687
+Average score: 0.683
+Score std dev: 0.279
+Best score: 0.951
+Worst score: 0.000
+
+STRATEGY PERFORMANCE
+--------------------
+Hybrid Approach:
+  Average score: 0.732 ± 0.242
+  Attempts: 79.0
+  Avg confidence: 0.880
+
+Material Focus:
+  Average score: 0.730 ± 0.252
+  Attempts: 64.0
+  Avg confidence: 0.866
+
+Technical Precision:
+  Average score: 0.729 ± 0.237
+  Attempts: 69.0
+  Avg confidence: 0.885
+
+Aggressive Transformation:
+  Average score: 0.669 ± 0.286
+  Attempts: 51.0
+  Avg confidence: 0.863
+
+Conservative Enhancement:
+  Average score: 0.667 ± 0.288
+  Attempts: 58.0
+  Avg confidence: 0.854
+
+Minimalist Refinement:
+  Average score: 0.637 ± 0.329
+  Attempts: 58.0
+  Avg confidence: 0.854
+
+Artistic Elaboration:
+  Average score: 0.636 ± 0.298
+  Attempts: 57.0
+  Avg confidence: 0.858
+
+Contextual Scene Building:
+  Average score: 0.633 ± 0.304
+  Attempts: 57.0
+  Avg confidence: 0.863
+
+SESSION ANALYSIS
+--------------------
+Average attempts per session: 9.9
+Average strategies per session: 4.3
+Best session average: 0.913
+Worst session average: 0.071
+
+LEARNING INSIGHTS
+--------------------
+Sessions with improvement: 24/50 (48.0%)
+Average improvement: -0.054
+Best improvement: 0.510
+Worst decline: -0.921
+
+STRATEGY EFFECTIVENESS
+--------------------
+Conservative Enhancement: 65.5% success rate
+Material Focus: 75.0% success rate
+Artistic Elaboration: 59.6% success rate
+Aggressive Transformation: 62.7% success rate
+Technical Precision: 73.9% success rate
+Contextual Scene Building: 57.9% success rate
+Minimalist Refinement: 72.4% success rate
+Hybrid Approach: 79.7% success rate

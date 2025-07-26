@@ -39,15 +39,6 @@ except ImportError:
     OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = False
     print("⚠️ Falling back to original prompt optimizer")
 
-# Import the reproducibility system
-try:
-    from llm_close_prompt_reproducibility_test import LLMClosePromptReproducibility
-    REPRODUCIBILITY_SYSTEM_AVAILABLE = True
-    print("✅ Using reproducibility system for pre-optimization")
-except ImportError:
-    REPRODUCIBILITY_SYSTEM_AVAILABLE = False
-    print("⚠️ Reproducibility system not available")
-
 import torch
 seed = 42
 torch.manual_seed(seed)
@@ -495,14 +486,6 @@ class ContinuousTrellisOrchestrator:
             self.prompt_optimizer = TrellisPromptOptimizer()
             self.logger.info("🔧 Initialized standard prompt optimizer")
         
-        # Initialize reproducibility system
-        if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
-            self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
-        else:
-            self.reproducibility_system = None
-            self.logger.info("⚠️ Reproducibility system not available")
-        
         # Statistics
         self.stats = {
             'session_start': time.time(),
@@ -517,8 +500,6 @@ class ContinuousTrellisOrchestrator:
             'total_rewards': 0.0,
             'idle_validations': 0,
             'prompts_optimized': 0,
-            'reproducibility_optimizations': 0,
-            'traditional_optimizations': 0,
             'optimization_improvements': 0,
         }
         
@@ -532,13 +513,6 @@ class ContinuousTrellisOrchestrator:
             mode = "aggressive" if self.config.get('optimization_aggressive_mode', False) else "standard"
             detail = "minimal" if not self.config.get('log_optimization_details', True) else "detailed"
             self.logger.info(f"🔧 Prompt optimization: ENABLED ({mode} mode, {detail} logging)")
-            
-            # Log reproducibility settings
-            if self.config.get('enable_reproducibility_optimization', True):
-                min_sim = self.config.get('reproducibility_min_similarity', 0.3)
-                self.logger.info(f"🔄 Reproducibility optimization: ENABLED (min similarity: {min_sim})")
-            else:
-                self.logger.info(f"🔄 Reproducibility optimization: DISABLED")
         else:
             self.logger.info(f"🔧 Prompt optimization: DISABLED")
         self.trellis_server_url: str = "http://localhost:8096"
@@ -586,10 +560,6 @@ class ContinuousTrellisOrchestrator:
             'enable_prompt_optimization': True,
             'optimization_aggressive_mode': False,
             'log_optimization_details': True,
-            
-            # Reproducibility optimization settings
-            'enable_reproducibility_optimization': True,
-            'reproducibility_min_similarity': 0.3,
         }
     
     def _setup_bittensor(self) -> bool:
@@ -763,7 +733,7 @@ class ContinuousTrellisOrchestrator:
                     self.logger.warning(f"⚠️ Could not check TRELLIS server status (HTTP {resp.status_code}), proceeding anyway.")
             except Exception as e:
                 self.logger.warning(f"⚠️ Exception checking TRELLIS server status: {e}, proceeding anyway.")
-                time.sleep(5)
+
             if not self.is_validator_available(validator):
                 return None
             
@@ -860,42 +830,13 @@ class ContinuousTrellisOrchestrator:
             return seed
     
     def optimize_prompt_for_generation(self, task: TaskRecord) -> str:
-        """Optimize prompt to reduce zero fidelity risk using reproducibility system first"""
+        """Optimize prompt to reduce zero fidelity risk"""
         try:
             # Check if optimization is enabled
             if not self.config.get('enable_prompt_optimization', True):
                 return task.prompt
             
-            # Step 1: Try reproducibility system first (if available)
-            if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
-                self.reproducibility_system and 
-                self.config.get('enable_reproducibility_optimization', True)):
-                
-                min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
-                repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
-                    task.prompt, min_similarity, run_validation=False
-                )
-                
-                if repro_result:
-                    optimized_prompt = repro_result['optimized_prompt']
-                    similarity = repro_result['similarity']
-                    gold_score = repro_result['gold_score']
-                    
-                    if self.config.get('log_optimization_details', True):
-                        self.logger.info(f"🔄 Reproducibility optimization applied:")
-                        self.logger.info(f"   Original: {task.prompt}")
-                        self.logger.info(f"   Optimized: {optimized_prompt}")
-                        self.logger.info(f"   Similarity: {similarity:.3f}")
-                        self.logger.info(f"   Gold score: {gold_score:.4f}")
-                    else:
-                        self.logger.info(f"🔄 Reproducibility optimized (sim: {similarity:.2f}, gold: {gold_score:.3f}): '{task.prompt[:30]}...'")
-                    
-                    self.stats['prompts_optimized'] += 1
-                    self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
-                    
-                    return optimized_prompt
-            
-            # Step 2: Fall back to traditional optimization if reproducibility didn't work
+            # Use new performance-optimized optimizer if available
             if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
                 # Use the new fast optimizer
                 # result = self.prompt_optimizer.optimize(task.prompt, use_validation=False)
@@ -905,7 +846,7 @@ class ContinuousTrellisOrchestrator:
                 confidence = 0.8 #result['confidence']
                 
                 if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"🚀 Traditional optimization applied:")
+                    self.logger.info(f"🚀 Fast optimization applied:")
                     self.logger.info(f"   Original: {task.prompt}")
                     self.logger.info(f"   Optimized: {optimized_prompt}")
                     self.logger.info(f"   Confidence: {confidence:.1%}")
@@ -915,7 +856,6 @@ class ContinuousTrellisOrchestrator:
                     # self.logger.info(f"🚀 Fast optimized (conf: {confidence:.0%}, {result['processing_time']:.2f}s): '{task.prompt[:30]}...'")
                 
                 self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
                 # if result['similar_examples_count'] > 0:
                 #     self.stats['optimization_improvements'] += 1
                 
@@ -940,7 +880,6 @@ class ContinuousTrellisOrchestrator:
                             self.logger.info(f"     • {factor}")
                 
                 self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
                 return task.prompt
                 
         except Exception as e:
@@ -1363,8 +1302,6 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Total rewards: {self.stats['total_rewards']:.6f} TAO")
         self.logger.info(f"Idle validations: {self.stats['idle_validations']}")
         self.logger.info(f"Prompts optimized: {self.stats['prompts_optimized']}")
-        self.logger.info(f"Reproducibility optimizations: {self.stats.get('reproducibility_optimizations', 0)}")
-        self.logger.info(f"Traditional optimizations: {self.stats.get('traditional_optimizations', 0)}")
         self.logger.info(f"Optimization improvements: {self.stats['optimization_improvements']}")
         
         if uptime_hours > 0:
@@ -1491,10 +1428,6 @@ async def main():
     parser.add_argument("--aggressive-optimize", action="store_true", help="Enable aggressive optimization mode")
     parser.add_argument("--quiet-optimize", action="store_true", help="Reduce optimization logging detail")
     
-    # Reproducibility optimization arguments
-    parser.add_argument("--no-reproducibility", action="store_true", help="Disable reproducibility optimization")
-    parser.add_argument("--reproducibility-similarity", type=float, default=0.51, help="Minimum similarity threshold for reproducibility (default: 0.3)")
-    
     # Determinism arguments
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
     parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
@@ -1523,11 +1456,6 @@ async def main():
         config['optimization_aggressive_mode'] = True
     if args.quiet_optimize:
         config['log_optimization_details'] = False
-    
-    # Reproducibility optimization configuration
-    if args.no_reproducibility:
-        config['enable_reproducibility_optimization'] = False
-    config['reproducibility_min_similarity'] = args.reproducibility_similarity
     
     # Determinism configuration
     if args.variable_seeds:

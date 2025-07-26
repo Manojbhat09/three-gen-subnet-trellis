@@ -594,17 +594,19 @@ class TrellisGenerator:
                 # enhanced_prompt = prompt + " 3D isometric, accurate, white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + ", 3D isometric object, accurate, clean, practical, white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + " ,3D isometric white background"
-                enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric accurate, white background"
+                # enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric accurate, white background"
+                # enhanced_prompt = prompt + ", 3D isometric accurate, white background"
+                enhanced_prompt = prompt 
                 generator = torch.Generator(device=device).manual_seed(seed)
-                
-                image = self.flux_pipeline(
-                    prompt=enhanced_prompt,
-                    guidance_scale=GENERATION_CONFIG['guidance_scale'],
-                    num_inference_steps=NUM_INFERENCE_STEPS,
-                    width=1024,
-                    height=1024,
-                    generator=generator,
-                ).images[0]
+                with torch.no_grad():
+                    image = self.flux_pipeline(
+                        prompt=enhanced_prompt,
+                        guidance_scale=GENERATION_CONFIG['guidance_scale'],
+                        num_inference_steps=NUM_INFERENCE_STEPS,
+                        width=1024,
+                        height=1024,
+                        generator=generator,
+                    ).images[0]
                 
                 print("✓ Image generated successfully")
                 generation_asset.add_asset(AssetType.FLUX_IMAGE, image)

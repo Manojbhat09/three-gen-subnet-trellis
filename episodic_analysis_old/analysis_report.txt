@@ -1,0 +1,69 @@
+EPISODIC MEMORY ANALYSIS REPORT
+==================================================
+Generated: 2025-07-24 00:59:12
+
+OVERALL STATISTICS
+--------------------
+Total attempts: 191
+Total sessions: 50
+Unique prompts: 12
+Date range: 2025-07-23 21:40:42.515677452 to 2025-07-24 00:54:39.271972895
+Average score: 0.669
+Score std dev: 0.283
+Best score: 0.951
+Worst score: -0.091
+
+STRATEGY PERFORMANCE
+--------------------
+Material Focus:
+  Average score: 0.703 ± 0.256
+  Attempts: 61.0
+  Avg confidence: 0.866
+
+Technical Precision:
+  Average score: 0.692 ± 0.282
+  Attempts: 33.0
+  Avg confidence: 0.835
+
+Contextual Scene Building:
+  Average score: 0.665 ± 0.304
+  Attempts: 34.0
+  Avg confidence: 0.826
+
+Artistic Elaboration:
+  Average score: 0.640 ± 0.292
+  Attempts: 32.0
+  Avg confidence: 0.816
+
+Aggressive Transformation:
+  Average score: 0.628 ± 0.281
+  Attempts: 17.0
+  Avg confidence: 0.831
+
+Minimalist Refinement:
+  Average score: 0.584 ± 0.347
+  Attempts: 14.0
+  Avg confidence: 0.826
+
+SESSION ANALYSIS
+--------------------
+Average attempts per session: 3.8
+Average strategies per session: 1.9
+Best session average: 0.919
+Worst session average: 0.000
+
+LEARNING INSIGHTS
+--------------------
+Sessions with improvement: 24/50 (48.0%)
+Average improvement: -0.025
+Best improvement: 0.551
+Worst decline: -0.885
+
+STRATEGY EFFECTIVENESS
+--------------------
+Artistic Elaboration: 56.2% success rate
+Material Focus: 68.9% success rate
+Aggressive Transformation: 47.1% success rate
+Contextual Scene Building: 64.7% success rate
+Technical Precision: 69.7% success rate
+Minimalist Refinement: 64.3% success rate

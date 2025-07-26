@@ -71,8 +71,8 @@ def generate_and_get_ply_data(prompt: str) -> bytes:
             print(f"📦 Response received: {content_length:,} bytes (compression: {compression})")
             
             # Return the raw response content (compressed or uncompressed)
-        return response.content
-                
+            return response.content
+            
     except requests.exceptions.RequestException as e:
         print(f"❌ Generation request failed: {e}")
         raise
