@@ -29,24 +29,13 @@ from dataclasses import dataclass, asdict
 
 # Import the prompt optimizer
 try:
-    # from smart_prompt_optimizer_fixed import OptimizedPromptOptimizer
-    # from llm_prompt_optimizer_v7_f1 import LLMPromptOptimizer
-    from llm_prompt_optimizer_v12_f1 import LLMPromptOptimizer
+    from smart_prompt_optimizer_fixed import OptimizedPromptOptimizer
     OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = True
     print("✅ Using new performance-optimized prompt optimizer")
 except ImportError:
     from prompt_optimizer import TrellisPromptOptimizer
     OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = False
     print("⚠️ Falling back to original prompt optimizer")
-
-# Import the reproducibility system
-try:
-    from llm_close_prompt_reproducibility_test import LLMClosePromptReproducibility
-    REPRODUCIBILITY_SYSTEM_AVAILABLE = True
-    print("✅ Using reproducibility system for pre-optimization")
-except ImportError:
-    REPRODUCIBILITY_SYSTEM_AVAILABLE = False
-    print("⚠️ Reproducibility system not available")
 
 import torch
 seed = 42
@@ -88,7 +77,6 @@ class TaskRecord:
     submitted_at: Optional[float] = None
     generation_time: Optional[float] = None
     validation_time: Optional[float] = None
-    total_processing_time: Optional[float] = None
     local_validation_score: Optional[float] = None
     submission_success: bool = False
     feedback_received: bool = False
@@ -152,7 +140,6 @@ class TaskDatabase:
                 submitted_at REAL,
                 generation_time REAL,
                 validation_time REAL,
-                total_processing_time REAL,
                 local_validation_score REAL,
                 submission_success BOOLEAN DEFAULT FALSE,
                 feedback_received BOOLEAN DEFAULT FALSE,
@@ -290,15 +277,15 @@ class TaskDatabase:
             INSERT OR REPLACE INTO tasks 
             (task_id, prompt, prompt_hash, validator_uid, validator_hotkey, validator_stake,
              validation_threshold, pulled_at, processed_at, submitted_at, generation_time,
-             validation_time, total_processing_time, local_validation_score, submission_success, feedback_received,
+             validation_time, local_validation_score, submission_success, feedback_received,
              task_fidelity_score, average_fidelity_score, current_miner_reward,
              validation_failed, generations_in_window, ply_file_path, compressed_file_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             task.task_id, task.prompt, task.prompt_hash, task.validator_uid,
             task.validator_hotkey, task.validator_stake, task.validation_threshold,
             task.pulled_at, task.processed_at, task.submitted_at, task.generation_time,
-            task.validation_time, task.total_processing_time, task.local_validation_score, task.submission_success,
+            task.validation_time, task.local_validation_score, task.submission_success,
             task.feedback_received, task.task_fidelity_score, task.average_fidelity_score,
             task.current_miner_reward, task.validation_failed, task.generations_in_window,
             task.ply_file_path, task.compressed_file_path
@@ -330,12 +317,12 @@ class TaskDatabase:
                 validator_uid=row[3], validator_hotkey=row[4], validator_stake=row[5],
                 validation_threshold=row[6], pulled_at=row[7], processed_at=row[8],
                 submitted_at=row[9], generation_time=row[10], validation_time=row[11],
-                total_processing_time=row[12], local_validation_score=row[13], submission_success=bool(row[14]),
-                feedback_received=bool(row[15]), task_fidelity_score=row[16],
-                average_fidelity_score=row[17], current_miner_reward=row[18],
-                validation_failed=bool(row[19]) if row[19] is not None else None,
-                generations_in_window=row[20], ply_file_path=row[21],
-                compressed_file_path=row[22]
+                local_validation_score=row[12], submission_success=bool(row[13]),
+                feedback_received=bool(row[14]), task_fidelity_score=row[15],
+                average_fidelity_score=row[16], current_miner_reward=row[17],
+                validation_failed=bool(row[18]) if row[18] is not None else None,
+                generations_in_window=row[19], ply_file_path=row[20],
+                compressed_file_path=row[21]
             )
             tasks.append(task)
         
@@ -368,12 +355,12 @@ class TaskDatabase:
                 validator_uid=row[3], validator_hotkey=row[4], validator_stake=row[5],
                 validation_threshold=row[6], pulled_at=row[7], processed_at=row[8],
                 submitted_at=row[9], generation_time=row[10], validation_time=row[11],
-                total_processing_time=row[12], local_validation_score=row[13], submission_success=bool(row[14]),
-                feedback_received=bool(row[15]), task_fidelity_score=row[16],
-                average_fidelity_score=row[17], current_miner_reward=row[18],
-                validation_failed=bool(row[19]) if row[19] is not None else None,
-                generations_in_window=row[20], ply_file_path=row[21],
-                compressed_file_path=row[22]
+                local_validation_score=row[12], submission_success=bool(row[13]),
+                feedback_received=bool(row[14]), task_fidelity_score=row[15],
+                average_fidelity_score=row[16], current_miner_reward=row[17],
+                validation_failed=bool(row[18]) if row[18] is not None else None,
+                generations_in_window=row[19], ply_file_path=row[20],
+                compressed_file_path=row[21]
             )
             tasks.append(task)
         
@@ -488,20 +475,11 @@ class ContinuousTrellisOrchestrator:
         
         # Initialize prompt optimizer
         if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
-            # self.prompt_optimizer = OptimizedPromptOptimizer("rl_checkpoints_v3/prompt_score_log.csv")
-            self.prompt_optimizer = LLMPromptOptimizer(model="llama3.2:3b")
+            self.prompt_optimizer = OptimizedPromptOptimizer("rl_checkpoints_v3/prompt_score_log.csv")
             self.logger.info("🚀 Initialized performance-optimized prompt optimizer")
         else:
             self.prompt_optimizer = TrellisPromptOptimizer()
             self.logger.info("🔧 Initialized standard prompt optimizer")
-        
-        # Initialize reproducibility system
-        if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
-            self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
-        else:
-            self.reproducibility_system = None
-            self.logger.info("⚠️ Reproducibility system not available")
         
         # Statistics
         self.stats = {
@@ -513,12 +491,9 @@ class ContinuousTrellisOrchestrator:
             'successful_submissions': 0,
             'total_generation_time': 0.0,
             'total_validation_time': 0.0,
-            'total_processing_time': 0.0,
             'total_rewards': 0.0,
             'idle_validations': 0,
             'prompts_optimized': 0,
-            'reproducibility_optimizations': 0,
-            'traditional_optimizations': 0,
             'optimization_improvements': 0,
         }
         
@@ -532,24 +507,15 @@ class ContinuousTrellisOrchestrator:
             mode = "aggressive" if self.config.get('optimization_aggressive_mode', False) else "standard"
             detail = "minimal" if not self.config.get('log_optimization_details', True) else "detailed"
             self.logger.info(f"🔧 Prompt optimization: ENABLED ({mode} mode, {detail} logging)")
-            
-            # Log reproducibility settings
-            if self.config.get('enable_reproducibility_optimization', True):
-                min_sim = self.config.get('reproducibility_min_similarity', 0.3)
-                self.logger.info(f"🔄 Reproducibility optimization: ENABLED (min similarity: {min_sim})")
-            else:
-                self.logger.info(f"🔄 Reproducibility optimization: DISABLED")
         else:
             self.logger.info(f"🔧 Prompt optimization: DISABLED")
-        self.trellis_server_url: str = "http://localhost:8096"
-
-
+    
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration"""
         return {
             # Bittensor settings
-            'wallet_name': 'manbeast3b',
-            'hotkey_name': 'm3bnew2',
+            'wallet_name': 'test2m3b2',
+            'hotkey_name': 't2m3b21',
             'netuid': 17,
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
@@ -586,10 +552,6 @@ class ContinuousTrellisOrchestrator:
             'enable_prompt_optimization': True,
             'optimization_aggressive_mode': False,
             'log_optimization_details': True,
-            
-            # Reproducibility optimization settings
-            'enable_reproducibility_optimization': True,
-            'reproducibility_min_similarity': 0.3,
         }
     
     def _setup_bittensor(self) -> bool:
@@ -748,22 +710,6 @@ class ContinuousTrellisOrchestrator:
     async def pull_task_from_validator(self, validator: ValidatorState) -> Optional[TaskRecord]:
         """Pull task from a specific validator with deduplication"""
         try:
-            # Check if TRELLIS server is busy before pulling a new task
-            try:
-                server_status_url = self.config.get('generation_server_url', 'http://localhost:8096') + '/job/status/'
-                resp = requests.get(server_status_url, timeout=5)
-                if resp.status_code == 200:
-                    status_json = resp.json()
-                    job_status = status_json.get('status', 'unknown')
-                    # Only proceed if server is idle or completed
-                    if job_status not in ('idle', 'completed'):
-                        self.logger.info(f"⏳ TRELLIS server busy (status: {job_status}), skipping task pull.")
-                        return None
-                else:
-                    self.logger.warning(f"⚠️ Could not check TRELLIS server status (HTTP {resp.status_code}), proceeding anyway.")
-            except Exception as e:
-                self.logger.warning(f"⚠️ Exception checking TRELLIS server status: {e}, proceeding anyway.")
-                time.sleep(5)
             if not self.is_validator_available(validator):
                 return None
             
@@ -814,9 +760,8 @@ class ContinuousTrellisOrchestrator:
                     if hasattr(resp, 'cooldown_until'):
                         validator.cooldown_until = resp.cooldown_until
                     
-                    # Create task record with response time tracking
+                    # Create task record
                     prompt_hash = hashlib.sha256(resp.task.prompt.encode()).hexdigest()
-                    response_received_time = time.time()
                     
                     task = TaskRecord(
                         task_id=resp.task.id,
@@ -826,7 +771,7 @@ class ContinuousTrellisOrchestrator:
                         validator_hotkey=validator.hotkey,
                         validator_stake=validator.stake,
                         validation_threshold=getattr(resp, 'validation_threshold', 0.6),
-                        pulled_at=response_received_time
+                        pulled_at=time.time()
                     )
                     
                     # Add to recent prompts tracking
@@ -860,64 +805,32 @@ class ContinuousTrellisOrchestrator:
             return seed
     
     def optimize_prompt_for_generation(self, task: TaskRecord) -> str:
-        """Optimize prompt to reduce zero fidelity risk using reproducibility system first"""
+        """Optimize prompt to reduce zero fidelity risk"""
         try:
             # Check if optimization is enabled
             if not self.config.get('enable_prompt_optimization', True):
                 return task.prompt
             
-            # Step 1: Try reproducibility system first (if available)
-            if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
-                self.reproducibility_system and 
-                self.config.get('enable_reproducibility_optimization', True)):
-                
-                min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
-                repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
-                    task.prompt, min_similarity, run_validation=False
-                )
-                
-                if repro_result:
-                    optimized_prompt = repro_result['optimized_prompt']
-                    similarity = repro_result['similarity']
-                    gold_score = repro_result['gold_score']
-                    
-                    if self.config.get('log_optimization_details', True):
-                        self.logger.info(f"🔄 Reproducibility optimization applied:")
-                        self.logger.info(f"   Original: {task.prompt}")
-                        self.logger.info(f"   Optimized: {optimized_prompt}")
-                        self.logger.info(f"   Similarity: {similarity:.3f}")
-                        self.logger.info(f"   Gold score: {gold_score:.4f}")
-                    else:
-                        self.logger.info(f"🔄 Reproducibility optimized (sim: {similarity:.2f}, gold: {gold_score:.3f}): '{task.prompt[:30]}...'")
-                    
-                    self.stats['prompts_optimized'] += 1
-                    self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
-                    
-                    return optimized_prompt
-            
-            # Step 2: Fall back to traditional optimization if reproducibility didn't work
+            # Use new performance-optimized optimizer if available
             if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
                 # Use the new fast optimizer
-                # result = self.prompt_optimizer.optimize(task.prompt, use_validation=False)
-                result = self.prompt_optimizer.optimize_with_examples(task.prompt)
-                # result = self.prompt_optimizer.optimize_with_strategies(task.prompt)
-                optimized_prompt = result #result['optimized_prompt']
-                confidence = 0.8 #result['confidence']
+                result = self.prompt_optimizer.optimize(task.prompt, use_validation=False)
+                optimized_prompt = result['optimized_prompt']
+                confidence = result['confidence']
                 
                 if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"🚀 Traditional optimization applied:")
+                    self.logger.info(f"🚀 Fast optimization applied:")
                     self.logger.info(f"   Original: {task.prompt}")
                     self.logger.info(f"   Optimized: {optimized_prompt}")
                     self.logger.info(f"   Confidence: {confidence:.1%}")
-                    # self.logger.info(f"   Similar examples: {result['similar_examples_count']}")
-                    # self.logger.info(f"   Processing time: {result['processing_time']:.3f}s")
-                # else:
-                    # self.logger.info(f"🚀 Fast optimized (conf: {confidence:.0%}, {result['processing_time']:.2f}s): '{task.prompt[:30]}...'")
+                    self.logger.info(f"   Similar examples: {result['similar_examples_count']}")
+                    self.logger.info(f"   Processing time: {result['processing_time']:.3f}s")
+                else:
+                    self.logger.info(f"🚀 Fast optimized (conf: {confidence:.0%}, {result['processing_time']:.2f}s): '{task.prompt[:30]}...'")
                 
                 self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
-                # if result['similar_examples_count'] > 0:
-                #     self.stats['optimization_improvements'] += 1
+                if result['similar_examples_count'] > 0:
+                    self.stats['optimization_improvements'] += 1
                 
                 return optimized_prompt
             
@@ -940,25 +853,11 @@ class ContinuousTrellisOrchestrator:
                             self.logger.info(f"     • {factor}")
                 
                 self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
                 return task.prompt
                 
         except Exception as e:
             self.logger.error(f"❌ Prompt optimization failed: {e}")
             return task.prompt
-
-    def _clear_trellis_gpu_cache(self):
-        """Send a request to the TRELLIS server to clear GPU cache."""
-        try:
-            url = f"{self.trellis_server_url}/clear_cache/"
-            resp = requests.post(url, timeout=10)
-            if resp.status_code == 200:
-                self.logger.info(f"[TRELLIS] GPU cache cleared: {resp.json()}")
-            else:
-                self.logger.warning(f"[TRELLIS] Failed to clear GPU cache: HTTP {resp.status_code}")
-        except Exception as e:
-            self.logger.warning(f"[TRELLIS] Exception clearing GPU cache: {e}")
-
 
     async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
         """Generate 3D model using TRELLIS server with prompt optimization"""
@@ -968,9 +867,6 @@ class ContinuousTrellisOrchestrator:
             # Step 1: Optimize prompt to reduce zero fidelity risk
             optimized_prompt = self.optimize_prompt_for_generation(task)
             
-            # clear cache on the server
-            self._clear_trellis_gpu_cache()
-
             # Step 2: Get deterministic seed
             deterministic_seed = self.get_deterministic_seed(task)
             self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed}")
@@ -1148,11 +1044,6 @@ class ContinuousTrellisOrchestrator:
             # print("time elapsed: ", submit_time_elapsed)
             task.submitted_at = time.time()
             
-            # Calculate total processing time from validator response to submission
-            if task.pulled_at:
-                task.total_processing_time = task.submitted_at - task.pulled_at
-                self.logger.info(f"⏱️ Total processing time: {task.total_processing_time:.2f}s (from validator response to submission)")
-            
             if response and hasattr(response, 'feedback') and response.feedback:
                 feedback = response.feedback
                 
@@ -1180,8 +1071,6 @@ class ContinuousTrellisOrchestrator:
                 self.stats['successful_submissions'] += 1
                 if task.current_miner_reward:
                     self.stats['total_rewards'] += task.current_miner_reward
-                if task.total_processing_time:
-                    self.stats['total_processing_time'] += task.total_processing_time
                 
                 self.logger.info(f"✅ Submission successful to UID {task.validator_uid} ({submit_time_elapsed:.2f}s)")
                 self.logger.info(f"   Task fidelity: {task.task_fidelity_score:.4f}")
@@ -1327,7 +1216,6 @@ class ContinuousTrellisOrchestrator:
                     'success_rate': self.stats['successful_submissions'] / max(1, self.stats['tasks_processed']),
                     'avg_generation_time': self.stats['total_generation_time'] / max(1, self.stats['successful_generations']),
                     'avg_validation_time': self.stats['total_validation_time'] / max(1, self.stats['successful_validations']),
-                    'avg_total_processing_time': self.stats['total_processing_time'] / max(1, self.stats['successful_submissions']),
                     'total_rewards': self.stats['total_rewards'],
                     'rewards_per_hour': self.stats['total_rewards'] / max(0.1, uptime_hours),
                     'optimization_rate': (self.stats['optimization_improvements'] / max(1, self.stats['prompts_optimized'])) * 100,
@@ -1363,18 +1251,11 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Total rewards: {self.stats['total_rewards']:.6f} TAO")
         self.logger.info(f"Idle validations: {self.stats['idle_validations']}")
         self.logger.info(f"Prompts optimized: {self.stats['prompts_optimized']}")
-        self.logger.info(f"Reproducibility optimizations: {self.stats.get('reproducibility_optimizations', 0)}")
-        self.logger.info(f"Traditional optimizations: {self.stats.get('traditional_optimizations', 0)}")
         self.logger.info(f"Optimization improvements: {self.stats['optimization_improvements']}")
         
         if uptime_hours > 0:
             self.logger.info(f"Tasks/hour: {self.stats['tasks_processed'] / uptime_hours:.1f}")
             self.logger.info(f"Rewards/hour: {self.stats['total_rewards'] / uptime_hours:.6f} TAO")
-            
-        # Processing time statistics
-        if self.stats['successful_submissions'] > 0:
-            avg_processing_time = self.stats['total_processing_time'] / self.stats['successful_submissions']
-            self.logger.info(f"Average total processing time: {avg_processing_time:.2f}s")
             
         # Optimization statistics
         if self.stats['prompts_optimized'] > 0:
@@ -1473,7 +1354,7 @@ class ContinuousTrellisOrchestrator:
             self.running = False
             self.print_status()
             self.save_statistics()
-            self.logger.info("🏁 Continuous mining stopped")
+            self.logger.info("�� Continuous mining stopped")
 
 async def main():
     """Main function"""
@@ -1490,10 +1371,6 @@ async def main():
     parser.add_argument("--no-optimize", action="store_true", help="Disable prompt optimization")
     parser.add_argument("--aggressive-optimize", action="store_true", help="Enable aggressive optimization mode")
     parser.add_argument("--quiet-optimize", action="store_true", help="Reduce optimization logging detail")
-    
-    # Reproducibility optimization arguments
-    parser.add_argument("--no-reproducibility", action="store_true", help="Disable reproducibility optimization")
-    parser.add_argument("--reproducibility-similarity", type=float, default=0.51, help="Minimum similarity threshold for reproducibility (default: 0.3)")
     
     # Determinism arguments
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
@@ -1523,11 +1400,6 @@ async def main():
         config['optimization_aggressive_mode'] = True
     if args.quiet_optimize:
         config['log_optimization_details'] = False
-    
-    # Reproducibility optimization configuration
-    if args.no_reproducibility:
-        config['enable_reproducibility_optimization'] = False
-    config['reproducibility_min_similarity'] = args.reproducibility_similarity
     
     # Determinism configuration
     if args.variable_seeds:
