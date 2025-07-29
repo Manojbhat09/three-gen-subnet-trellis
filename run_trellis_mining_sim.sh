@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Unified TRELLIS Mining Runner
-# Purpose: Single entrypoint to run either one-shot, continuous, or simulation TRELLIS mining
+# Purpose: Single entrypoint to run one-shot, continuous, or simulation TRELLIS mining
 
 set -e
 
@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRELLIS_SERVER_PORT=8096
 VALIDATION_SERVER_PORT=10006
-OUTPUT_DIR="./trellis_mining_outputs" # Unified output directory
+OUTPUT_DIR="./trellis_mining_simulator_outputs" # Unified output directory
 DB_FILE="trellis_mining_tasks.db"     # Unified database file
 
 # --- Colors ---
@@ -37,7 +37,6 @@ check_service() {
 
 check_trellis_server() {
     print_status "Checking TRELLIS server (http://localhost:$TRELLIS_SERVER_PORT)..."
-    # if check_service "http://localhost:$TRELLIS_SERVER_PORT/health/"; then
     local status=$(curl -s "http://localhost:${TRELLIS_SERVER_PORT}/status/")
     if echo "$status" | grep -q '"ready":true'; then
         print_success "TRELLIS server is running and ready."
@@ -46,10 +45,6 @@ check_trellis_server() {
         print_warning "TRELLIS server is running but models are not loaded."
         return 1
     fi
-    # else
-    #     print_error "TRELLIS server is not running."
-    #     return 1
-    # fi
 }
 
 start_trellis_server() {
@@ -82,36 +77,26 @@ Usage: $0 [OPTIONS]
 
 Unified TRELLIS Mining Runner. Manages one-shot, continuous, and simulation mining modes.
 
-Modes:
-  --continuous            Run in continuous, always-on mining mode. (Recommended for production)
-  --simulate              Run in simulation mode using prompts from a file.
-  
 Options:
-  --harvest               Enable task harvesting from validators.
-  --no-harvest            Disable task harvesting.
+  --continuous              Run in continuous, always-on mining mode. (Recommended)
+  --simulate                Run in simulation mode using a local prompt file.
+  --promptfile FILE         (Simulation mode only) Path to the Python file with prompts.
   
-  --submit                Enable result submission to validators.
-  --no-submit             Disable result submission.
+  --harvest                 Enable task harvesting from validators.
+  --no-harvest              Disable task harvesting.
   
-  --validate              Enable local validation of generations.
-  --no-validate           Disable local validation.
+  --submit                  Enable result submission to validators.
+  --no-submit               Disable result submission.
   
-  --max-tasks N           (One-shot mode only) Max tasks to process. Default: 5.
-  --start-server          Auto-start TRELLIS server if not running.
+  --validate                Enable local validation of generations.
+  --no-validate             Disable local validation.
   
-  --promptfile FILE       (Simulation mode only) Path to Python file with EPISODIC_TEST_PROMPTS list.
-  --no-optimize           Disable prompt optimization.
-  --aggressive-optimize   Enable aggressive optimization mode.
-  --quiet-optimize        Reduce optimization logging detail.
-  --no-reproducibility    Disable reproducibility optimization.
-  --reproducibility-similarity FLOAT  Minimum similarity threshold for reproducibility (default: 0.3).
-  --variable-seeds        Use prompt-hash based seeds (default: fixed seed 42).
-  --seed INT              Fixed seed to use when not using variable seeds (default: 42).
-  
-  --help                  Show this help message.
+  --max-tasks N             (One-shot mode only) Max tasks to process. Default: 5.
+  --start-server            Auto-start TRELLIS server if not running.
+  --help                    Show this help message.
 
 Database:
-  All modes use SQLite databases for task deduplication and tracking.
+  All modes use a SQLite database for task deduplication.
 
 Examples:
   # Run a one-shot job to harvest and submit 3 tasks:
@@ -120,14 +105,8 @@ Examples:
   # Run in continuous mining mode (recommended for production):
   $0 --continuous --start-server
 
-  # Run simulation with prompts from file:
+  # Run a simulation using prompts from a file:
   $0 --simulate --promptfile episodic_test_prompts.py --start-server
-
-  # Run simulation with custom optimization settings:
-  $0 --simulate --promptfile episodic_test_prompts.py --aggressive-optimize --variable-seeds
-
-  # Run a simple test without harvesting or submitting:
-  $0 --no-harvest --no-submit
 
 EOF
 }
@@ -147,7 +126,8 @@ main() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             --continuous) mode="continuous"; shift ;;
-            --simulate) mode="simulation"; shift ;;
+            --simulate) mode="simulate"; shift ;;
+            --promptfile) promptfile="$2"; shift 2 ;;
             --harvest) harvest=true; shift ;;
             --no-harvest) harvest=false; shift ;;
             --submit) submit=true; shift ;;
@@ -156,7 +136,6 @@ main() {
             --no-validate) validate=false; shift ;;
             --max-tasks) max_tasks="$2"; shift 2 ;;
             --start-server) start_server=true; shift ;;
-            --promptfile) promptfile="$2"; shift 2 ;;
             --help) show_usage; exit 0 ;;
             *) print_error "Unknown option: $1"; show_usage; exit 1 ;;
         esac
@@ -165,24 +144,7 @@ main() {
     # Print header
     print_status "--- UNIFIED TRELLIS MINING RUNNER ---"
     print_status "Mode: $mode"
-    print_status "Database: $DB_FILE"
     print_status "-------------------------------------"
-    
-    # Validate simulation mode requirements
-    if [ "$mode" == "simulation" ]; then
-        if [ -z "$promptfile" ]; then
-            print_error "Simulation mode requires --promptfile argument."
-            show_usage
-            exit 1
-        fi
-        
-        if [ ! -f "$promptfile" ]; then
-            print_error "Prompt file not found: $promptfile"
-            exit 1
-        fi
-        
-        print_status "Simulation mode: Using prompts from $promptfile"
-    fi
     
     # Setup cleanup trap
     trap 'kill $TRELLIS_PID 2>/dev/null' EXIT
@@ -198,7 +160,29 @@ main() {
     fi
 
     # Build script arguments for the correct orchestrator
-    if [ "$mode" == "continuous" ]; then
+    if [ "$mode" == "simulate" ]; then
+        if [ -z "$promptfile" ]; then
+            print_error "--promptfile is required for simulation mode."
+            show_usage
+            exit 1
+        fi
+        if [ ! -f "$promptfile" ]; then
+            print_error "Prompt file not found: $promptfile"
+            exit 1
+        fi
+        if [ ! -f "continuous_trellis_orchestrator_simulator.py" ]; then
+            print_error "continuous_trellis_orchestrator_simulator.py not found. Cannot run simulation."
+            exit 1
+        fi
+
+        print_status "Starting SIMULATOR orchestrator..."
+        local script_args=()
+        script_args+=(--promptfile "$promptfile")
+        [ "$validate" = false ] && script_args+=(--no-validate)
+        
+        python3 continuous_trellis_orchestrator_simulator.py --no-optimize "${script_args[@]}"
+
+    elif [ "$mode" == "continuous" ]; then
         print_status "Starting CONTINUOUS orchestrator..."
         local script_args=()
         [ "$harvest" = false ] && script_args+=(--no-harvest)
@@ -206,19 +190,6 @@ main() {
         [ "$validate" = false ] && script_args+=(--no-validate)
         
         python3 continuous_trellis_orchestrator.py "${script_args[@]}"
-        
-    elif [ "$mode" == "simulation" ]; then
-        print_status "Starting SIMULATION orchestrator..."
-        local script_args=("--promptfile" "$promptfile")
-        [ "$validate" = false ] && script_args+=(--no-validate)
-        
-        # Pass through any optimization arguments that were provided
-        # Note: These would need to be passed as additional arguments to the script
-        # For now, we'll use the basic arguments and users can run the simulator directly
-        # for advanced optimization options
-        
-        python3 continuous_trellis_orchestrator_simulator.py "${script_args[@]}"
-        
     else
         print_status "Starting ONE-SHOT orchestrator..."
         
@@ -245,4 +216,4 @@ main() {
     print_success "--- Mining Run Finished ---"
 }
 
-main "$@" 
+main "$@"
