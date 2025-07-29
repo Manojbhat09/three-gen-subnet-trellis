@@ -31,7 +31,7 @@ git checkout -b trellis
 git config pull.rebase true
 git config --global user.email "manojbhat09@gmail.com"
 git config --global user.name "manojbhat09"
-git pull origin trellis
+git pull origin rl_control #trellis
 
 
 echo "Installing system dependencies..."
