@@ -97,7 +97,8 @@ MAX_SEED = np.iinfo(np.int32).max
 GENERATION_CONFIG = {
     'output_dir': './trellis_submit_outputs',
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'num_inference_steps_t2i': 8,
+    # 'num_inference_steps_t2i': 8,
+    'num_inference_steps_t2i': 7,
     'flux_model_url': "https://huggingface.co/gokaygokay/flux-game/blob/main/hyperflux_00001_.q8_0.gguf",
     'flux_base_model': "camenduru/FLUX.1-dev-diffusers",
     'trellis_model_path': 'cavargas10/TRELLIS',
@@ -111,10 +112,13 @@ GENERATION_CONFIG = {
     # 'slat_guidance_strength': 4.0, #3.0, #4.0,
     # 'slat_sampling_steps': 12, #13,
     'guidance_scale': 3.5,
-    'ss_guidance_strength': 8.5, #, 8.5,
-    'ss_sampling_steps': 23,
+    # 'ss_guidance_strength': 8.5, #, 8.5,
+    'ss_guidance_strength': 7.5, #, 8.5,
+    # 'ss_sampling_steps': 23,
+    'ss_sampling_steps': 25,
     'slat_guidance_strength': 4.0, #4.0,
-    'slat_sampling_steps': 24,
+    # 'slat_sampling_steps': 24,
+    'slat_sampling_steps': 26,
     # Memory management
     'enable_memory_efficient_attention': True,
     'enable_cpu_offload': True,
@@ -595,8 +599,8 @@ class TrellisGenerator:
                 # enhanced_prompt = "wbgmsst, " + prompt + ", 3D isometric object, accurate, clean, practical, white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + " ,3D isometric white background"
                 # enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric accurate, white background"
-                # enhanced_prompt = prompt + ", 3D isometric, accurate, white background" # might work better
-                enhanced_prompt = prompt 
+                enhanced_prompt = prompt + ", 3D isometric, accurate, white background"
+                # enhanced_prompt = prompt 
                 generator = torch.Generator(device=device).manual_seed(seed)
                 with torch.no_grad():
                     image = self.flux_pipeline(

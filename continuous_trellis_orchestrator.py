@@ -9,6 +9,7 @@ Features:
 - Automatic validation during idle periods
 - Comprehensive statistics and JSON logging
 - Always-on generation server integration
+- PRIORITY-BASED server coordination for time-critical tasks
 """
 
 import asyncio
@@ -73,6 +74,242 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+class PriorityServerCoordinator:
+    """
+    Priority-based server coordinator that gives the orchestrator HIGH PRIORITY access.
+    This allows time-critical subnet tasks to bypass or interrupt other processes.
+    """
+    
+    def __init__(self, server_url: str = "http://localhost:8096", 
+                 max_wait_time_seconds: int = 60,
+                 status_check_interval: int = 1,
+                 priority_timeout: int = 30,
+                 on_interruption_callback=None):
+        """
+        Initialize the priority server coordinator.
+        
+        Args:
+            server_url: Base URL of the GPU server
+            max_wait_time_seconds: Maximum time to wait for server availability
+            status_check_interval: Interval between status checks (faster for priority)
+            priority_timeout: Timeout for priority access attempts
+        """
+        self.server_url = server_url.rstrip('/')
+        self.max_wait_time_seconds = max_wait_time_seconds
+        self.status_check_interval = status_check_interval
+        self.priority_timeout = priority_timeout
+        self.on_interruption_callback = on_interruption_callback
+        self.logger = logging.getLogger(__name__)
+        
+    def check_server_status(self) -> Dict[str, Any]:
+        """
+        Check the current status of the GPU server.
+        
+        Returns:
+            Dictionary containing server status information
+        """
+        try:
+            # First check health endpoint
+            health_url = f"{self.server_url}/health/"
+            health_resp = requests.get(health_url, timeout=3)  # Faster timeout for priority
+            if health_resp.status_code != 200:
+                return {
+                    "available": False,
+                    "status": "unhealthy",
+                    "error": f"Health check failed: HTTP {health_resp.status_code}"
+                }
+            
+            # Check job status
+            job_status_url = f"{self.server_url}/job/status/"
+            job_resp = requests.get(job_status_url, timeout=3)
+            if job_resp.status_code != 200:
+                return {
+                    "available": False,
+                    "status": "unknown",
+                    "error": f"Job status check failed: HTTP {job_resp.status_code}"
+                }
+            
+            job_data = job_resp.json()
+            job_status = job_data.get('status', 'unknown')
+            
+            # For priority coordinator, we consider server available if it's not in critical busy states
+            # We can interrupt non-critical operations
+            if job_status in ('processing', 'generating', 'validating'):
+                # Check if this is a priority operation (ours) or low priority (optimizer)
+                job_id = job_data.get('job_id', '')
+                prompt = job_data.get('prompt', '')
+                
+                # If it's our job, we can use the server
+                if self._is_our_job(job_id, prompt):
+                    return {
+                        "available": True,
+                        "status": job_status,
+                        "job_id": job_id,
+                        "our_job": True
+                    }
+                else:
+                    # It's someone else's job - we can interrupt for priority
+                    return {
+                        "available": True,  # Available for priority access
+                        "status": f"interruptible_{job_status}",
+                        "job_id": job_id,
+                        "prompt": prompt,
+                        "interruptible": True
+                    }
+            
+            # Server is available
+            return {
+                "available": True,
+                "status": job_status,
+                "job_id": job_data.get('job_id')
+            }
+            
+        except requests.exceptions.Timeout:
+            return {
+                "available": False,
+                "status": "timeout",
+                "error": "Server status check timed out"
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                "available": False,
+                "status": "connection_error",
+                "error": "Cannot connect to server"
+            }
+        except Exception as e:
+            return {
+                "available": False,
+                "status": "error",
+                "error": str(e)
+            }
+    
+    def _is_our_job(self, job_id: str, prompt: str) -> bool:
+        """
+        Determine if the current job is ours (orchestrator) or someone else's (optimizer).
+        
+        Args:
+            job_id: Current job ID
+            prompt: Current prompt being processed
+            
+        Returns:
+            True if this is our job, False if it's someone else's
+        """
+        # Check if job_id contains our identifiers
+        if job_id and any(identifier in job_id.lower() for identifier in ['orchestrator', 'subnet', 'miner', 'task']):
+            return True
+        
+        # Check if prompt matches our patterns (subnet tasks are usually shorter and specific)
+        if prompt and len(prompt) < 100:  # Subnet tasks are typically shorter
+            return True
+        
+        # Default: assume it's not our job (optimizer jobs are usually longer prompts)
+        return False
+    
+    def wait_for_priority_access(self, task_id: str = None) -> bool:
+        """
+        Wait for priority access to the server, with ability to interrupt other processes.
+        
+        Args:
+            task_id: Our task ID for identification
+            
+        Returns:
+            True if priority access granted, False if timeout reached
+        """
+        start_wait_time = time.time()
+        
+        while time.time() - start_wait_time < self.max_wait_time_seconds:
+            status = self.check_server_status()
+            
+            if status["available"]:
+                if status.get("interruptible"):
+                    self.logger.warning(f"🚨 PRIORITY INTERRUPTION: Interrupting job {status.get('job_id', 'unknown')} for subnet task {task_id}")
+                    # Force clear the server to interrupt the current job
+                    self._force_clear_server()
+                    time.sleep(2)  # Brief pause for server to reset
+                    # Track this interruption
+                    if self.on_interruption_callback:
+                        self.on_interruption_callback()
+                    return True
+                else:
+                    self.logger.info(f"✅ Priority access granted (status: {status['status']})")
+                    return True
+            
+            # Log the current status
+            error = status.get("error", "unknown error")
+            self.logger.info(f"⏳ Waiting for priority access: {status['status']} - {error}")
+            
+            # Wait before next check (faster for priority)
+            time.sleep(self.status_check_interval)
+        
+        self.logger.error(f"⏰ Priority access timeout ({self.max_wait_time_seconds}s) - subnet task may be missed!")
+        return False
+    
+    def _force_clear_server(self):
+        """
+        Force clear the server to interrupt current operations.
+        This is used for priority access when subnet tasks are at risk.
+        """
+        try:
+            # Try to clear cache
+            clear_url = f"{self.server_url}/clear_cache/"
+            resp = requests.post(clear_url, timeout=5)
+            if resp.status_code == 200:
+                self.logger.info("🧹 Server cache cleared for priority access")
+            else:
+                self.logger.warning(f"⚠️ Failed to clear server cache: HTTP {resp.status_code}")
+            
+            # Try to reset job status
+            reset_url = f"{self.server_url}/job/reset/"
+            resp = requests.post(reset_url, timeout=5)
+            if resp.status_code == 200:
+                self.logger.info("🔄 Server job status reset for priority access")
+            else:
+                self.logger.warning(f"⚠️ Failed to reset job status: HTTP {resp.status_code}")
+                
+        except Exception as e:
+            self.logger.warning(f"⚠️ Exception during force clear: {e}")
+    
+    def clear_server_cache(self) -> bool:
+        """
+        Clear the GPU cache on the server.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            clear_url = f"{self.server_url}/clear_cache/"
+            resp = requests.post(clear_url, timeout=5)
+            if resp.status_code == 200:
+                self.logger.info("🧹 GPU cache cleared successfully")
+                return True
+            else:
+                self.logger.warning(f"⚠️ Failed to clear GPU cache: HTTP {resp.status_code}")
+                return False
+        except Exception as e:
+            self.logger.warning(f"⚠️ Exception clearing GPU cache: {e}")
+            return False
+    
+    def mark_priority_job_start(self, task_id: str, prompt: str):
+        """
+        Mark the start of a priority job to help with identification.
+        
+        Args:
+            task_id: Our task ID
+            prompt: The prompt being processed
+        """
+        self.logger.info(f"🚀 Starting PRIORITY job: {task_id} - '{prompt[:50]}...'")
+    
+    def mark_priority_job_end(self, task_id: str):
+        """
+        Mark the end of a priority job.
+        
+        Args:
+            task_id: Our task ID
+        """
+        self.logger.info(f"✅ Completed PRIORITY job: {task_id}")
+
+
 @dataclass
 class TaskRecord:
     """Record of a task with full metadata"""
@@ -101,6 +338,9 @@ class TaskRecord:
     # File paths
     ply_file_path: Optional[str] = None
     compressed_file_path: Optional[str] = None
+    
+    # Priority access tracking
+    priority_access_timeout: bool = False
 
 @dataclass 
 class ValidatorState:
@@ -503,6 +743,15 @@ class ContinuousTrellisOrchestrator:
             self.reproducibility_system = None
             self.logger.info("⚠️ Reproducibility system not available")
         
+        # Priority server coordinator
+        self.priority_coordinator = PriorityServerCoordinator(
+            server_url=self.config.get('generation_server_url', 'http://localhost:8096'),
+            max_wait_time_seconds=self.config.get('priority_access_max_wait', 60),
+            status_check_interval=self.config.get('priority_access_check_interval', 1),
+            priority_timeout=self.config.get('priority_access_timeout', 30),
+            on_interruption_callback=self._on_priority_interruption
+        )
+        
         # Statistics
         self.stats = {
             'session_start': time.time(),
@@ -520,6 +769,10 @@ class ContinuousTrellisOrchestrator:
             'reproducibility_optimizations': 0,
             'traditional_optimizations': 0,
             'optimization_improvements': 0,
+            'priority_access_timeouts': 0,  # Track priority access timeouts
+            'priority_interruptions': 0,    # Track when we interrupt other jobs
+            'server_unavailable_skips': 0,  # Track when we skip task pulls due to server unavailability
+            'server_status_check_errors': 0, # Track server status check errors
         }
         
         self.logger.info("🎯 Continuous TRELLIS Orchestrator initialized")
@@ -549,7 +802,7 @@ class ContinuousTrellisOrchestrator:
         return {
             # Bittensor settings
             'wallet_name': 'manbeast3b',
-            'hotkey_name': 'm3bnew2',
+            'hotkey_name': 'm3b',
             'netuid': 17,
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
@@ -590,6 +843,11 @@ class ContinuousTrellisOrchestrator:
             # Reproducibility optimization settings
             'enable_reproducibility_optimization': True,
             'reproducibility_min_similarity': 0.3,
+
+            # Priority access settings
+            'priority_access_max_wait': 60, # Max seconds to wait for priority access
+            'priority_access_check_interval': 1, # Seconds between status checks
+            'priority_access_timeout': 30, # Max seconds to wait for priority access
         }
     
     def _setup_bittensor(self) -> bool:
@@ -748,22 +1006,22 @@ class ContinuousTrellisOrchestrator:
     async def pull_task_from_validator(self, validator: ValidatorState) -> Optional[TaskRecord]:
         """Pull task from a specific validator with deduplication"""
         try:
-            # Check if TRELLIS server is busy before pulling a new task
+            # Check if TRELLIS server is available for priority access
+            # CRITICAL: Don't pull tasks if server is unavailable - we can't process them!
             try:
-                server_status_url = self.config.get('generation_server_url', 'http://localhost:8096') + '/job/status/'
-                resp = requests.get(server_status_url, timeout=5)
-                if resp.status_code == 200:
-                    status_json = resp.json()
-                    job_status = status_json.get('status', 'unknown')
-                    # Only proceed if server is idle or completed
-                    if job_status not in ('idle', 'completed'):
-                        self.logger.info(f"⏳ TRELLIS server busy (status: {job_status}), skipping task pull.")
-                        return None
+                server_status = self.priority_coordinator.check_server_status()
+                if not server_status.get("available", False):
+                    status = server_status.get('status', 'unknown')
+                    error = server_status.get('error', 'unknown error')
+                    self.logger.warning(f"⏳ TRELLIS server unavailable (status: {status}, error: {error}) - SKIPPING task pull")
+                    self.stats['server_unavailable_skips'] = self.stats.get('server_unavailable_skips', 0) + 1
+                    return None  # Don't pull tasks when server is unavailable
                 else:
-                    self.logger.warning(f"⚠️ Could not check TRELLIS server status (HTTP {resp.status_code}), proceeding anyway.")
+                    self.logger.debug(f"✅ TRELLIS server available (status: {server_status.get('status', 'unknown')})")
             except Exception as e:
-                self.logger.warning(f"⚠️ Exception checking TRELLIS server status: {e}, proceeding anyway.")
-                time.sleep(5)
+                self.logger.warning(f"⚠️ Exception checking TRELLIS server status: {e} - SKIPPING task pull")
+                self.stats['server_status_check_errors'] = self.stats.get('server_status_check_errors', 0) + 1
+                return None  # Don't pull tasks when we can't check server status
             if not self.is_validator_available(validator):
                 return None
             
@@ -965,11 +1223,21 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"🎨 Generating 3D model: '{task.prompt}' (task: {task.task_id})")
         
         try:
+            # CRITICAL: Wait for priority access to the server
+            # This is where we ensure subnet tasks get priority over optimizer tasks
+            if not self.priority_coordinator.wait_for_priority_access(task.task_id):
+                self.logger.error(f"❌ PRIORITY ACCESS TIMEOUT for task {task.task_id} - subnet task will be missed!")
+                task.priority_access_timeout = True  # Mark this task as having priority access timeout
+                return None
+            
+            # Mark the start of our priority job
+            self.priority_coordinator.mark_priority_job_start(task.task_id, task.prompt)
+            
             # Step 1: Optimize prompt to reduce zero fidelity risk
             optimized_prompt = self.optimize_prompt_for_generation(task)
             
-            # clear cache on the server
-            self._clear_trellis_gpu_cache()
+            # Clear cache on the server using priority coordinator
+            self.priority_coordinator.clear_server_cache()
 
             # Step 2: Get deterministic seed
             deterministic_seed = self.get_deterministic_seed(task)
@@ -1010,13 +1278,20 @@ class ContinuousTrellisOrchestrator:
                 self.stats['successful_generations'] += 1
                 self.stats['total_generation_time'] += generation_time
                 
+                # Mark the completion of our priority job
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                
                 return {'ply_data': ply_data, 'compression_ratio': compression_ratio}
             else:
                 self.logger.error(f"❌ Generation failed: HTTP {response.status_code}")
+                # Mark the completion of our priority job even on failure
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
                 return None
         
         except Exception as e:
             self.logger.error(f"❌ Generation exception: {e}")
+            # Mark the completion of our priority job even on exception
+            self.priority_coordinator.mark_priority_job_end(task.task_id)
             return None
     
     async def validate_model(self, task: TaskRecord, ply_data: bytes) -> Optional[float]:
@@ -1209,17 +1484,22 @@ class ContinuousTrellisOrchestrator:
             return False
     
     async def process_task(self, task: TaskRecord) -> bool:
-        """Process a single task end-to-end"""
+        """Process a single task end-to-end with priority access"""
         self.logger.info(f"🔄 Processing task {task.task_id}: '{task.prompt}'")
         
         task.processed_at = time.time()
         self.stats['tasks_processed'] += 1
         
         try:
-            # Step 1: Generate 3D model
+            # Step 1: Generate 3D model with priority access
             generation_result = await self.generate_3d_model(task)
             if not generation_result:
-                self.logger.error(f"❌ Generation failed for task {task.task_id}")
+                # Check if this was due to priority access timeout
+                if hasattr(task, 'priority_access_timeout') and task.priority_access_timeout:
+                    self.logger.error(f"❌ PRIORITY ACCESS TIMEOUT for task {task.task_id} - subnet task missed!")
+                    self.stats['priority_access_timeouts'] = self.stats.get('priority_access_timeouts', 0) + 1
+                else:
+                    self.logger.error(f"❌ Generation failed for task {task.task_id}")
                 self.db.save_task(task)
                 return False
             
@@ -1367,6 +1647,12 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Traditional optimizations: {self.stats.get('traditional_optimizations', 0)}")
         self.logger.info(f"Optimization improvements: {self.stats['optimization_improvements']}")
         
+        # Priority access statistics
+        self.logger.info(f"Priority access timeouts: {self.stats.get('priority_access_timeouts', 0)}")
+        self.logger.info(f"Priority interruptions: {self.stats.get('priority_interruptions', 0)}")
+        self.logger.info(f"Server unavailable skips: {self.stats.get('server_unavailable_skips', 0)}")
+        self.logger.info(f"Server status check errors: {self.stats.get('server_status_check_errors', 0)}")
+        
         if uptime_hours > 0:
             self.logger.info(f"Tasks/hour: {self.stats['tasks_processed'] / uptime_hours:.1f}")
             self.logger.info(f"Rewards/hour: {self.stats['total_rewards'] / uptime_hours:.6f} TAO")
@@ -1474,6 +1760,11 @@ class ContinuousTrellisOrchestrator:
             self.print_status()
             self.save_statistics()
             self.logger.info("🏁 Continuous mining stopped")
+    
+    def _on_priority_interruption(self):
+        """Callback when priority interruption occurs"""
+        self.stats['priority_interruptions'] = self.stats.get('priority_interruptions', 0) + 1
+        self.logger.info(f"📊 Priority interruption tracked: {self.stats['priority_interruptions']} total")
 
 async def main():
     """Main function"""

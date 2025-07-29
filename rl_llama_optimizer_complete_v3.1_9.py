@@ -338,7 +338,6 @@ GENERATE YOUR CUSTOM PROMPT:"""
             print(f"   🔥 LLaMA query failed (possible CUDA OOM): {e}")
             # Aggressive cleanup on failure
             if torch.cuda.is_available():
-                torch.cuda.empty_cache()
                 torch.cuda.synchronize()
                 time.sleep(1)
             raise e

@@ -12,6 +12,7 @@ Features:
 - Progressive strategy refinement
 - Comprehensive logging and analytics
 - Convergence tracking across episodes
+- Robust GPU server coordination with race condition prevention
 """
 
 import json
@@ -23,10 +24,185 @@ from typing import List, Dict, Any, Tuple
 import logging
 import time
 import re
+import requests
 from episodic_test_prompts import EPISODIC_TEST_PROMPTS
 # Import the V4.1 RL Loop optimizer
 # from smart_prompt_optimizer_v4_1_rl_loop import RLLoopAgent
 from smart_prompt_optimizer_v5_rl_loop import RLLoopAgent
+
+# Import the reproducibility system
+try:
+    from llm_close_prompt_reproducibility_test import LLMClosePromptReproducibility
+    REPRODUCIBILITY_SYSTEM_AVAILABLE = True
+    print("✅ Using reproducibility system for pre-optimization")
+except ImportError:
+    REPRODUCIBILITY_SYSTEM_AVAILABLE = False
+    print("⚠️ Reproducibility system not available")
+
+
+class ServerCoordinator:
+    """
+    Coordinates access to the GPU server to prevent race conditions and ensure proper sequencing.
+    Implements buffer times and status checking to avoid conflicts with other processes.
+    """
+    
+    def __init__(self, server_url: str = "http://localhost:8096", 
+                 buffer_time_seconds: int = 30,
+                 max_wait_time_seconds: int = 300,
+                 status_check_interval: int = 5):
+        """
+        Initialize the server coordinator.
+        
+        Args:
+            server_url: Base URL of the GPU server
+            buffer_time_seconds: Time to wait after server becomes available before using it
+            max_wait_time_seconds: Maximum time to wait for server to become available
+            status_check_interval: Interval between status checks
+        """
+        self.server_url = server_url.rstrip('/')
+        self.buffer_time_seconds = buffer_time_seconds
+        self.max_wait_time_seconds = max_wait_time_seconds
+        self.status_check_interval = status_check_interval
+        self.last_server_use_time = 0.0
+        self.logger = logging.getLogger(__name__)
+        
+    def check_server_status(self) -> Dict[str, Any]:
+        """
+        Check the current status of the GPU server.
+        
+        Returns:
+            Dictionary containing server status information
+        """
+        try:
+            # First check health endpoint
+            health_url = f"{self.server_url}/health/"
+            health_resp = requests.get(health_url, timeout=5)
+            if health_resp.status_code != 200:
+                return {
+                    "available": False,
+                    "status": "unhealthy",
+                    "error": f"Health check failed: HTTP {health_resp.status_code}"
+                }
+            
+            # Check job status
+            job_status_url = f"{self.server_url}/job/status/"
+            job_resp = requests.get(job_status_url, timeout=5)
+            if job_resp.status_code != 200:
+                return {
+                    "available": False,
+                    "status": "unknown",
+                    "error": f"Job status check failed: HTTP {job_resp.status_code}"
+                }
+            
+            job_data = job_resp.json()
+            job_status = job_data.get('status', 'unknown')
+            
+            # Check if server is busy
+            if job_status in ('processing', 'generating', 'validating'):
+                return {
+                    "available": False,
+                    "status": job_status,
+                    "job_id": job_data.get('job_id'),
+                    "prompt": job_data.get('prompt'),
+                    "start_time": job_data.get('start_time')
+                }
+            
+            # Check if enough time has passed since last use
+            time_since_last_use = time.time() - self.last_server_use_time
+            if time_since_last_use < self.buffer_time_seconds:
+                remaining_buffer = self.buffer_time_seconds - time_since_last_use
+                return {
+                    "available": False,
+                    "status": "buffer_time",
+                    "remaining_buffer_seconds": remaining_buffer,
+                    "last_use_time": self.last_server_use_time
+                }
+            
+            # Server is available
+            return {
+                "available": True,
+                "status": job_status,
+                "job_id": job_data.get('job_id')
+            }
+            
+        except requests.exceptions.Timeout:
+            return {
+                "available": False,
+                "status": "timeout",
+                "error": "Server status check timed out"
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                "available": False,
+                "status": "connection_error",
+                "error": "Cannot connect to server"
+            }
+        except Exception as e:
+            return {
+                "available": False,
+                "status": "error",
+                "error": str(e)
+            }
+    
+    def wait_for_server_availability(self) -> bool:
+        """
+        Wait for the server to become available, respecting buffer times.
+        
+        Returns:
+            True if server became available, False if timeout reached
+        """
+        start_wait_time = time.time()
+        
+        while time.time() - start_wait_time < self.max_wait_time_seconds:
+            status = self.check_server_status()
+            
+            if status["available"]:
+                self.logger.info(f"✅ Server is available (status: {status['status']})")
+                return True
+            
+            # Log the current status
+            if status["status"] == "buffer_time":
+                remaining = status.get("remaining_buffer_seconds", 0)
+                self.logger.info(f"⏳ Waiting for buffer time: {remaining:.1f}s remaining")
+            elif status["status"] in ("processing", "generating", "validating"):
+                job_id = status.get("job_id", "unknown")
+                prompt = status.get("prompt", "unknown")
+                self.logger.info(f"⏳ Server busy: {status['status']} (job: {job_id}, prompt: {prompt[:50]}...)")
+            else:
+                error = status.get("error", "unknown error")
+                self.logger.info(f"⏳ Server unavailable: {status['status']} - {error}")
+            
+            # Wait before next check
+            time.sleep(self.status_check_interval)
+        
+        self.logger.warning(f"⏰ Timeout waiting for server availability ({self.max_wait_time_seconds}s)")
+        return False
+    
+    def mark_server_used(self):
+        """Mark that the server has been used (for buffer time tracking)"""
+        self.last_server_use_time = time.time()
+        self.logger.info(f"📝 Marked server as used at {self.last_server_use_time}")
+    
+    def clear_server_cache(self) -> bool:
+        """
+        Clear the GPU cache on the server.
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            clear_url = f"{self.server_url}/clear_cache/"
+            resp = requests.post(clear_url, timeout=10)
+            if resp.status_code == 200:
+                self.logger.info("🧹 GPU cache cleared successfully")
+                return True
+            else:
+                self.logger.warning(f"⚠️ Failed to clear GPU cache: HTTP {resp.status_code}")
+                return False
+        except Exception as e:
+            self.logger.warning(f"⚠️ Exception clearing GPU cache: {e}")
+            return False
+
 
 class EpisodicPromptOptimizer:
     """
@@ -72,7 +248,9 @@ class EpisodicPromptOptimizer:
                  target_score: float = 0.85,
                  max_rounds_per_prompt: int = 5,
                  log_dir: str = "episodic_logs",
-                 log_path: str = "continuous_trellis.log"):
+                 log_path: str = "continuous_trellis.log",
+                 server_url: str = "http://localhost:8096",
+                 server_buffer_time: int = 30):
         """
         Initialize the episodic optimizer.
         
@@ -81,11 +259,20 @@ class EpisodicPromptOptimizer:
             target_score: Target validation score for each prompt
             max_rounds_per_prompt: Maximum optimization rounds per prompt
             log_dir: Directory for storing episode logs
+            log_path: Path to the continuous trellis log file
+            server_url: URL of the GPU server
+            server_buffer_time: Buffer time in seconds between server uses
         """
         self.num_episodes = num_episodes
         self.target_score = target_score
         self.max_rounds_per_prompt = max_rounds_per_prompt
         self.log_dir = log_dir
+        
+        # Initialize server coordinator
+        self.server_coordinator = ServerCoordinator(
+            server_url=server_url,
+            buffer_time_seconds=server_buffer_time
+        )
         
         # Extract 0-fidelity prompts from log and add to test prompts file
         self._update_test_prompts_from_log(log_path)
@@ -110,7 +297,8 @@ class EpisodicPromptOptimizer:
         
         # Initialize the RL optimizer with episodic memory
         self.optimizer = RLLoopAgent(
-            memory_file=os.path.join(self.log_dir, "episodic_memory.json")
+            memory_file=os.path.join(self.log_dir, "episodic_memory.json"),
+            trellis_server_url=server_url
         )
         
         # Override RL parameters to match episodic settings
@@ -122,7 +310,15 @@ class EpisodicPromptOptimizer:
         self.global_principles = []
         # Track best prompt and score for each test prompt across all episodes
         self.best_prompts = {prompt: {"score": 0.0, "prompt": prompt} for prompt in self.test_prompts}
-        
+        self.enable_reproducibility_optimization = REPRODUCIBILITY_SYSTEM_AVAILABLE
+        # Initialize reproducibility system
+        if REPRODUCIBILITY_SYSTEM_AVAILABLE:
+            self.reproducibility_system = LLMClosePromptReproducibility()
+            self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
+        else:
+            self.reproducibility_system = None
+            self.logger.info("⚠️ Reproducibility system not available")
+
     def _update_test_prompts_from_log(self, log_path: str):
         """Extract 0-fidelity prompts from log and add them to episodic_test_prompts.py"""
         try:
@@ -207,14 +403,42 @@ class EpisodicPromptOptimizer:
             except Exception as e2:
                 self.logger.error(f"[ERROR] Failed to reload test prompts: {e2}")
 
-    def _build_improvement_context(self, prompt: str, prompt_results: list) -> str:
+    def _build_improvement_context(self, prompt: str, prompt_results: list, min_similarity: float = 0.51) -> str:
         # Use best-so-far for this prompt across all episodes
+        
+        if self.enable_reproducibility_optimization:
+            try:
+                repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
+                    prompt, min_similarity, run_validation=False
+                )
+                similarity = 0.0
+                gold_score = 0.0
+                if repro_result:
+                    similarity = repro_result['similarity']
+                    gold_score = repro_result['gold_score']
+                    self.logger.info(f"🔄 Reproducibility optimization applied:")
+                    self.logger.info(f"   Original: {prompt}")
+                    self.logger.info(f"   Optimized: {repro_result['optimized_prompt']}")
+                    self.logger.info(f"   Similarity: {similarity:.3f}")
+                    self.logger.info(f"   Gold score: {gold_score:.4f}")
+                    optimized_prompt = repro_result['optimized_prompt']
+                else:
+                    optimized_prompt = prompt
+                    self.logger.info(f"🔄 Reproducibility optimization returned no result")
+            except Exception as e:
+                optimized_prompt = prompt
+                self.logger.info(f"🔄 Reproducibility optimization failed: {e}")
+        else:
+            optimized_prompt = prompt
+            self.logger.info(f"🔄 Reproducibility optimization disabled")
+
         best_so_far = self.best_prompts.get(prompt, {"score": 0.0, "prompt": prompt})
         if best_so_far["score"] > 0.0:
             return (
                 f"--- BEST SO FAR ---\n"
                 f"Prompt: '{best_so_far['prompt']}'\n"
                 f"Score: {best_so_far['score']:.3f}\n"
+                f"Pattern matching reconstruction of closest previously seen prompt: {optimized_prompt}\n"
                 "Your goal is to produce a prompt that scores higher than this. "
                 "If you cannot, explain why and try a different approach or strategy. "
                 "Address all feedback directly in your next attempt.\n"
@@ -225,6 +449,24 @@ class EpisodicPromptOptimizer:
                 "Focus on producing the highest scoring prompt possible. "
                 "If you do not succeed, analyze why and try a different approach next time.\n"
             )
+
+    def _wait_for_server_availability(self) -> bool:
+        """
+        Wait for the server to become available before starting optimization.
+        
+        Returns:
+            True if server is available, False if timeout reached
+        """
+        self.logger.info("🔍 Checking server availability before optimization...")
+        
+        if not self.server_coordinator.wait_for_server_availability():
+            self.logger.warning("⏰ Server availability timeout - skipping this prompt")
+            return False
+        
+        # Mark server as used to start buffer time
+        self.server_coordinator.mark_server_used()
+        self.logger.info("✅ Server is available and marked as used")
+        return True
 
     def run_single_episode(self, episode_num: int) -> Dict[str, Any]:
         """
@@ -239,6 +481,35 @@ class EpisodicPromptOptimizer:
         self.logger.info(f"\n{'='*60}")
         self.logger.info(f"STARTING EPISODE {episode_num}/{self.num_episodes}")
         self.logger.info(f"{'='*60}")
+        
+        # Check server health at the beginning of each episode
+        self.logger.info("🔍 Checking server health at episode start...")
+        server_status = self.server_coordinator.check_server_status()
+        if not server_status.get("available", False) and server_status.get("status") != "buffer_time":
+            self.logger.warning(f"⚠️ Server health check failed: {server_status.get('status', 'unknown')} - {server_status.get('error', 'unknown error')}")
+            self.logger.info("⏳ Waiting for server to become healthy...")
+            if not self.server_coordinator.wait_for_server_availability():
+                self.logger.error("❌ Server failed to become healthy - aborting episode")
+                return {
+                    'episode': episode_num,
+                    'start_time': datetime.now().isoformat(),
+                    'prompt_results': [],
+                    'episode_summary': {
+                        'error': 'Server health check failed',
+                        'total_prompts': 0,
+                        'successful_optimizations': 0,
+                        'success_rate': 0.0,
+                        'total_rounds': 0,
+                        'avg_rounds_per_prompt': 0,
+                        'total_score_improvement': 0.0,
+                        'avg_score_improvement': 0.0,
+                        'episode_duration_seconds': 0.0,
+                        'principles_learned': [],
+                        'end_time': datetime.now().isoformat()
+                    }
+                }
+        else:
+            self.logger.info("✅ Server health check passed")
         
         episode_start_time = time.time()
         episode_results = {
@@ -277,6 +548,18 @@ class EpisodicPromptOptimizer:
             self.logger.info(f"\n--- Episode {episode_num}, Prompt {prompt_idx} (Total: {len(self.test_prompts)}) ---")
             self.logger.info(f"Optimizing: '{prompt}'")
             
+            # Wait for server availability before starting optimization
+            if not self._wait_for_server_availability():
+                # Skip this prompt if server is not available
+                episode_results['prompt_results'].append({
+                    'prompt': prompt,
+                    'prompt_index': prompt_idx,
+                    'error': 'Server availability timeout',
+                    'rounds_used': 0,
+                    'converged': False
+                })
+                continue
+            
             prompt_start_time = time.time()
             
             try:
@@ -293,17 +576,24 @@ class EpisodicPromptOptimizer:
                     if final_score > 0.0:
                         break
                     else:
-                        self.logger.warning(f"Validation score 0.0 detected (likely CUDA OOM or failure). Clearing CUDA cache and retrying ({retry_count+1}/{max_retries})...")
+                        self.logger.warning(f"Validation score 0.0 detected (likely CUDA OOM or failure). Clearing server cache and retrying ({retry_count+1}/{max_retries})...")
                         try:
+                            # Clear server GPU cache
+                            if self.server_coordinator.clear_server_cache():
+                                self.logger.info("Server GPU cache cleared successfully.")
+                            else:
+                                self.logger.warning("Failed to clear server GPU cache.")
+                            
+                            # Also clear local CUDA cache if available
                             import torch
                             if torch.cuda.is_available():
                                 torch.cuda.empty_cache()
-                                self.logger.info("CUDA cache cleared.")
+                                self.logger.info("Local CUDA cache cleared.")
                         except Exception as e:
-                            self.logger.warning(f"Failed to clear CUDA cache: {e}")
+                            self.logger.warning(f"Failed to clear caches: {e}")
                         retry_count += 1
                         if retry_count < max_retries:
-                            time.sleep(2)
+                            time.sleep(5)  # Longer wait after cache clearing
                 prompt_duration = time.time() - prompt_start_time
                 # Extract results
                 rounds_used = result.get('total_rounds', 0)
@@ -553,6 +843,29 @@ class EpisodicPromptOptimizer:
             self.logger.info(f"Unique Principles: {learning_analysis.get('unique_principles', 0)}")
         
         self.logger.info(f"\n{'='*80}")
+    
+    def cleanup(self):
+        """Cleanup resources and perform final server coordination"""
+        self.logger.info("🧹 Performing cleanup...")
+        
+        # Clear server cache one final time
+        try:
+            if self.server_coordinator.clear_server_cache():
+                self.logger.info("✅ Final server cache clear successful")
+            else:
+                self.logger.warning("⚠️ Final server cache clear failed")
+        except Exception as e:
+            self.logger.warning(f"⚠️ Exception during final cleanup: {e}")
+        
+        # Save any pending memory
+        try:
+            if hasattr(self.optimizer, '_save_memory'):
+                self.optimizer._save_memory()
+                self.logger.info("✅ Memory saved successfully")
+        except Exception as e:
+            self.logger.warning(f"⚠️ Exception saving memory: {e}")
+        
+        self.logger.info("✅ Cleanup completed")
 
 
 def main():
@@ -561,11 +874,15 @@ def main():
     NUM_EPISODES = 30
     TARGET_SCORE = 0.85
     MAX_ROUNDS_PER_PROMPT = 5
+    SERVER_URL = "http://localhost:8096"
+    SERVER_BUFFER_TIME = 30  # 30 seconds buffer between server uses
     
     print(f"🚀 Starting Episodic Prompt Optimization")
     print(f"Episodes: {NUM_EPISODES}")
     print(f"Target Score: {TARGET_SCORE}")
     print(f"Max Rounds per Prompt: {MAX_ROUNDS_PER_PROMPT}")
+    print(f"Server URL: {SERVER_URL}")
+    print(f"Server Buffer Time: {SERVER_BUFFER_TIME}s")
     print(f"Prompts per Episode: 13")
     print(f"Total Optimizations: {NUM_EPISODES * 13}")
     print()
@@ -574,7 +891,9 @@ def main():
     optimizer = EpisodicPromptOptimizer(
         num_episodes=NUM_EPISODES,
         target_score=TARGET_SCORE,
-        max_rounds_per_prompt=MAX_ROUNDS_PER_PROMPT
+        max_rounds_per_prompt=MAX_ROUNDS_PER_PROMPT,
+        server_url=SERVER_URL,
+        server_buffer_time=SERVER_BUFFER_TIME
     )
     
     try:
@@ -593,6 +912,12 @@ def main():
         print(f"\n❌ Error during episodic optimization: {str(e)}")
         print(f"Partial results may be saved to: {optimizer.log_dir}")
         return None
+    finally:
+        # Always perform cleanup
+        try:
+            optimizer.cleanup()
+        except Exception as cleanup_error:
+            print(f"⚠️ Cleanup error: {cleanup_error}")
 
 
 if __name__ == "__main__":
