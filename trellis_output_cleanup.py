@@ -42,7 +42,7 @@ class TrellisOutputCleaner:
     """Safely clean up TRELLIS output directory based on server status"""
     
     def __init__(self, server_url: str = "http://localhost:8096", 
-                 output_dir: str = "./trellis_submit_outputs",
+                 output_dir: str = "./trellis_base_outputs",
                  cleanup_interval: int = 900,  # 15 minutes
                  dry_run: bool = False):
         """

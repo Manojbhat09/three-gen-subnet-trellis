@@ -69,6 +69,22 @@ def generate_and_get_ply_data(prompt: str) -> bytes:
             content_length = len(response.content)
             
             print(f"📦 Response received: {content_length:,} bytes (compression: {compression})")
+            print(f"🔍 DEBUG: All response headers:")
+            for key, value in response.headers.items():
+                print(f"   {key}: {value}")
+            
+            # Debug: Check first few bytes to identify format
+            first_bytes = response.content[:20]
+            print(f"🔍 DEBUG: First 20 bytes (hex): {first_bytes.hex()}")
+            print(f"🔍 DEBUG: First 20 bytes (ascii): {repr(first_bytes)}")
+            
+            # Check if it looks like SPZ data
+            if first_bytes.startswith(b'SPZ'):
+                print(f"✅ DEBUG: Data appears to be SPZ compressed")
+            elif first_bytes.startswith(b'ply'):
+                print(f"⚠️ DEBUG: Data appears to be uncompressed PLY")
+            else:
+                print(f"❓ DEBUG: Unknown data format")
             
             # Return the raw response content (compressed or uncompressed)
             return response.content
@@ -105,6 +121,23 @@ def validate_with_production_logic(ply_data: bytes, prompt: str) -> dict:
     
     try:
         print(f"🔬 Step 2: Preparing RequestData (SPZ compression=2)")
+        
+        # Debug: Check the data we received
+        print(f"🔍 DEBUG: Received data analysis:")
+        print(f"   Data length: {len(ply_data):,} bytes")
+        print(f"   First 50 bytes (hex): {ply_data[:50].hex()}")
+        print(f"   First 50 bytes (ascii): {repr(ply_data[:50])}")
+        
+        # Check if data is already SPZ compressed
+        if ply_data.startswith(b'SPZ'):
+            print(f"✅ DEBUG: Data is already SPZ compressed")
+            compression_type = 2  # SPZ
+        elif ply_data.startswith(b'ply'):
+            print(f"⚠️ DEBUG: Data is uncompressed PLY - will need compression")
+            compression_type = 0  # Uncompressed
+        else:
+            print(f"❓ DEBUG: Unknown data format - assuming SPZ")
+            compression_type = 2  # Assume SPZ
         
         # Encode PLY data as base64 (as done in production)
         encoded_data = base64.b64encode(ply_data).decode('utf-8')
@@ -223,10 +256,11 @@ def calculate_demo_fidelity_score(validation_score: float) -> float:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python subnet_accurate_validator.py \"<prompt>\"")
+        print("Usage: python subnet_accurate_validator.py \"<prompt>\" [--debug]")
         sys.exit(1)
     
     prompt = sys.argv[1]
+    debug_mode = "--debug" in sys.argv
     
     print(f"🚀 PRODUCTION-ACCURATE VALIDATION v2.0")
     print(f"=" * 60)

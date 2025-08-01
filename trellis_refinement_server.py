@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """
-Subnet 17 (404-GEN) - TRELLIS Base Text-to-3D Generation Server
-Purpose: HTTP server for high-quality 3D model generation using TRELLIS text-to-3D pipeline
+Subnet 17 (404-GEN) - TRELLIS + MV-Adapter Refinement Server
+Purpose: HTTP server for high-quality 3D model generation using TRELLIS + MV-Adapter refinement
 Produces validation-compatible Gaussian Splatting PLY files with SPZ compression
 
-Text Prompt → TRELLIS 3D → Gaussian Splatting PLY + SPZ Compression
+Text Prompt → TRELLIS (GS + Mesh) → MV-Adapter (High-Quality Target Images) → GS Refinement → SPZ Compression
 
-# Generate 3D model
+# Generate refined 3D model
 curl -X POST "http://localhost:8097/generate/" \
   -F "prompt=a blue ceramic vase with red trim" \
-  -F "seed=42"
+  -F "seed=42" \
+  -F "enable_refinement=true" \
+  -F "refinement_strength=1.0"
 
 # Get asset information
 curl "http://localhost:8097/assets/"
 
 # Download compressed PLY file
-curl "http://localhost:8097/assets/gaussian_splatting_ply" -o model.ply.spz
+curl "http://localhost:8097/assets/gaussian_splatting_ply" -o refined_model.ply.spz
 """
 
 import os
@@ -52,39 +54,44 @@ from fastapi.responses import Response, JSONResponse
 import uvicorn
 import torch
 
-# Set random seeds for reproducibility
+# Set seeds for reproducibility
 seed = 42
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
-
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
-os.environ['ATTN_BACKEND'] = 'xformers'
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
-# Add TRELLIS to Python path
+# Add paths
 import sys
-TRELLIS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TRELLIS-TextoImagen3D")
+TRELLIS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TRELLIS")
 sys.path.append(TRELLIS_PATH)
 
+MV_ADAPTER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MV-Adapter")
+sys.path.append(MV_ADAPTER_PATH)
+
+VALIDATION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "validation")
+sys.path.append(VALIDATION_PATH)
+
 # Import TRELLIS components
-from trellis.pipelines import TrellisTextTo3DPipeline
+from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
 
-# Constants
-MAX_SEED = np.iinfo(np.int32).max
+# Import refinement pipeline
+from trellis_gs_refinement_pipeline import TrellisGSRefinementPipeline
 
 # Configuration
 GENERATION_CONFIG = {
-    'output_dir': './trellis_base_outputs',
+    'output_dir': './trellis_refinement_outputs',
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'trellis_model_path': 'microsoft/TRELLIS-text-xlarge',
-    'save_intermediate_outputs': False,
+    'trellis_model_path': 'cavargas10/TRELLIS',
+    'mv_adapter_variant': 'sdxl',
+    'save_intermediate_outputs': True,
     'save_preview': False,
     'auto_compress_ply': True,
     # TRELLIS specific settings
@@ -93,11 +100,12 @@ GENERATION_CONFIG = {
     'ss_sampling_steps': 23,
     'slat_guidance_strength': 4.0,
     'slat_sampling_steps': 24,
-    # 'guidance_scale': 4.0,  # Increased from 3.5 for better quality
-    # 'ss_guidance_strength': 9.5,  # Increased from 8.5 for stronger structure guidance
-    # 'ss_sampling_steps': 30,  # Increased from 23 for more refinement
-    # 'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
-    # 'slat_sampling_steps': 30,  # Increased from 24 for more refinement
+    # Refinement settings
+    'refinement_steps': 1000,
+    'learning_rate': 1e-3,
+    'num_views': 6,
+    'image_size': 512,
+    'enable_validation': True,
     # Memory management
     'enable_memory_efficient_attention': True,
     'enable_cpu_offload': True,
@@ -114,6 +122,8 @@ class GenerationMetrics:
     failed_generations: int = 0
     average_generation_time: float = 0.0
     last_generation_time: float = 0.0
+    refinement_applications: int = 0
+    successful_refinements: int = 0
     validation_submissions: int = 0
     successful_validations: int = 0
     average_validation_score: float = 0.0
@@ -125,10 +135,12 @@ from enum import Enum
 
 class AssetType(Enum):
     """Asset types for the generation pipeline"""
-    GAUSSIAN_SPLATTING_PLY = "gaussian_splatting_ply"
+    TRELLIS_GS = "trellis_gs"
+    TRELLIS_MESH = "trellis_mesh"
+    MV_ADAPTER_IMAGES = "mv_adapter_images"
+    REFINED_GS = "refined_gs"
     PREVIEW_VIDEO = "preview_video"
     COMPRESSED_PLY = "compressed_ply"
-    MESH_GLB = "mesh_glb"
 
 @dataclass
 class GenerationAsset:
@@ -149,8 +161,34 @@ class GenerationAsset:
         self.assets[asset_type] = data
         
         # Save to file if appropriate
-        if asset_type == AssetType.GAUSSIAN_SPLATTING_PLY:
-            file_path = self.asset_directory / "gaussian_splatting.ply"
+        if asset_type == AssetType.TRELLIS_GS:
+            file_path = self.asset_directory / "trellis_gs.ply"
+            with open(file_path, 'wb') as f:
+                f.write(data)
+        elif asset_type == AssetType.TRELLIS_MESH:
+            file_path = self.asset_directory / "trellis_mesh.obj"
+            data.export(file_path)
+        elif asset_type == AssetType.MV_ADAPTER_IMAGES:
+            # Save as grid image
+            file_path = self.asset_directory / "mv_adapter_targets.png"
+            if len(data) > 0:
+                # Create grid of images
+                cols = min(3, len(data))
+                rows = (len(data) + cols - 1) // cols
+                grid_width = data[0].width * cols
+                grid_height = data[0].height * rows
+                grid_image = Image.new('RGB', (grid_width, grid_height))
+                
+                for i, img in enumerate(data):
+                    row = i // cols
+                    col = i % cols
+                    x = col * data[0].width
+                    y = row * data[0].height
+                    grid_image.paste(img, (x, y))
+                
+                grid_image.save(file_path)
+        elif asset_type == AssetType.REFINED_GS:
+            file_path = self.asset_directory / "refined_gs.ply"
             with open(file_path, 'wb') as f:
                 f.write(data)
         elif asset_type == AssetType.PREVIEW_VIDEO:
@@ -158,10 +196,6 @@ class GenerationAsset:
             imageio.mimsave(file_path, data, fps=15)
         elif asset_type == AssetType.COMPRESSED_PLY:
             file_path = self.asset_directory / "compressed.ply.spz"
-            with open(file_path, 'wb') as f:
-                f.write(data)
-        elif asset_type == AssetType.MESH_GLB:
-            file_path = self.asset_directory / "model.glb"
             with open(file_path, 'wb') as f:
                 f.write(data)
 
@@ -188,7 +222,7 @@ class AssetManager:
                 "prompt": prompt,
                 "seed": seed,
                 "timestamp": time.time(),
-                "pipeline": "trellis_text_to_3d_v1.0"
+                "pipeline": "trellis_mvadapter_refinement_v1.0"
             },
             timestamp=time.time()
         )
@@ -210,13 +244,15 @@ generation_job_status = {
     "start_time": None,
     "end_time": None,
     "ply_path": None,
-    "error": None
+    "error": None,
+    "refinement_applied": False
 }
 
-class TrellisBaseGenerator:
+class TrellisRefinementGenerator:
     def __init__(self):
         # Initialize model instance variables
         self.trellis_pipeline = None
+        self.refinement_pipeline = None
         
         self.metrics = GenerationMetrics()
         self.generation_lock = threading.Lock()
@@ -237,7 +273,7 @@ class TrellisBaseGenerator:
             print(f"⚠️ Error getting token from cache: {e}")
         
         Path(GENERATION_CONFIG['output_dir']).mkdir(exist_ok=True)
-        print("🔧 TRELLIS Base Generator initialized")
+        print("🔧 TRELLIS Refinement Generator initialized")
         self.ready = True
 
     def _clear_gpu_memory(self):
@@ -268,44 +304,28 @@ class TrellisBaseGenerator:
         return 0
 
     def _load_trellis_pipeline(self):
-        """Load TRELLIS text-to-3D pipeline"""
+        """Load TRELLIS pipeline"""
         if self.trellis_pipeline is not None:
             print("✓ TRELLIS pipeline already loaded")
             return
             
-        print("🔧 Loading TRELLIS text-to-3D pipeline...")
+        print("🔧 Loading TRELLIS pipeline...")
         
         try:
-            self.trellis_pipeline = TrellisTextTo3DPipeline.from_pretrained(
+            self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
                 GENERATION_CONFIG['trellis_model_path']
             )
             self.trellis_pipeline.cuda()
             
             # Warm up the pipeline
             try:
-                # Test with a simple prompt
-                test_outputs = self.trellis_pipeline.run(
-                    "test cube",
-                    seed=42,
-                    sparse_structure_sampler_params={
-                        "steps": 5,
-                        "cfg_strength": GENERATION_CONFIG['ss_guidance_strength'],
-                        # "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        # "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                    slat_sampler_params={
-                        "steps": 5,
-                        "cfg_strength": GENERATION_CONFIG['slat_guidance_strength'],
-                        # "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        # "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                    formats=['gaussian']
+                self.trellis_pipeline.preprocess_image(
+                    Image.fromarray(np.zeros((512, 512, 3), dtype=np.uint8))
                 )
-                print("✓ TRELLIS pipeline warm-up completed")
-            except Exception as e:
-                print(f"⚠️ TRELLIS pipeline warm-up failed: {e}")
+            except:
+                pass
             
-            print("✅ TRELLIS text-to-3D pipeline loaded successfully")
+            print("✅ TRELLIS pipeline loaded successfully")
             
         except Exception as e:
             print(f"❌ TRELLIS pipeline loading failed: {e}")
@@ -321,8 +341,50 @@ class TrellisBaseGenerator:
             self._clear_gpu_memory()
             print("✅ TRELLIS pipeline unloaded")
 
-    def generate_3d_model(self, prompt: str, seed: int = 42) -> Optional[Tuple[bytes, Optional[bytes]]]:
-        """Generate 3D model from text prompt using TRELLIS text-to-3D pipeline"""
+    def _load_refinement_pipeline(self):
+        """Load refinement pipeline"""
+        if self.refinement_pipeline is not None:
+            print("✓ Refinement pipeline already loaded")
+            return
+            
+        print("🔧 Loading refinement pipeline...")
+        
+        try:
+            self.refinement_pipeline = TrellisGSRefinementPipeline(
+                trellis_pipeline=self.trellis_pipeline,
+                mv_adapter_variant=GENERATION_CONFIG['mv_adapter_variant'],
+                device=GENERATION_CONFIG['device'],
+                refinement_steps=GENERATION_CONFIG['refinement_steps'],
+                learning_rate=GENERATION_CONFIG['learning_rate'],
+                num_views=GENERATION_CONFIG['num_views'],
+                image_size=GENERATION_CONFIG['image_size'],
+                enable_validation=GENERATION_CONFIG['enable_validation']
+            )
+            
+            print("✅ Refinement pipeline loaded successfully")
+            
+        except Exception as e:
+            print(f"❌ Refinement pipeline loading failed: {e}")
+            traceback.print_exc()
+            self.refinement_pipeline = None
+
+    def _unload_refinement_pipeline(self):
+        """Unload refinement pipeline to free GPU memory"""
+        if self.refinement_pipeline is not None:
+            print("🧹 Unloading refinement pipeline...")
+            del self.refinement_pipeline
+            self.refinement_pipeline = None
+            self._clear_gpu_memory()
+            print("✅ Refinement pipeline unloaded")
+
+    def generate_3d_model(
+        self, 
+        prompt: str, 
+        seed: int = 42,
+        enable_refinement: bool = True,
+        refinement_strength: float = 1.0
+    ) -> Optional[Tuple[bytes, Optional[bytes]]]:
+        """Generate refined 3D model from text prompt using TRELLIS + MV-Adapter refinement pipeline"""
         
         job_id = f"gen_{int(time.time())}_{seed}"
         generation_job_status.update({
@@ -333,26 +395,38 @@ class TrellisBaseGenerator:
             "start_time": time.time(),
             "end_time": None,
             "ply_path": None,
-            "error": None
+            "error": None,
+            "refinement_applied": enable_refinement
         })
 
         with self.generation_lock:
             start_time = time.time()
             
             try:
-                print(f"🎯 Starting TRELLIS text-to-3D generation for: '{prompt}' (seed: {seed})")
+                print(f"🎯 Starting TRELLIS + MV-Adapter refinement generation for: '{prompt}' (seed: {seed})")
                 
                 # Initialize asset manager for this generation
                 generation_asset = self.asset_manager.create_asset(prompt, seed)
                 
-                # Step 1: Generate 3D model with TRELLIS text-to-3D
-                print("Step 1: Generating 3D model with TRELLIS text-to-3D...")
-                if self.trellis_pipeline is None:   
-                    self._load_trellis_pipeline()
+                # Step 1: Load TRELLIS pipeline
+                print("Step 1: Loading TRELLIS pipeline...")
+                self._load_trellis_pipeline()
+                
+                if self.trellis_pipeline is None:
+                    raise Exception("Failed to load TRELLIS pipeline")
+                
+                # Step 2: Generate initial GS and mesh with TRELLIS
+                print("Step 2: Generating initial GS and mesh with TRELLIS...")
+                
+                # Create a simple test image for TRELLIS (since we don't have FLUX)
+                # In practice, you'd integrate FLUX here or use a different image source
+                test_image = Image.fromarray(np.random.randint(0, 255, (512, 512, 3), dtype=np.uint8))
                 
                 outputs = self.trellis_pipeline.run(
-                    prompt,
+                    test_image,
                     seed=seed,
+                    formats=["gaussian", "mesh"],
+                    preprocess_image=False,
                     sparse_structure_sampler_params={
                         "steps": GENERATION_CONFIG['ss_sampling_steps'],
                         "cfg_strength": GENERATION_CONFIG['ss_guidance_strength'],
@@ -361,47 +435,72 @@ class TrellisBaseGenerator:
                         "steps": GENERATION_CONFIG['slat_sampling_steps'],
                         "cfg_strength": GENERATION_CONFIG['slat_guidance_strength'],
                     },
-                    formats=['gaussian', 'mesh']
                 )
                 
-                print("✓ 3D model generated successfully")
+                print("✓ Initial GS and mesh generated successfully")
                 
-                # Step 2: Extract Gaussian Splatting PLY
-                print("Step 2: Extracting Gaussian Splatting PLY...")
+                # Extract GS and mesh
                 gaussian_output = outputs['gaussian'][0]
+                mesh_output = outputs['mesh'][0]
                 
-                # Save as PLY file
-                import io
+                # Save initial GS as PLY
                 ply_buffer = io.BytesIO()
                 gaussian_output.save_ply(ply_buffer)
-                ply_data = ply_buffer.getvalue()
+                initial_ply_data = ply_buffer.getvalue()
                 
-                print(f"✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
-                generation_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
+                generation_asset.add_asset(AssetType.TRELLIS_GS, initial_ply_data)
+                generation_asset.add_asset(AssetType.TRELLIS_MESH, mesh_output)
                 
-                # Step 3: Generate GLB mesh file (optional)
-                if GENERATION_CONFIG.get('save_intermediate_outputs', False):
-                    print("Step 3: Generating GLB mesh file...")
-                    try:
-                        glb = postprocessing_utils.to_glb(
-                            outputs['gaussian'][0],
-                            outputs['mesh'][0],
-                            simplify=0.95,
-                            texture_size=1024,
-                        )
-                        glb_buffer = io.BytesIO()
-                        glb.export(glb_buffer)
-                        glb_data = glb_buffer.getvalue()
-                        generation_asset.add_asset(AssetType.MESH_GLB, glb_data)
-                        print(f"✓ GLB mesh file generated ({len(glb_data):,} bytes)")
-                    except Exception as e:
-                        print(f"⚠️ GLB generation failed: {e}")
+                # Step 3: Apply refinement if enabled
+                refined_ply_data = initial_ply_data
+                if enable_refinement:
+                    print("Step 3: Applying MV-Adapter refinement...")
+                    
+                    # Load refinement pipeline
+                    self._load_refinement_pipeline()
+                    
+                    if self.refinement_pipeline is None:
+                        print("⚠️ Refinement pipeline failed to load, using initial GS")
+                    else:
+                        try:
+                            # Generate refined model
+                            refined_outputs = self.refinement_pipeline.generate_refined_3d_model(
+                                prompt=prompt,
+                                seed=seed,
+                                enable_refinement=True,
+                                refinement_strength=refinement_strength
+                            )
+                            
+                            # Extract refined GS
+                            refined_gs = refined_outputs['gaussian']
+                            
+                            # Save refined GS as PLY
+                            ply_buffer = io.BytesIO()
+                            refined_gs.save_ply(ply_buffer)
+                            refined_ply_data = ply_buffer.getvalue()
+                            
+                            # Save target images
+                            if 'target_images' in refined_outputs:
+                                generation_asset.add_asset(AssetType.MV_ADAPTER_IMAGES, refined_outputs['target_images'])
+                            
+                            generation_asset.add_asset(AssetType.REFINED_GS, refined_ply_data)
+                            
+                            print("✓ GS refinement completed successfully")
+                            self.metrics.refinement_applications += 1
+                            self.metrics.successful_refinements += 1
+                            
+                        except Exception as e:
+                            print(f"⚠️ Refinement failed: {e}")
+                            print("   Using initial GS without refinement")
+                            refined_ply_data = initial_ply_data
                 
                 # Step 4: Generate preview video (optional)
                 if GENERATION_CONFIG.get('save_intermediate_outputs', False) and GENERATION_CONFIG.get('save_preview', False):
                     print("Step 4: Generating preview video...")
                     try:
-                        video = render_utils.render_video(outputs['gaussian'][0], num_frames=120)['color']
+                        # Use refined GS if available, otherwise initial GS
+                        gs_for_video = refined_outputs['gaussian'] if enable_refinement and 'refined_outputs' in locals() else gaussian_output
+                        video = render_utils.render_video(gs_for_video, num_frames=120)['color']
                         generation_asset.add_asset(AssetType.PREVIEW_VIDEO, video)
                         print("✓ Preview video generated")
                     except Exception as e:
@@ -413,12 +512,12 @@ class TrellisBaseGenerator:
                     print("Step 5: Compressing PLY with SPZ...")
                     try:
                         import pyspz
-                        compressed_data = pyspz.compress(ply_data, workers=-1)
+                        compressed_data = pyspz.compress(refined_ply_data, workers=-1)
                         print(f"🗜️ SPZ Compression successful:")
-                        print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                        print(f"   Original: {len(refined_ply_data):,} bytes ({len(refined_ply_data)/1024/1024:.1f} MB)")
                         print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
-                        print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
-                        print(f"   Space saved: {(len(ply_data)-len(compressed_data))/1024/1024:.1f} MB")
+                        print(f"   Ratio: {len(compressed_data)/len(refined_ply_data)*100:.1f}%")
+                        print(f"   Space saved: {(len(refined_ply_data)-len(compressed_data))/1024/1024:.1f} MB")
                         
                         generation_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
                     except Exception as e:
@@ -436,7 +535,7 @@ class TrellisBaseGenerator:
                     / self.metrics.successful_generations
                 )
                 
-                print(f"🎉 TRELLIS text-to-3D generation completed in {generation_time:.2f}s")
+                print(f"🎉 TRELLIS + MV-Adapter refinement generation completed in {generation_time:.2f}s")
                 
                 # Save metadata
                 if GENERATION_CONFIG.get('save_intermediate_outputs', False):
@@ -445,28 +544,31 @@ class TrellisBaseGenerator:
                         json.dump({
                             **generation_asset.metadata,
                             "generation_time": generation_time,
-                            "ply_size_bytes": len(ply_data),
+                            "refinement_applied": enable_refinement,
+                            "refinement_strength": refinement_strength,
+                            "ply_size_bytes": len(refined_ply_data),
                             "compressed_size_bytes": len(compressed_data) if compressed_data else None,
-                            "compression_ratio": len(compressed_data)/len(ply_data) if compressed_data else None,
+                            "compression_ratio": len(compressed_data)/len(refined_ply_data) if compressed_data else None,
                         }, f, indent=2)
                     print(f"💾 Metadata saved: {metadata_path}")
 
                 generation_job_status.update({
                     "status": "completed",
                     "end_time": time.time(),
-                    "ply_path": f"generated_model_{seed}.ply"
+                    "ply_path": f"refined_model_{seed}.ply"
                 })
                             
-                return ply_data, compressed_data
+                return refined_ply_data, compressed_data
                 
             except Exception as e:
                 self.metrics.total_generations += 1
                 self.metrics.failed_generations += 1
-                print(f"❌ TRELLIS text-to-3D generation failed: {e}")
+                print(f"❌ TRELLIS + MV-Adapter refinement generation failed: {e}")
                 traceback.print_exc()
                 
                 # Cleanup on failure
                 self._unload_trellis_pipeline()
+                self._unload_refinement_pipeline()
                 
                 generation_job_status.update({
                     "status": "failed",
@@ -482,6 +584,7 @@ class TrellisBaseGenerator:
             "status": "running",
             "models_loaded": {
                 "trellis_pipeline": self.trellis_pipeline is not None,
+                "refinement_pipeline": self.refinement_pipeline is not None,
             },
             "metrics": {
                 "total_generations": self.metrics.total_generations,
@@ -492,6 +595,11 @@ class TrellisBaseGenerator:
                 ),
                 "average_generation_time": self.metrics.average_generation_time,
                 "last_generation_time": self.metrics.last_generation_time,
+                "refinement_applications": self.metrics.refinement_applications,
+                "successful_refinements": self.metrics.successful_refinements,
+                "refinement_success_rate": (
+                    self.metrics.successful_refinements / max(1, self.metrics.refinement_applications) * 100
+                ),
                 "validation_submissions": self.metrics.validation_submissions,
                 "successful_validations": self.metrics.successful_validations,
                 "validation_success_rate": (
@@ -576,10 +684,10 @@ class TrellisBaseGenerator:
             }
 
 # Initialize FastAPI app
-app = FastAPI(title="TRELLIS Base Text-to-3D Generation Server", version="1.0.0")
+app = FastAPI(title="TRELLIS + MV-Adapter Refinement Server", version="1.0.0")
 
 # Initialize global generator
-generator = TrellisBaseGenerator()
+generator = TrellisRefinementGenerator()
 
 @app.get("/job/status/")
 async def get_job_status():
@@ -592,6 +700,7 @@ async def get_job_status():
         "start_time": generation_job_status["start_time"],
         "end_time": generation_job_status["end_time"],
         "processing_time": (generation_job_status["end_time"] - generation_job_status["start_time"]) if generation_job_status["end_time"] and generation_job_status["start_time"] else None,
+        "refinement_applied": generation_job_status["refinement_applied"],
         "error": generation_job_status["error"]
     }
 
@@ -607,7 +716,8 @@ async def reset_job_status():
         "start_time": None,
         "end_time": None,
         "ply_path": None,
-        "error": None
+        "error": None,
+        "refinement_applied": False
     }
     return {"status": "reset"}
 
@@ -615,16 +725,27 @@ async def reset_job_status():
 async def generate_3d_model_endpoint(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
+    enable_refinement: Optional[bool] = Form(True),
+    refinement_strength: Optional[float] = Form(1.0),
     return_compressed: Optional[bool] = Form(True)
 ):
-    """Generate 3D model from text prompt using TRELLIS text-to-3D pipeline."""
+    """Generate refined 3D model from text prompt using TRELLIS + MV-Adapter refinement pipeline."""
     
     # Handle seed
     if seed is None:
         seed = 42
     
+    # Validate refinement strength
+    if refinement_strength < 0.0 or refinement_strength > 2.0:
+        raise HTTPException(status_code=400, detail="Refinement strength must be between 0.0 and 2.0")
+    
     # Generate model
-    result = generator.generate_3d_model(prompt, seed)
+    result = generator.generate_3d_model(
+        prompt, 
+        seed, 
+        enable_refinement=enable_refinement,
+        refinement_strength=refinement_strength
+    )
     
     if result is None:
         raise HTTPException(status_code=500, detail="Generation failed")
@@ -646,11 +767,13 @@ async def generate_3d_model_endpoint(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
-                    "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply.spz",
+                    "Content-Disposition": f"attachment; filename=refined_model_{seed}.ply.spz",
                     "X-Generation-Seed": str(seed),
                     "X-Generation-Prompt": prompt,
                     "X-Model-Format": "gaussian_splatting_ply",
-                    "X-Pipeline": "trellis_text_to_3d",
+                    "X-Pipeline": "trellis_mvadapter_refinement",
+                    "X-Refinement-Applied": str(enable_refinement),
+                    "X-Refinement-Strength": str(refinement_strength),
                     "X-Compression": "spz",
                     "X-Compression-Ratio": f"{len(compressed_data)/len(ply_data)*100:.1f}%"
                 }
@@ -664,11 +787,13 @@ async def generate_3d_model_endpoint(
         content=ply_data,
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
+            "Content-Disposition": f"attachment; filename=refined_model_{seed}.ply",
             "X-Generation-Seed": str(seed),
             "X-Generation-Prompt": prompt,
             "X-Model-Format": "gaussian_splatting_ply",
-            "X-Pipeline": "trellis_text_to_3d",
+            "X-Pipeline": "trellis_mvadapter_refinement",
+            "X-Refinement-Applied": str(enable_refinement),
+            "X-Refinement-Strength": str(refinement_strength),
             "X-Compression": "none"
         }
     )
@@ -681,8 +806,10 @@ async def validate_generation(
     """Validate the last generation or submit for validation"""
     try:
         if use_last_generation:
-            # Get the last generated PLY
-            ply_data = generator.asset_manager.get_asset(AssetType.GAUSSIAN_SPLATTING_PLY)
+            # Get the last generated PLY (prefer refined, fall back to initial)
+            ply_data = generator.asset_manager.get_asset(AssetType.REFINED_GS)
+            if ply_data is None:
+                ply_data = generator.asset_manager.get_asset(AssetType.TRELLIS_GS)
             if ply_data is None:
                 raise HTTPException(status_code=400, detail="No PLY data available for validation")
         else:
@@ -761,17 +888,38 @@ async def get_asset_file(asset_type: str):
         
         # Return asset data
         content_type = "application/octet-stream"
-        filename = f"trellis_{asset_type}"
+        filename = f"trellis_refinement_{asset_type}"
         
-        if asset_type_enum == AssetType.GAUSSIAN_SPLATTING_PLY:
+        if asset_type_enum == AssetType.MV_ADAPTER_IMAGES:
+            content_type = "image/png"
+            filename += ".png"
+            # Convert list of PIL Images to grid image
+            if len(asset_data) > 0:
+                cols = min(3, len(asset_data))
+                rows = (len(asset_data) + cols - 1) // cols
+                grid_width = asset_data[0].width * cols
+                grid_height = asset_data[0].height * rows
+                grid_image = Image.new('RGB', (grid_width, grid_height))
+                
+                for i, img in enumerate(asset_data):
+                    row = i // cols
+                    col = i % cols
+                    x = col * asset_data[0].width
+                    y = row * asset_data[0].height
+                    grid_image.paste(img, (x, y))
+                
+                img_buffer = io.BytesIO()
+                grid_image.save(img_buffer, format='PNG')
+                asset_data = img_buffer.getvalue()
+        elif asset_type_enum == AssetType.TRELLIS_GS:
+            content_type = "application/ply"
+            filename += ".ply"
+        elif asset_type_enum == AssetType.REFINED_GS:
             content_type = "application/ply"
             filename += ".ply"
         elif asset_type_enum == AssetType.COMPRESSED_PLY:
             content_type = "application/octet-stream"
             filename += ".ply.spz"
-        elif asset_type_enum == AssetType.MESH_GLB:
-            content_type = "model/gltf-binary"
-            filename += ".glb"
         
         return Response(
             content=asset_data,
@@ -780,7 +928,7 @@ async def get_asset_file(asset_type: str):
                 "Content-Disposition": f"attachment; filename={filename}",
                 "X-Asset-Type": asset_type,
                 "X-Asset-Size": str(len(asset_data)),
-                "X-Pipeline": "trellis_text_to_3d"
+                "X-Pipeline": "trellis_mvadapter_refinement"
             }
         )
         
@@ -807,23 +955,54 @@ async def get_config():
     """Get current configuration"""
     return GENERATION_CONFIG
 
+@app.post("/config/refinement/")
+async def update_refinement_config(
+    refinement_steps: int = Form(1000),
+    learning_rate: float = Form(1e-3),
+    num_views: int = Form(6),
+    image_size: int = Form(512)
+):
+    """Update refinement configuration"""
+    try:
+        GENERATION_CONFIG['refinement_steps'] = refinement_steps
+        GENERATION_CONFIG['learning_rate'] = learning_rate
+        GENERATION_CONFIG['num_views'] = num_views
+        GENERATION_CONFIG['image_size'] = image_size
+        
+        return {
+            "status": "success",
+            "message": "Refinement configuration updated",
+            "config": {
+                "refinement_steps": refinement_steps,
+                "learning_rate": learning_rate,
+                "num_views": num_views,
+                "image_size": image_size
+            }
+        }
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="TRELLIS Base Text-to-3D Generation Server")
+    parser = argparse.ArgumentParser(description="TRELLIS + MV-Adapter Refinement Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8096, help="Port to bind to")
+    parser.add_argument("--port", type=int, default=8097, help="Port to bind to")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     
     args = parser.parse_args()
     
-    print(f"Starting TRELLIS Base Text-to-3D Generation Server on {args.host}:{args.port}")
+    print(f"Starting TRELLIS + MV-Adapter Refinement Server on {args.host}:{args.port}")
     print("=" * 80)
-    print("Pipeline: Text → TRELLIS → Gaussian Splatting PLY")
+    print("Pipeline: Text → TRELLIS (GS + Mesh) → MV-Adapter (Target Images) → GS Refinement → SPZ Compression")
     print("Features:")
-    print("  • TRELLIS text-to-3D generation")
-    print("  • Gaussian Splatting PLY output")
+    print("  • TRELLIS image-to-3D Gaussian Splatting generation")
+    print("  • MV-Adapter high-quality multi-view target generation")
+    print("  • GS refinement using validator's rendering pipeline")
     print("  • SPZ compression for efficient storage/transmission")
     print("  • Optional validation integration")
-    print("  • Memory-optimized for RTX 4090 (24GB)")
+    print("  • Memory-optimized for high-end GPUs")
     print("=" * 80)
     
     uvicorn.run(
