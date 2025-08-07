@@ -53,23 +53,31 @@ class LLMClosePromptReproducibility:
         # Cache for similarity calculations
         self.similarity_cache = {}
 
-    def _run_validator(self, prompt: str) -> Dict[str, Any]:
+    def _run_validator(self, original_prompt: str, optimized_prompt: str = None) -> Dict[str, Any]:
         """Runs the subnet_accurate_validator.py script to get ground truth score."""
-        print(f"  🔍 Validating optimized prompt: '{prompt[:60]}...'")
-        try:
+        if optimized_prompt and optimized_prompt != original_prompt:
+            print(f"  🔍 Validating optimized prompt: '{optimized_prompt[:60]}...'")
+            print(f"  🎯 Computing scores against original: '{original_prompt[:60]}...'")
             cmd = [
                 "bash", "-c",
-                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{prompt}\""
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\""
             ]
-            process = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
-            validator_output_file = "subnet_validation_results.json"
-            if os.path.exists(validator_output_file):
-                with open(validator_output_file, 'r') as f:
-                    return json.load(f)
-            return {"error": "subnet_validation_results.json not found."}
-        except Exception as e:
-            print(f"  ❌ Validation script failed for prompt: '{prompt[:60]}...'")
-            return {"error": f"Validator script failed: {e}"}
+        else:
+            print(f"  🔍 Validating prompt: '{original_prompt[:60]}...'")
+            cmd = [
+                "bash", "-c",
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
+            ]
+            try:
+                process = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
+                validator_output_file = "subnet_validation_results.json"
+                if os.path.exists(validator_output_file):
+                    with open(validator_output_file, 'r') as f:
+                        return json.load(f)
+                return {"error": "subnet_validation_results.json not found."}
+            except Exception as e:
+                print(f"  ❌ Validation script failed for prompt: '{original_prompt[:60]}...'")
+                return {"error": f"Validator script failed: {e}"}
 
     def _load_episodic_memory(self) -> Dict[str, Any]:
         """Loads episodic memory and extracts gold standard results."""
@@ -388,7 +396,7 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
         # Step 6: Validate the optimized prompt to get ground truth score (optional)
         if run_validation:
             print("  🎯 Running ground truth validation...")
-            validation_results = self._run_validator(optimized_prompt)
+            validation_results = self._run_validator(original_prompt, optimized_prompt)
             optimized_score = validation_results.get("validation_engine_score", 0.0)
             
             # Calculate improvement metrics

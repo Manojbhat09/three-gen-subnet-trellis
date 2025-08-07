@@ -1,88 +1,116 @@
 #!/usr/bin/env python3
+"""
+Debug Validation
+Purpose: Debug the validation step to identify the issue
+"""
 
+import subprocess
+import json
+import time
 import sys
-import os
-sys.path.insert(0, 'validation')
 
-def test_imports():
-    print("Testing imports...")
+def test_validation_step():
+    """Test the validation step with detailed output"""
+    print("🔍 Debugging Validation Step")
+    print("=" * 50)
+    
+    # Test with a simple case first
+    original_prompt = "greek amphora scene detail"
+    optimized_prompt = "Isometric 3D, greek amphora scene detail"
+    
+    print(f"Original prompt: '{original_prompt}'")
+    print(f"Optimized prompt: '{optimized_prompt}'")
+    
+    # Check if we have a PLY file to validate
+    import os
+    if os.path.exists("benchmark_outputs"):
+        files = os.listdir("benchmark_outputs")
+        print(f"Found {len(files)} files in benchmark_outputs:")
+        for f in files:
+            print(f"  - {f}")
+    
+    # Try running validation with more verbose output
+    cmd = [
+        "bash", "-c",
+        f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" 2>&1"
+    ]
+    
+    print(f"\nRunning command: {' '.join(cmd)}")
+    print("=" * 50)
+    
     try:
-        import requests
-        print("✓ requests imported")
-        
-        import pyspz
-        print("✓ pyspz imported")
-        
-        import torch
-        print("✓ torch imported")
-        
-        from validation.engine.validation_engine import ValidationEngine
-        print("✓ ValidationEngine imported")
-        
-        from validation.engine.io.ply import PlyLoader
-        print("✓ PlyLoader imported")
-        
-        from validation.engine.rendering.renderer import Renderer
-        print("✓ Renderer imported")
-        
-        return True
-    except Exception as e:
-        print(f"✗ Import failed: {e}")
-        return False
-
-def test_server_connection():
-    print("\nTesting server connection...")
-    try:
-        import requests
-        response = requests.post(
-            "http://127.0.0.1:8096/generate/",
-            data={"prompt": "test", "return_compressed": True},
-            timeout=5
+        # Run with timeout and capture all output
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True, 
+            timeout=120  # 2 minutes timeout
         )
-        print(f"✓ Server responded with status: {response.status_code}")
-        print(f"✓ Response size: {len(response.content)} bytes")
-        return response.content
+        
+        print(f"Return code: {result.returncode}")
+        print(f"stdout length: {len(result.stdout)}")
+        print(f"stderr length: {len(result.stderr)}")
+        
+        if result.stdout:
+            print("\nSTDOUT:")
+            print(result.stdout)
+        
+        if result.stderr:
+            print("\nSTDERR:")
+            print(result.stderr)
+        
+        if result.returncode == 0:
+            # Check if validation results file was created
+            if os.path.exists("subnet_validation_results.json"):
+                with open("subnet_validation_results.json", 'r') as f:
+                    data = json.load(f)
+                    print("\n✅ Validation Results:")
+                    print(json.dumps(data, indent=2))
+            else:
+                print("\n❌ Validation results file not found")
+        else:
+            print(f"\n❌ Validation failed with return code {result.returncode}")
+            
+    except subprocess.TimeoutExpired:
+        print("\n❌ Validation timed out after 2 minutes")
     except Exception as e:
-        print(f"✗ Server connection failed: {e}")
-        return None
+        print(f"\n❌ Exception during validation: {e}")
 
-def test_decompression(data):
-    print("\nTesting decompression...")
+def test_simple_validation():
+    """Test validation with just the original prompt"""
+    print("\n🔍 Testing Simple Validation (original prompt only)")
+    print("=" * 50)
+    
+    original_prompt = "greek amphora scene detail"
+    
+    cmd = [
+        "bash", "-c",
+        f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" 2>&1"
+    ]
+    
     try:
-        import pyspz
-        import io
-        from validation.engine.io.ply import PlyLoader
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True, 
+            timeout=120
+        )
         
-        decompressed = pyspz.decompress(data)
-        print(f"✓ Decompressed size: {len(decompressed)} bytes")
+        print(f"Return code: {result.returncode}")
         
-        ply_loader = PlyLoader()
-        gs_data = ply_loader.from_buffer(io.BytesIO(decompressed))
-        print("✓ PLY data loaded successfully")
-        return gs_data
+        if result.stdout:
+            print("\nSTDOUT:")
+            print(result.stdout[-500:])  # Last 500 chars
+        
+        if result.stderr:
+            print("\nSTDERR:")
+            print(result.stderr[-500:])  # Last 500 chars
+            
+    except subprocess.TimeoutExpired:
+        print("❌ Simple validation timed out")
     except Exception as e:
-        print(f"✗ Decompression failed: {e}")
-        return None
-
-def main():
-    print("=== Validation Debug Script ===\n")
-    
-    # Test 1: Imports
-    if not test_imports():
-        return
-    
-    # Test 2: Server connection
-    data = test_server_connection()
-    if data is None:
-        return
-    
-    # Test 3: Decompression
-    gs_data = test_decompression(data)
-    if gs_data is None:
-        return
-    
-    print("\n✓ All basic tests passed!")
-    print("The validation pipeline should work. Try running the full script now.")
+        print(f"❌ Exception: {e}")
 
 if __name__ == "__main__":
-    main() 
+    test_validation_step()
+    test_simple_validation() 

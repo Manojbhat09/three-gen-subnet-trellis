@@ -28,7 +28,9 @@ import requests
 from episodic_test_prompts import EPISODIC_TEST_PROMPTS
 # Import the V4.1 RL Loop optimizer
 # from smart_prompt_optimizer_v4_1_rl_loop import RLLoopAgent
-from smart_prompt_optimizer_v5_rl_loop import RLLoopAgent
+# from smart_prompt_optimizer_v5_rl_loop import RLLoopAgent
+from smart_prompt_optimizer_v5_rl_loop_lora import RLLoopAgent
+# from smart_prompt_optimizer_v5_rl_loop_hunyuan import RLLoopAgent
 
 # Import the reproducibility system
 try:
@@ -250,7 +252,8 @@ class EpisodicPromptOptimizer:
                  log_dir: str = "episodic_logs",
                  log_path: str = "continuous_trellis.log",
                  server_url: str = "http://localhost:8096",
-                 server_buffer_time: int = 30):
+                 server_buffer_time: int = 30,
+                 endpoint: str = "generate/"):
         """
         Initialize the episodic optimizer.
         
@@ -267,7 +270,8 @@ class EpisodicPromptOptimizer:
         self.target_score = target_score
         self.max_rounds_per_prompt = max_rounds_per_prompt
         self.log_dir = log_dir
-        
+        self.endpoint = endpoint
+
         # Initialize server coordinator
         self.server_coordinator = ServerCoordinator(
             server_url=server_url,
@@ -571,7 +575,7 @@ class EpisodicPromptOptimizer:
                 retry_count = 0
                 result = None
                 while retry_count < max_retries:
-                    result = self.optimizer.optimize_with_rl_loop(prompt, prompt_with_context=prompt_with_context)
+                    result = self.optimizer.optimize_with_rl_loop(prompt, prompt_with_context=prompt_with_context, endpoint=self.endpoint)
                     final_score = result.get('final_score', 0.0)
                     if final_score > 0.0:
                         break
@@ -876,7 +880,8 @@ def main():
     MAX_ROUNDS_PER_PROMPT = 5
     SERVER_URL = "http://localhost:8096"
     SERVER_BUFFER_TIME = 30  # 30 seconds buffer between server uses
-    
+    # ENDPOINT = "generate/"
+    ENDPOINT = "generate/baolei/"
     print(f"🚀 Starting Episodic Prompt Optimization")
     print(f"Episodes: {NUM_EPISODES}")
     print(f"Target Score: {TARGET_SCORE}")
@@ -893,7 +898,8 @@ def main():
         target_score=TARGET_SCORE,
         max_rounds_per_prompt=MAX_ROUNDS_PER_PROMPT,
         server_url=SERVER_URL,
-        server_buffer_time=SERVER_BUFFER_TIME
+        server_buffer_time=SERVER_BUFFER_TIME,
+        endpoint=ENDPOINT
     )
     
     try:

@@ -88,24 +88,29 @@ class ExperimentRunner:
         except IOError as e:
             print(f"❌ Error: Could not write to results file '{self.results_file}': {e}")
 
-    def _run_validator(self, prompt: str) -> Dict[str, Any]:
+    def _run_validator(self, original_prompt: str, optimized_prompt: str = None) -> Dict[str, Any]:
         """
         Runs the subnet_accurate_validator.py script for a given prompt.
 
         Args:
-            prompt: The prompt to validate.
+            original_prompt: The original prompt to compute scores against.
+            optimized_prompt: The optimized prompt to use for generation (optional).
 
         Returns:
             A dictionary containing the parsed validation results.
         """
-        print(f"  🔍 Validating prompt: '{prompt[:50]}...'")
-        try:
-            # This command assumes the validator is in the same directory.
-            # Adjust the path if necessary.
-            # Using bash -c to handle conda activation properly.
+        if optimized_prompt and optimized_prompt != original_prompt:
+            print(f"  🔍 Validating optimized prompt: '{optimized_prompt[:50]}...'")
+            print(f"  🎯 Computing scores against original: '{original_prompt[:50]}...'")
             cmd = [
                 "bash", "-c",
-                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{prompt}\""
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\""
+            ]
+        else:
+            print(f"  🔍 Validating prompt: '{original_prompt[:50]}...'")
+            cmd = [
+                "bash", "-c",
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
             ]
             
             process = subprocess.run(
@@ -162,7 +167,7 @@ class ExperimentRunner:
                 # --- Method 1: Strategy-Based ---
                 print("\n--- Running Method 1: Strategy-Based ---")
                 m1_prompt = self.optimizer.optimize_with_strategies(original_prompt)
-                m1_scores = self._run_validator(m1_prompt)
+                m1_scores = self._run_validator(original_prompt, m1_prompt)
                 experiment_data["method_1_strategy"] = {
                     "optimized_prompt": m1_prompt,
                     "validation_results": m1_scores
@@ -172,7 +177,7 @@ class ExperimentRunner:
                 # --- Method 2: Example-Based Hybrid ---
                 print("\n--- Running Method 2: Example-Based Hybrid ---")
                 m2_prompt = self.optimizer.optimize_with_examples(original_prompt)
-                m2_scores = self._run_validator(m2_prompt)
+                m2_scores = self._run_validator(original_prompt, m2_prompt)
                 experiment_data["method_2_hybrid_example"] = {
                     "optimized_prompt": m2_prompt,
                     "validation_results": m2_scores

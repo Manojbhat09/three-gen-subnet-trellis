@@ -39,13 +39,13 @@ class HunyuanDiTPipeline:
             # Initialize T5 tokenizer first
             tokenizer = T5Tokenizer.from_pretrained("t5-base")
             
-        self.pipe = AutoPipelineForText2Image.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16,
-            enable_pag=True,
-                pag_applied_layers=["blocks.(16|17|18|19)"],
-                tokenizer=tokenizer
-        ).to(device)
+            self.pipe = AutoPipelineForText2Image.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                enable_pag=True,
+                    pag_applied_layers=["blocks.(16|17|18|19)"],
+                    tokenizer=tokenizer
+                ).to(device)
         except Exception as e:
             print(f"Error initializing pipeline: {e}")
             raise RuntimeError("Failed to initialize text-to-image pipeline. Please check your installation and model files.")

@@ -104,17 +104,12 @@ GENERATION_CONFIG = {
     'save_intermediate_outputs': True,
     'save_preview': False,
     'auto_compress_ply': True,
-    # TRELLIS specific settings
-    # 'guidance_scale': 3.0,#3.5,
-    # 'ss_guidance_strength': 9.0,#7.5, #, 8.5,
-    # 'ss_sampling_steps': 12, #13,
-    # 'slat_guidance_strength': 4.0, #3.0, #4.0,
-    # 'slat_sampling_steps': 12, #13,
-    'guidance_scale': 3.5,
-    'ss_guidance_strength': 8.5, #, 8.5,
-    'ss_sampling_steps': 23,
-    'slat_guidance_strength': 4.0, #4.0,
-    'slat_sampling_steps': 24,
+    # TRELLIS specific settings - OPTIMIZED FOR MAXIMUM QUALITY
+    'guidance_scale': 4.0,  # Increased from 3.5 for better quality
+    'ss_guidance_strength': 9.5,  # Increased from 8.5 for stronger structure guidance
+    'ss_sampling_steps': 30,  # Increased from 23 for more refinement
+    'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
+    'slat_sampling_steps': 30,  # Increased from 24 for more refinement
     # Memory management
     'enable_memory_efficient_attention': True,
     'enable_cpu_offload': True,
@@ -589,14 +584,18 @@ class TrellisGenerator:
                     self._load_flux_models()
                 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
-                # enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric, white background"
+                # Enhanced prompt for maximum quality and validation score
+                # enhanced_prompt = f"professional 3D render, {prompt}, highly detailed, photorealistic, studio lighting, clean white background, isometric view, high quality materials, precise geometry, sharp details, professional photography, 8k resolution" 
+                # enhanced_prompt = "v4bgsst," + prompt + " 3D isometric, white background"
                 # enhanced_prompt = prompt + " 3D isometric, white background"
                 # enhanced_prompt = prompt + " 3D isometric, accurate, white background"
-                # enhanced_prompt = "wbgmsst, " + prompt + ", 3D isometric object, accurate, clean, practical, white background"
-                # enhanced_prompt = "wbgmsst, " + prompt + " ,3D isometric white background"
-                # enhanced_prompt = "wbgmsst, " + prompt + " 3D isometric accurate, white background"
-                # enhanced_prompt = prompt + ", 3D isometric, accurate, white background" # might work better
-                enhanced_prompt = prompt 
+                # enhanced_prompt = "v4bgsst," + prompt + " 3D isometric object, accurate, clean, practical, white background"
+                # enhanced_prompt = "v4bgsst," + prompt + " 3D isometric white background"
+                # enhanced_prompt = "v4bgsst," + prompt + " 3D isometric accurate, white background"
+                # enhanced_prompt = prompt + " 3D isometric, accurate, white background"  # might work better
+                # enhanced_prompt = prompt + " 3D isometric, accurate, clean, practical, white background" # might work better
+                # enhanced_prompt = prompt + " accurate 3D isometric on background"
+                enhanced_prompt = prompt
                 generator = torch.Generator(device=device).manual_seed(seed)
                 with torch.no_grad():
                     image = self.flux_pipeline(
@@ -654,6 +653,7 @@ class TrellisGenerator:
                 if self.trellis_pipeline is None:   
                     self._load_trellis_pipeline()
                 
+                # Enhanced TRELLIS parameters for maximum quality
                 outputs = self.trellis_pipeline.run(
                     image,
                     seed=seed,
@@ -662,18 +662,55 @@ class TrellisGenerator:
                     sparse_structure_sampler_params={
                         "steps": GENERATION_CONFIG['ss_sampling_steps'],
                         "cfg_strength": GENERATION_CONFIG['ss_guidance_strength'],
+                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                        "rescale_t": 3.0,  # Temperature rescaling for better quality
                     },
                     slat_sampler_params={
                         "steps": GENERATION_CONFIG['slat_sampling_steps'],
                         "cfg_strength": GENERATION_CONFIG['slat_guidance_strength'],
+                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                        "rescale_t": 3.0,  # Temperature rescaling for better quality
                     },
                 )
                 
                 print("✓ 3D model generated successfully")
                 
-                # Step 3: Extract Gaussian Splatting PLY
-                print("Step 3: Extracting Gaussian Splatting PLY...")
+                # Step 3: Extract and enhance Gaussian Splatting PLY
+                print("Step 3: Extracting and enhancing Gaussian Splatting PLY...")
                 gaussian_output = outputs['gaussian'][0]
+                
+                # Quality enhancement: Filter low-quality splats
+                print("   Enhancing quality by filtering low-quality splats...")
+                try:
+                    # Get splat data
+                    points = gaussian_output.points
+                    opacities = gaussian_output.opacities
+                    scales = gaussian_output.scales
+                    
+                    # Filter out low-opacity and very small splats
+                    opacity_threshold = 0.01
+                    scale_threshold = 0.001
+                    
+                    # Create quality mask
+                    quality_mask = (opacities > opacity_threshold) & (torch.norm(scales, dim=1) > scale_threshold)
+                    
+                    if quality_mask.sum() > 7000:  # Ensure minimum splat count
+                        # Apply filtering
+                        gaussian_output.points = points[quality_mask]
+                        gaussian_output.opacities = opacities[quality_mask]
+                        gaussian_output.scales = scales[quality_mask]
+                        gaussian_output.rotations = gaussian_output.rotations[quality_mask]
+                        gaussian_output.features_dc = gaussian_output.features_dc[quality_mask]
+                        gaussian_output.features_rest = gaussian_output.features_rest[quality_mask]
+                        gaussian_output.normals = gaussian_output.normals[quality_mask]
+                        
+                        print(f"   Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,}")
+                    else:
+                        print(f"   Quality enhancement skipped: Too few splats would remain ({quality_mask.sum().item()})")
+                        
+                except Exception as e:
+                    print(f"   Quality enhancement failed: {e}")
+                    print("   Continuing with original splats...")
                 
                 # Save as PLY file
                 import io
@@ -1129,6 +1166,39 @@ async def update_centering_config(
                 "enable_object_centering": enabled,
                 "centering_white_threshold": white_threshold,
                 "centering_padding": padding
+            }
+        }
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+@app.post("/config/quality/")
+async def update_quality_config(
+    guidance_scale: float = Form(4.0),
+    ss_guidance_strength: float = Form(9.5),
+    ss_sampling_steps: int = Form(30),
+    slat_guidance_strength: float = Form(5.0),
+    slat_sampling_steps: int = Form(30)
+):
+    """Update TRELLIS quality configuration for maximum validation scores"""
+    try:
+        GENERATION_CONFIG['guidance_scale'] = guidance_scale
+        GENERATION_CONFIG['ss_guidance_strength'] = ss_guidance_strength
+        GENERATION_CONFIG['ss_sampling_steps'] = ss_sampling_steps
+        GENERATION_CONFIG['slat_guidance_strength'] = slat_guidance_strength
+        GENERATION_CONFIG['slat_sampling_steps'] = slat_sampling_steps
+        
+        return {
+            "status": "success",
+            "message": "Quality configuration updated for maximum validation scores",
+            "config": {
+                "guidance_scale": guidance_scale,
+                "ss_guidance_strength": ss_guidance_strength,
+                "ss_sampling_steps": ss_sampling_steps,
+                "slat_guidance_strength": slat_guidance_strength,
+                "slat_sampling_steps": slat_sampling_steps
             }
         }
     except Exception as e:

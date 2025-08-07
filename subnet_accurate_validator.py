@@ -54,9 +54,9 @@ def suppress_stdout():
         sys.stdout = original_stdout
         sys.stderr = original_stderr
 
-def generate_and_get_ply_data(prompt: str) -> bytes:
+def generate_and_get_ply_data(prompt: str, endpoint: str) -> bytes:
     """Generate 3D model using TRELLIS and return compressed PLY data"""
-    url = "http://127.0.0.1:8096/generate/"
+    url = f"http://127.0.0.1:8096/{endpoint}"
     
     import requests
     print(f"🎨 Generating 3D model for: '{prompt}'")
@@ -119,11 +119,12 @@ def validate_with_production_logic(ply_data: bytes, prompt: str) -> dict:
         )
         
         print(f"📊 RequestData prepared:")
-        print(f"   Prompt: '{prompt}'")
+        print(f"   Validation Prompt: '{prompt}' (original prompt for scoring)")
         print(f"   Data size: {len(encoded_data):,} characters (base64)")
         print(f"   Compression: 2 (SPZ)")
         
         print(f"🚀 Step 3: Running production decode_and_validate_txt")
+        print(f"   Computing CLIP scores against: '{prompt}'")
         
         # Run the exact production validation function
         validation_result: ValidationResultData = decode_and_validate_txt(
@@ -223,32 +224,46 @@ def calculate_demo_fidelity_score(validation_score: float) -> float:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python subnet_accurate_validator.py \"<prompt>\"")
+        print("Usage: python subnet_accurate_validator.py \"<original_prompt>\" [\"<optimized_prompt>\"]")
+        print("  - original_prompt: The prompt to compute validation scores against")
+        print("  - optimized_prompt (optional): The prompt to use for generation")
+        print("    If not provided, original_prompt will be used for both generation and validation")
         sys.exit(1)
     
-    prompt = sys.argv[1]
-    
+    original_prompt = sys.argv[1]
+    optimized_prompt = sys.argv[2] if len(sys.argv) > 2 else original_prompt
+    endpoint = sys.argv[3] if len(sys.argv) > 3 else "generate/"
     print(f"🚀 PRODUCTION-ACCURATE VALIDATION v2.0")
     print(f"=" * 60)
-    print(f"📝 Prompt: '{prompt}'")
+    print(f"📝 Original Prompt: '{original_prompt}'")
+    if optimized_prompt != original_prompt:
+        print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
+        print(f"   (Using optimized prompt for generation, original prompt for validation)")
+    else:
+        print(f"🔧 Using same prompt for generation and validation")
+    print(f"🔧 Using endpoint: {endpoint}")
     print(f"🔧 Using: decode_and_validate_txt (production function)")
     print(f"🎯 CLIP Model: convnext_large_d (production-accurate)")
     print(f"🗜️ Compression: SPZ (production standard)")
     print(f"=" * 60)
     
     try:
-        # Step 1: Generate and get PLY data
+        # Step 1: Generate and get PLY data using optimized prompt (or original if no optimization)
         print(f"🎨 Phase 1: Generating model with TRELLIS")
-        ply_data = generate_and_get_ply_data(prompt)
+        print(f"   Using prompt for generation: '{optimized_prompt}'")
+        ply_data = generate_and_get_ply_data(optimized_prompt, endpoint)
         
-        # Step 2: Validate using production logic
+        # Step 2: Validate using production logic against original prompt
         print(f"🔍 Phase 2: Running production-accurate validation")
-        results = validate_with_production_logic(ply_data, prompt)
+        print(f"   Computing scores against original prompt: '{original_prompt}'")
+        results = validate_with_production_logic(ply_data, original_prompt)
         
         # Step 3: Final results
         print(f"🎯 FINAL PRODUCTION-ACCURATE RESULTS")
         print(f"=" * 60)
-        print(f"📝 Prompt: '{prompt}'")
+        print(f"📝 Original Prompt: '{original_prompt}'")
+        if optimized_prompt != original_prompt:
+            print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
         print(f"📊 PLY Size: {len(ply_data):,} bytes") 
         print(f"🏆 Validation Engine Score: {results['validation_engine_score']:.4f}")
         print(f"🤝 Alignment Score: {results['alignment_score']:.4f}")
@@ -273,10 +288,16 @@ def main():
         else:
             print(f"🔵 SUBNET RESULT: PARTIAL FIDELITY ({results['demo_fidelity_score']:.4f})")
         
-        # Save results  
+        # Save results with prompt information
         output_file = f"subnet_validation_results.json"
+        results_with_prompts = {
+            'original_prompt': original_prompt,
+            'optimized_prompt': optimized_prompt,
+            'prompt_optimized': optimized_prompt != original_prompt,
+            **results
+        }
         with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
+            json.dump(results_with_prompts, f, indent=2)
         print(f"💾 Results saved to {output_file}")
         
     except Exception as e:
