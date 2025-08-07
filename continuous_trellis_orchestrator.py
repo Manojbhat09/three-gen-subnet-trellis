@@ -864,6 +864,7 @@ class ContinuousTrellisOrchestrator:
                 )
                 self.logger.info(f"✅ Wallet loaded: {self.wallet.hotkey.ss58_address}")
             
+            self.subtensor = bt.subtensor(network="test") #TODO
             if self.subtensor is None:
                 self.subtensor = bt.subtensor(network="finney")
                 self.logger.info("✅ Subtensor connected")

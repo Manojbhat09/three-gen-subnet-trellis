@@ -498,7 +498,7 @@ class ContinuousTrellisSimulator:
             self.logger.error(f"❌ Generation exception: {e}")
             return None
 
-    def _validate_prompt(self, prompt: str) -> float:
+    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None) -> float:
         """Run validation with conda environment."""
         try:
             # Wait for server to be ready before validation
@@ -507,10 +507,21 @@ class ContinuousTrellisSimulator:
                 return 0.0
             
             self.logger.info("      🔍 Validating...")
-            cmd = [
-                "bash", "-c",
-                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{prompt}\""
-            ]
+            
+            # Use optimized prompt for generation if provided, otherwise use original
+            if optimized_prompt and optimized_prompt != original_prompt:
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\""
+                ]
+            else:
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
+                ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             
             # Log the validation output for debugging
@@ -583,7 +594,9 @@ class ContinuousTrellisSimulator:
                 self.logger.warning(f"      ⚠️ Failed to clear cache before validation, proceeding anyway")
             
             # Use the subnet validator function
-            score = self._validate_prompt(task.prompt)
+            # Check if we have an optimized prompt for this task
+            optimized_prompt = getattr(task, 'optimized_prompt', None)
+            score = self._validate_prompt(task.prompt, optimized_prompt)
             
             validation_time = time.time() - validation_start
             task.validation_time = validation_time

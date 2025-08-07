@@ -180,7 +180,10 @@ main() {
         script_args+=(--promptfile "$promptfile")
         [ "$validate" = false ] && script_args+=(--no-validate)
         
-        python3 continuous_trellis_orchestrator_simulator.py --no-optimize "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_simulator.py --no-optimize "${script_args[@]}" #  --no-optimize
+        # python3 continuous_trellis_orchestrator_hunyuan.py "${script_args[@]}" #  --no-optimize
+        python3 continuous_trellis_orchestrator_simulator_lora.py  "${script_args[@]}" #  --no-optimize
+        # python3 continuous_trellis_orchestrator_hunyuan_clip.py --episodic-run-log-file episodic_clip_logs/multi_generator_results_run1.json "${script_args[@]}" #  --no-optimize
 
     elif [ "$mode" == "continuous" ]; then
         print_status "Starting CONTINUOUS orchestrator..."

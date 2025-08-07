@@ -45,7 +45,8 @@ def main():
         num_episodes=args.episodes,
         target_score=args.target,
         max_rounds_per_prompt=args.max_rounds,
-        log_dir=args.log_dir
+        log_dir=args.log_dir, 
+        endpoint="generate/baolei/"
     )
     
     try:

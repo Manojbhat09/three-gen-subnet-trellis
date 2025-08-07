@@ -87,7 +87,8 @@ class RLLoopAgent:
     def __init__(self, ollama_url: str = "http://localhost:11434",
                  memory_file: str = "rl_loop_memory.json",
                  api_base_url: str = "https://openrouter.ai/api/v1",
-                 trellis_server_url: str = "http://localhost:8096"):
+                 trellis_server_url: str = "http://localhost:8096",
+                 endpoint: str = "generate/"):
         self.ollama_url = ollama_url
         self.model = None  # Will be set based on user input
         self.memory_file = Path(memory_file)
@@ -99,7 +100,7 @@ class RLLoopAgent:
         self.app_name = "RL Prompt Optimizer"
         self.trellis_server_url = trellis_server_url
         self._choose_llm_provider()
-
+        self.endpoint = endpoint
         # RL Loop parameters (improved)
         self.max_optimization_rounds = 15
         self.min_rounds_before_convergence = 5  # NEW: Minimum rounds before convergence
@@ -265,8 +266,13 @@ class RLLoopAgent:
                             }
         return best_attempt
     
-    def optimize_with_rl_loop(self, prompt: str, use_validation: bool = True, prompt_with_context=None) -> Dict[str, Any]:
+    def optimize_with_rl_loop(self, prompt: str, use_validation: bool = True, prompt_with_context=None, endpoint: str = None) -> Dict[str, Any]:
         # Check if TRELLIS server is busy before starting optimization
+        if endpoint:
+            # override the endpoint
+            self.logger.info(f"      🔧 Overriding endpoint: {self.endpoint}")
+            self.logger.info(f"      🔧 Using endpoint: {endpoint}")
+            self.endpoint = endpoint
         try:
             server_status_url = self.trellis_server_url.rstrip('/') + '/job/status/'
             resp = requests.get(server_status_url, timeout=5)
@@ -368,7 +374,7 @@ class RLLoopAgent:
                 prompt_with_context=prompt_with_context
             )
             if use_validation:
-                attempt.validation_score = self._validate_prompt(attempt.optimized_prompt)
+                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = "generate/")
                 self.logger.info(f"      📊 Validation score: {attempt.validation_score:.4f}")
             else:
                 attempt.validation_score = attempt.predicted_confidence
@@ -389,12 +395,23 @@ class RLLoopAgent:
                 best_prompt = attempt.optimized_prompt
                 self.logger.info(f"      🎯 New best score: {best_score:.4f}")
             self._update_strategy_performance(strategy, attempt.validation_score or 0.0)
+            
             should_converge, reason = self._should_converge(attempts, round_num)
             if should_converge:
                 convergence_achieved = True
                 convergence_reason = reason
                 self.logger.info(f"      ✅ Convergence achieved: {reason}")
-                break
+                break  # Actually break when convergence is achieved
+            
+            # Add stuck detection - if score hasn't changed for 8 rounds, force stop
+            if len(attempts) >= 8:
+                recent_scores = [a.validation_score or 0.0 for a in attempts[-8:]]
+                if all(abs(score - recent_scores[0]) < 0.001 for score in recent_scores):
+                    convergence_achieved = True
+                    convergence_reason = f"Stuck at score {recent_scores[0]:.4f} for 8 rounds"
+                    self.logger.info(f"      🛑 Forced convergence: {convergence_reason}")
+                    break
+            
             if round_num < self.max_optimization_rounds:
                 self._inter_round_learning(attempts)
         learned_insights = self._extract_session_insights(attempts)
@@ -759,15 +776,26 @@ OPTIMIZATION: {{
         except Exception as e:
             self.logger.warning(f"[TRELLIS] Exception clearing GPU cache: {e}")
 
-    def _validate_prompt(self, prompt: str) -> float:
+    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/") -> float:
         """Run validation with conda environment, clearing GPU cache first via TRELLIS server."""
         try:
             self._clear_trellis_gpu_cache()  # Clear GPU cache before validation
             self.logger.info("      🔍 Validating...")
-            cmd = [
-                "bash", "-c",
-                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{prompt}\""
-            ]
+            
+            # Use optimized prompt for generation if provided, otherwise use original
+            if optimized_prompt and optimized_prompt != original_prompt:
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" \"{endpoint}\""
+                ]
+            else:
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
+                ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:
                 self.logger.warning(f"   ❌ Validation failed (return code {result.returncode})")
@@ -953,6 +981,7 @@ def main():
         print("  dummy --insights Show RL learning insights")
         print("\nOptions:")
         print("  --validate       Use real validation scores (recommended)")
+        print("  --endpoint       Use specific endpoint (default: generate/)")
         return
     
     agent = None
@@ -967,7 +996,7 @@ def main():
         
         user_prompt = sys.argv[1]
         use_validation = "--validate" in sys.argv
-        
+        endpoint = sys.argv[2] if len(sys.argv) > 2 else "generate/"
         print("🔄 RL LOOP AGENT - TRUE ITERATIVE LEARNING")
         print("=" * 60)
         print("✅ Multi-round optimization with score feedback")
@@ -977,7 +1006,7 @@ def main():
         print("=" * 60)
         
         agent = RLLoopAgent()
-        result = agent.optimize_with_rl_loop(user_prompt, use_validation=use_validation)
+        result = agent.optimize_with_rl_loop(user_prompt, use_validation=use_validation, endpoint=endpoint)
         
         print("\n" + "="*20 + " RL LOOP SUMMARY " + "="*20)
         print(f"   Original: {result['original_prompt']}")

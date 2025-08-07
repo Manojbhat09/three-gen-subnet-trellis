@@ -125,13 +125,20 @@ class ReproducibilityTester:
         with open(self.reproducibility_results_file, 'w') as f:
             json.dump(self.reproducibility_results, f, indent=4)
 
-    def _run_validator(self, prompt: str) -> Dict[str, Any]:
+    def _run_validator(self, original_prompt: str, optimized_prompt: str = None) -> Dict[str, Any]:
         """Runs the subnet_accurate_validator.py script."""
-        print(f"  🔍 Validating prompt: '{prompt[:60]}...'")
-        try:
+        if optimized_prompt and optimized_prompt != original_prompt:
+            print(f"  🔍 Validating optimized prompt: '{optimized_prompt[:60]}...'")
+            print(f"  🎯 Computing scores against original: '{original_prompt[:60]}...'")
             cmd = [
                 "bash", "-c",
-                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{prompt}\""
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\""
+            ]
+        else:
+            print(f"  🔍 Validating prompt: '{original_prompt[:60]}...'")
+            cmd = [
+                "bash", "-c",
+                f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
             ]
             process = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
             validator_output_file = "subnet_validation_results.json"
@@ -296,7 +303,7 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
                  continue
 
             # 4. Validate the new prompt
-            new_validation_results = self._run_validator(reconstructed_prompt)
+            new_validation_results = self._run_validator(original_prompt, reconstructed_prompt)
             new_score = new_validation_results.get("validation_engine_score", 0.0)
             
             # 5. Store and save results

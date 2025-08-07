@@ -84,7 +84,7 @@ GENERATION_CONFIG = {
     'output_dir': './trellis_base_outputs',
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'trellis_model_path': 'microsoft/TRELLIS-text-xlarge',
-    'save_intermediate_outputs': True,
+    'save_intermediate_outputs': False,
     'save_preview': False,
     'auto_compress_ply': True,
     # TRELLIS specific settings
