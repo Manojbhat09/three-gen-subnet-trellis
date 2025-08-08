@@ -101,12 +101,17 @@ mv home/mbhat/.bittensor/wallets/* ~/.bittensor/wallets/
 echo "Setting up tmux session for server and mining script..."
 apt-get install tmux --yes
 tmux new-session -d -s trellis_session
+tmux new-session -d -s trellis_session2
+tmux new-session -d -s trellis_session3
+tmux send-keys -t trellis_session2 'ollama serve' C-m
+tmux send-keys -t trellis_session3 'ollama pull llama3.2:3b && ollama run llama3.2:3b' C-m
 
 # Pane 0: Run the server
 echo "Starting server in tmux pane 0..."
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server.py" C-m
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore.py" C-m
-tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore_A6000_flash.py" C-m
+# tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore_A6000_flash.py" C-m
+tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_subnit_server_mix_lora_flash.py" C-m
 
 # Pane 1: Run the mining script
 echo "Starting mining script in tmux pane 1..."
