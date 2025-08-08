@@ -782,14 +782,14 @@ OPTIMIZATION: {{
             
             # Use optimized prompt for generation if provided, otherwise use original
             if optimized_prompt and optimized_prompt != original_prompt:
-                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
-                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
                     f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" \"{endpoint}\""
                 ]
             else:
-                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt[:50]}...'")
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
                     f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
