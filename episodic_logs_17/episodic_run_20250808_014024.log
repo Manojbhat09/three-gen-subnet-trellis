@@ -1,0 +1,131 @@
+2025-08-08 01:40:27,662 - INFO - 📄 Starting fresh RL loop memory
+2025-08-08 01:40:27,662 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-08 01:40:27,662 - INFO -    Strategy tracking: 8 strategies
+2025-08-08 01:40:27,662 - INFO -    Past sessions: 0
+2025-08-08 01:40:27,662 - INFO -    Exploration rate: 0.60
+2025-08-08 01:40:27,662 - INFO -    Max rounds per optimization: 15
+2025-08-08 01:40:27,663 - INFO -    Min rounds before convergence: 5
+2025-08-08 01:40:27,663 - INFO -    Adaptive convergence: ENABLED
+2025-08-08 01:40:27,674 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-08 01:40:27,674 - INFO - Starting episodic optimization: 2 episodes, 106 prompts per episode
+2025-08-08 01:40:27,674 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-08 01:40:27,674 - INFO - 
+============================================================
+2025-08-08 01:40:27,674 - INFO - STARTING EPISODE 1/2
+2025-08-08 01:40:27,674 - INFO - ============================================================
+2025-08-08 01:40:27,674 - INFO - 🔍 Checking server health at episode start...
+2025-08-08 01:40:27,682 - INFO - ✅ Server health check passed
+2025-08-08 01:40:27,688 - INFO - 
+--- Episode 1, Prompt 1 (Total: 106) ---
+2025-08-08 01:40:27,688 - INFO - Optimizing: 'glossy blue clarinet straight body'
+2025-08-08 01:40:27,689 - INFO - 🔍 Checking server availability before optimization...
+2025-08-08 01:40:27,694 - INFO - ✅ Server is available (status: completed)
+2025-08-08 01:40:27,694 - INFO - 📝 Marked server as used at 1754617227.6947007
+2025-08-08 01:40:27,694 - INFO - ✅ Server is available and marked as used
+2025-08-08 01:40:27,694 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-08 01:40:27,694 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-08 01:40:27,695 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-08 01:40:27,697 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'glossy blue clarinet straight body'
+2025-08-08 01:40:27,697 - INFO -    Session: rl_session_1754617227_2472
+2025-08-08 01:40:27,698 - INFO -    Max rounds: 17
+2025-08-08 01:40:27,698 - INFO -    Min rounds before convergence: 5
+2025-08-08 01:40:27,698 - INFO -    Target score: 0.99
+2025-08-08 01:40:27,698 - INFO - 
+   🔄 RL Round 1/17
+2025-08-08 01:40:27,698 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-08 01:40:34,678 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.654850048}
+2025-08-08 01:40:34,679 - INFO -       🔍 Validating...
+2025-08-08 01:40:34,679 - INFO -       📝 Using optimized prompt for generation: 'glossy blue clarinet with intricate inlays and a s...'
+2025-08-08 01:40:34,679 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:41:35,283 - INFO -       📊 Validation score: 0.8399
+2025-08-08 01:41:35,283 - INFO -       🎯 New best score: 0.8399
+2025-08-08 01:41:35,283 - INFO - 
+   🔄 RL Round 2/17
+2025-08-08 01:41:35,284 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-08 01:41:39,410 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.650655744}
+2025-08-08 01:41:39,410 - INFO -       🔍 Validating...
+2025-08-08 01:41:39,411 - INFO -       📝 Using optimized prompt for generation: 'glossy blue clarinet with intricate inlays and sub...'
+2025-08-08 01:41:39,411 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:42:40,952 - INFO -       📊 Validation score: 0.8041
+2025-08-08 01:42:40,953 - INFO -       📉 Score declined: Consider different approach
+2025-08-08 01:42:40,953 - INFO - 
+   🔄 RL Round 3/17
+2025-08-08 01:42:40,953 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-08 01:42:45,199 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:42:45,199 - INFO -       🔍 Validating...
+2025-08-08 01:42:45,200 - INFO -       📝 Using optimized prompt for generation: 'glossy blue clarinet with precision-crafted keys a...'
+2025-08-08 01:42:45,200 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:43:41,948 - INFO -       📊 Validation score: 0.7689
+2025-08-08 01:43:41,949 - INFO -       📉 Score declined: Consider different approach
+2025-08-08 01:43:41,949 - INFO - 
+   🔄 RL Round 4/17
+2025-08-08 01:43:41,949 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-08 01:43:45,809 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:43:45,809 - INFO -       🔍 Validating...
+2025-08-08 01:43:45,809 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with a subtle, weathered pa...'
+2025-08-08 01:43:45,809 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:44:43,451 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-08 01:44:43,451 - INFO -       📊 Validation score: 0.0000
+2025-08-08 01:44:43,451 - INFO - 
+   🔄 RL Round 5/17
+2025-08-08 01:44:43,451 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-08 01:44:47,071 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:44:47,071 - INFO -       🔍 Validating...
+2025-08-08 01:44:47,071 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with precision-crafted keys...'
+2025-08-08 01:44:47,071 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:45:47,004 - INFO -       📊 Validation score: 0.8268
+2025-08-08 01:45:47,004 - INFO - 
+   🔄 RL Round 6/17
+2025-08-08 01:45:47,004 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-08 01:45:51,531 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:45:51,531 - INFO -       🔍 Validating...
+2025-08-08 01:45:51,531 - INFO -       📝 Using optimized prompt for generation: 'glossy blue clarinet with precision-crafted keys a...'
+2025-08-08 01:45:51,531 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 01:46:48,616 - INFO -       📊 Validation score: 0.8176
+2025-08-08 01:46:48,617 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.009)
+2025-08-08 01:46:48,618 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-08 01:46:48,618 - INFO -    Best prompt: glossy blue clarinet with intricate inlays and a subtle patina on the body, front view, accurate, complete, white background
+2025-08-08 01:46:48,618 - INFO -    Best score: 0.8399
+2025-08-08 01:46:48,619 - INFO -    Rounds: 6
+2025-08-08 01:46:48,619 - INFO -    Convergence: True
+2025-08-08 01:46:48,619 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.009)
+2025-08-08 01:46:48,619 - INFO -    Exploration ratio: 83.3%
+2025-08-08 01:46:48,619 - INFO -    Insights learned: 2
+2025-08-08 01:46:48,619 - INFO -    Total time: 380.92s
+2025-08-08 01:46:48,619 - INFO - Prompt optimized in 6 rounds: 0.840 → 0.840 (+0.000)
+2025-08-08 01:46:48,619 - INFO - ✅ Target score achieved!
+2025-08-08 01:46:48,626 - INFO - 
+--- Episode 1, Prompt 2 (Total: 106) ---
+2025-08-08 01:46:48,626 - INFO - Optimizing: 'lustrous black hockey stick slashing'
+2025-08-08 01:46:48,626 - INFO - 🔍 Checking server availability before optimization...
+2025-08-08 01:46:48,635 - INFO - ✅ Server is available (status: completed)
+2025-08-08 01:46:48,635 - INFO - 📝 Marked server as used at 1754617608.6351657
+2025-08-08 01:46:48,635 - INFO - ✅ Server is available and marked as used
+2025-08-08 01:46:48,635 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-08 01:46:48,635 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-08 01:46:48,635 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-08 01:46:48,638 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'lustrous black hockey stick slashing'
+2025-08-08 01:46:48,638 - INFO -    Session: rl_session_1754617608_7765
+2025-08-08 01:46:48,638 - INFO -    Max rounds: 17
+2025-08-08 01:46:48,638 - INFO -    Min rounds before convergence: 5
+2025-08-08 01:46:48,638 - INFO -    Target score: 0.99
+2025-08-08 01:46:48,639 - INFO - 
+   🔄 RL Round 1/17
+2025-08-08 01:46:48,639 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-08 01:46:52,686 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:46:52,686 - INFO -       🔍 Validating...
+2025-08-08 01:46:52,687 - INFO -       📝 Using optimized prompt for generation: 'a sleek, lustrous black hockey stick glinting in t...'
+2025-08-08 01:46:52,687 - INFO -       🎯 Computing scores against original prompt: 'lustrous black hockey stick slashing...'
+2025-08-08 01:47:51,673 - INFO -       📊 Validation score: 0.0424
+2025-08-08 01:47:51,673 - INFO -       🎯 New best score: 0.0424
+2025-08-08 01:47:51,674 - INFO - 
+   🔄 RL Round 2/17
+2025-08-08 01:47:51,674 - INFO -       🔍 Explore performing better - increasing epsilon to 0.64
+2025-08-08 01:47:51,674 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-08 01:47:55,617 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 01:47:55,618 - INFO -       🔍 Validating...
+2025-08-08 01:47:55,618 - INFO -       📝 Using optimized prompt for generation: 'a lustrous black hockey stick with a subtle curve ...'
+2025-08-08 01:47:55,618 - INFO -       🎯 Computing scores against original prompt: 'lustrous black hockey stick slashing...'
