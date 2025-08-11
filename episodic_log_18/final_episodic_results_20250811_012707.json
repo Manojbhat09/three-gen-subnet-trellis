@@ -1,0 +1,915 @@
+{
+  "run_metadata": {
+    "num_episodes": 2,
+    "target_score": 0.99,
+    "max_rounds_per_prompt": 18,
+    "total_prompts_per_episode": 26,
+    "total_optimizations": 52,
+    "overall_duration_seconds": 55278.82936882973,
+    "start_time": "2025-08-11T01:27:07.118642"
+  },
+  "episode_results": [
+    {
+      "episode": 1,
+      "start_time": "2025-08-10T10:05:48.300906",
+      "prompt_results": [
+        {
+          "prompt": "gray robot with two round eyes",
+          "prompt_index": 1,
+          "rounds_used": 6,
+          "initial_score": 0.8838791251182556,
+          "final_score": 0.916129469871521,
+          "score_improvement": 0.03225034475326538,
+          "converged": true,
+          "duration_seconds": 537.9794449806213,
+          "optimized_prompt": "a gray robot with two round eyes made of durable, high-tech polymers and equipped with precision-crafted tools for delicate assembly tasks, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small brass candlestick holder with spiral",
+          "prompt_index": 2,
+          "rounds_used": 6,
+          "initial_score": 0.8977175951004028,
+          "final_score": 0.918046236038208,
+          "score_improvement": 0.020328640937805176,
+          "converged": true,
+          "duration_seconds": 510.1149938106537,
+          "optimized_prompt": "a slender small brass candlestick holder with an ornate, twisted spiral pattern that wraps elegantly around its middle, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "magical potion bottle with starry label",
+          "prompt_index": 3,
+          "rounds_used": 18,
+          "initial_score": 0.434226930141449,
+          "final_score": 0.8708339929580688,
+          "score_improvement": 0.4366070628166199,
+          "converged": false,
+          "duration_seconds": 1529.0557465553284,
+          "optimized_prompt": "a delicate glass potion bottle adorned with a sparkling silver starry label featuring intricate, swirling patterns and subtle shimmering effects in the moonlight, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "classic fedora hat in rich brown leather",
+          "prompt_index": 4,
+          "rounds_used": 5,
+          "initial_score": 0.0,
+          "final_score": 0.7342782616615295,
+          "score_improvement": 0.7342782616615295,
+          "converged": true,
+          "duration_seconds": 403.27146911621094,
+          "optimized_prompt": "a classic fedora hat in a deep, rich chocolate-brown leather, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "ruby bracelet with unique twisted band",
+          "prompt_index": 5,
+          "rounds_used": 5,
+          "initial_score": 0.8645360469818115,
+          "final_score": 0.9119260907173157,
+          "score_improvement": 0.04739004373550415,
+          "converged": true,
+          "duration_seconds": 433.3582022190094,
+          "optimized_prompt": "ruby bracelet with unique twisted band featuring an ornate filigree pattern and subtle inclusions of diamonds, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow screwdriver with short handle",
+          "prompt_index": 6,
+          "rounds_used": 5,
+          "initial_score": 0.9255973696708679,
+          "final_score": 0.9255973696708679,
+          "score_improvement": 0.0,
+          "converged": true,
+          "duration_seconds": 409.2193410396576,
+          "optimized_prompt": "yellow screwdriver with a short, slender, and ergonomic handle made of durable plastic, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow and white checkered robot pose",
+          "prompt_index": 7,
+          "rounds_used": 11,
+          "initial_score": 0.8383299112319946,
+          "final_score": 0.9063271284103394,
+          "score_improvement": 0.06799721717834473,
+          "converged": true,
+          "duration_seconds": 920.573714017868,
+          "optimized_prompt": "a sleek yellow and white checkered robot pose with a metallic sheen on the gears visible under a slightly worn, translucent plastic casing, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "shiny silver spherical robot with smooth finish",
+          "prompt_index": 8,
+          "rounds_used": 12,
+          "initial_score": 0.7941834330558777,
+          "final_score": 0.8977457880973816,
+          "score_improvement": 0.1035623550415039,
+          "converged": true,
+          "duration_seconds": 1024.5423181056976,
+          "optimized_prompt": "a highly polished, mirror-like shiny silver spherical robot with a subtle sheen and a textured, almost matte finish on its surface, emitting a soft, ambient glow"
+        },
+        {
+          "prompt": "glass statue abstract with flowing shapes",
+          "prompt_index": 9,
+          "rounds_used": 8,
+          "initial_score": 0.8730473518371582,
+          "final_score": 0.9042139649391174,
+          "score_improvement": 0.03116661310195923,
+          "converged": true,
+          "duration_seconds": 664.7922961711884,
+          "optimized_prompt": "a slender glass statue featuring a delicate, swirling pattern of translucent shapes with intricate, layered surfaces that seem to shift and ripple in the light, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "glossy gold harp luxurious and enchanting",
+          "prompt_index": 10,
+          "rounds_used": 18,
+          "initial_score": 0.8095399737358093,
+          "final_score": 0.9248824119567871,
+          "score_improvement": 0.11534243822097778,
+          "converged": false,
+          "duration_seconds": 1437.7393417358398,
+          "optimized_prompt": "glossy gold harp with intricately carved inlays of rubies, precision-crafted from the finest woods and adorned with delicate filigree patterns that evoke the intricate details of antique furniture."
+        },
+        {
+          "prompt": "violet succubus with long",
+          "prompt_index": 11,
+          "rounds_used": 9,
+          "initial_score": 0.8798862099647522,
+          "final_score": 0.9263849258422852,
+          "score_improvement": 0.04649871587753296,
+          "converged": true,
+          "duration_seconds": 779.605132818222,
+          "optimized_prompt": "violet succubus with long, intricately patterned wings and a slender neck, adorned with delicate filigree, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small chisel with black tip",
+          "prompt_index": 12,
+          "rounds_used": 14,
+          "initial_score": 0.8128888607025146,
+          "final_score": 0.9192206859588623,
+          "score_improvement": 0.10633182525634766,
+          "converged": true,
+          "duration_seconds": 1200.5152740478516,
+          "optimized_prompt": "a slender small chisel with a precision-ground black titanium tip and subtle curvature for optimal striking, detailed finish, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "deep navy robot with sophisticated style",
+          "prompt_index": 13,
+          "rounds_used": 9,
+          "initial_score": 0.8927619457244873,
+          "final_score": 0.9212703108787537,
+          "score_improvement": 0.028508365154266357,
+          "converged": true,
+          "duration_seconds": 849.5501866340637,
+          "optimized_prompt": "a deep navy robot with precision-crafted angular lines and micro-scaled LED accents that subtly shift between warm and cool tones to enhance its sophisticated style, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "glistening yellow citrine prism",
+          "prompt_index": 14,
+          "rounds_used": 8,
+          "initial_score": 0.9059140086174011,
+          "final_score": 0.9162393808364868,
+          "score_improvement": 0.010325372219085693,
+          "converged": true,
+          "duration_seconds": 788.5999071598053,
+          "optimized_prompt": "a slender, intricately carved glistening yellow citrine prism that refracts light into a kaleidoscope of colors, revealing subtle inclusions and imperfections that add to its intricate beauty, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "large blue crystal with irregular shape and sharp edges",
+          "prompt_index": 15,
+          "rounds_used": 18,
+          "initial_score": 0.91556316614151,
+          "final_score": 0.91556316614151,
+          "score_improvement": 0.0,
+          "converged": false,
+          "duration_seconds": 1798.7986562252045,
+          "optimized_prompt": "a large blue crystal with a highly asymmetrical, angular shape featuring prominently defined sharp edges and a subtle milky sheen on its surface, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow lamp with bent neck",
+          "prompt_index": 16,
+          "rounds_used": 7,
+          "initial_score": 0.88111412525177,
+          "final_score": 0.9304862022399902,
+          "score_improvement": 0.049372076988220215,
+          "converged": true,
+          "duration_seconds": 684.4232456684113,
+          "optimized_prompt": "a slender yellow lamp with an almost imperceptibly curved neck and subtly ridged texture, featuring a polished brass alloy and a delicate patina on its surface., front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "vibrant red vase with elegant swirl",
+          "prompt_index": 17,
+          "rounds_used": 5,
+          "initial_score": 0.9228489398956299,
+          "final_score": 0.9401920437812805,
+          "score_improvement": 0.017343103885650635,
+          "converged": true,
+          "duration_seconds": 484.96945881843567,
+          "optimized_prompt": "a vibrant red vase with elegant swirls that evoke a sense of energy and sophistication, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small purple cylindrical creature with short tail and long legs",
+          "prompt_index": 18,
+          "rounds_used": 5,
+          "initial_score": 0.9197956919670105,
+          "final_score": 0.9197956919670105,
+          "score_improvement": 0.0,
+          "converged": true,
+          "duration_seconds": 505.35410618782043,
+          "optimized_prompt": "a small purple cylindrical creature with an irregularly-shaped short tail and long, lean legs adorned in intricate, swirling patterns that evoke a sense of gentle movement, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "silver robot wearing green scarf",
+          "prompt_index": 19,
+          "rounds_used": 18,
+          "initial_score": 0.9123779535293579,
+          "final_score": 0.9183586835861206,
+          "score_improvement": 0.005980730056762695,
+          "converged": false,
+          "duration_seconds": 1698.4315030574799,
+          "optimized_prompt": "a slender silver robot wearing an intricately woven vibrant green scarf with micro-polyester threads and interlocking hexagons on the hemline, featuring a delicate gradient effect on the fabric's texture, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "warm yellow woolen scarf with fringed edges",
+          "prompt_index": 20,
+          "rounds_used": 9,
+          "initial_score": 0.854920506477356,
+          "final_score": 0.8679327964782715,
+          "score_improvement": 0.013012290000915527,
+          "converged": true,
+          "duration_seconds": 850.17236161232,
+          "optimized_prompt": "a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "ruby bracelet adorned with faceted stones",
+          "prompt_index": 21,
+          "rounds_used": 18,
+          "initial_score": 0.8495820760726929,
+          "final_score": 0.9242755770683289,
+          "score_improvement": 0.07469350099563599,
+          "converged": false,
+          "duration_seconds": 1672.6615986824036,
+          "optimized_prompt": "a slender ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone"
+        },
+        {
+          "prompt": "purple suv high roof off-road tires",
+          "prompt_index": 22,
+          "rounds_used": 18,
+          "initial_score": 0.8540005087852478,
+          "final_score": 0.924807608127594,
+          "score_improvement": 0.07080709934234619,
+          "converged": false,
+          "duration_seconds": 1738.0551173686981,
+          "optimized_prompt": "a sleek, luxurious purple SUV with an aggressive off-road capability and advanced traction control systems featuring durable construction, high roof, and prominent front tires, accurate, complete, white background, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "sapphire mace with gold-plated head",
+          "prompt_index": 23,
+          "rounds_used": 12,
+          "initial_score": 0.9577293395996094,
+          "final_score": 0.9712908267974854,
+          "score_improvement": 0.013561487197875977,
+          "converged": true,
+          "duration_seconds": 1044.8857197761536,
+          "optimized_prompt": "a slender sapphire mace with a gold-plated head featuring detailed engravings and ornate knotwork patterns, precise craftsmanship"
+        },
+        {
+          "prompt": "teal camper van rooftop tent and awning",
+          "prompt_index": 24,
+          "rounds_used": 18,
+          "initial_score": 0.8615131378173828,
+          "final_score": 0.8904194235801697,
+          "score_improvement": 0.028906285762786865,
+          "converged": false,
+          "duration_seconds": 1665.3971433639526,
+          "optimized_prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "teal suv with",
+          "prompt_index": 25,
+          "rounds_used": 5,
+          "initial_score": 0.8452885150909424,
+          "final_score": 0.9014739990234375,
+          "score_improvement": 0.05618548393249512,
+          "converged": true,
+          "duration_seconds": 499.3680040836334,
+          "optimized_prompt": "a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "silver pendant necklace featuring infinity symbol",
+          "prompt_index": 26,
+          "rounds_used": 8,
+          "initial_score": 0.7601704597473145,
+          "final_score": 0.8600658178329468,
+          "score_improvement": 0.09989535808563232,
+          "converged": true,
+          "duration_seconds": 707.3463177680969,
+          "optimized_prompt": "a delicate silver pendant necklace featuring an ornate infinity symbol with intricate, swirling filigree patterns, fine details, and a smooth, rounded design, front view, accurate, complete, white background"
+        }
+      ],
+      "episode_summary": {
+        "total_prompts": 26,
+        "successful_optimizations": 19,
+        "success_rate": 0.7307692307692307,
+        "total_rounds": 275,
+        "avg_rounds_per_prompt": 10.576923076923077,
+        "total_score_improvement": 2.210344672203064,
+        "avg_score_improvement": 0.08501325662319477,
+        "episode_duration_seconds": 24853.08998131752,
+        "principles_learned": [
+          "Best performing strategy in session: technical_precision",
+          "Explored 2 different strategies",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.434 \u2192 0.847",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 5 different strategies",
+          "Explored 2 different strategies",
+          "Iterative improvement successful: 0.865 \u2192 0.875",
+          "Best performing strategy in session: material_focus",
+          "Explored 2 different strategies",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.838 \u2192 0.901",
+          "Best performing strategy in session: contextual_scene_building",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.794 \u2192 0.817",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 6 different strategies",
+          "Iterative improvement successful: 0.873 \u2192 0.904",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.810 \u2192 0.914",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 5 different strategies",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.813 \u2192 0.866",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 7 different strategies",
+          "Iterative improvement successful: 0.893 \u2192 0.921",
+          "Best performing strategy in session: contextual_scene_building",
+          "Explored 4 different strategies",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 6 different strategies",
+          "Best performing strategy in session: technical_precision",
+          "Explored 8 different strategies",
+          "Iterative improvement successful: 0.881 \u2192 0.910",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 4 different strategies",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: material_focus",
+          "Explored 5 different strategies",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.850 \u2192 0.856",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.854 \u2192 0.905",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 4 different strategies",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.845 \u2192 0.876",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.760 \u2192 0.815",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 2 different strategies"
+        ],
+        "end_time": "2025-08-10T17:00:01.390917"
+      }
+    },
+    {
+      "episode": 2,
+      "start_time": "2025-08-10T17:00:03.417030",
+      "prompt_results": [
+        {
+          "prompt": "gray robot with two round eyes",
+          "prompt_index": 1,
+          "rounds_used": 7,
+          "initial_score": 0.8334939479827881,
+          "final_score": 0.916129469871521,
+          "score_improvement": 0.08263552188873291,
+          "converged": true,
+          "duration_seconds": 645.6099405288696,
+          "optimized_prompt": "a gray robot with two round eyes made of durable, high-tech polymers and equipped with precision-crafted tools for delicate assembly tasks, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small brass candlestick holder with spiral",
+          "prompt_index": 2,
+          "rounds_used": 7,
+          "initial_score": 0.8967990279197693,
+          "final_score": 0.926486611366272,
+          "score_improvement": 0.029687583446502686,
+          "converged": true,
+          "duration_seconds": 664.2734625339508,
+          "optimized_prompt": "a slender small brass candlestick holder with an intricate, hand-crafted twist that spirals elegantly around its middle in a gentle, curved motion, precise, complete, white background, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "magical potion bottle with starry label",
+          "prompt_index": 3,
+          "rounds_used": 18,
+          "initial_score": 0.8539353013038635,
+          "final_score": 0.9056794047355652,
+          "score_improvement": 0.05174410343170166,
+          "converged": false,
+          "duration_seconds": 1733.5183951854706,
+          "optimized_prompt": "a slender glass potion bottle adorned with an ethereal, starry silver label featuring delicate, swirling patterns and subtle shimmering effects in the moonlight, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "classic fedora hat in rich brown leather",
+          "prompt_index": 4,
+          "rounds_used": 5,
+          "initial_score": 0.8065345883369446,
+          "final_score": 0.8065345883369446,
+          "score_improvement": 0.0,
+          "converged": true,
+          "duration_seconds": 484.59765219688416,
+          "optimized_prompt": "a classic fedora hat in rich, hand-tooled, and supple chocolate-brown leather with subtle scuffs and wear, front view"
+        },
+        {
+          "prompt": "ruby bracelet with unique twisted band",
+          "prompt_index": 5,
+          "rounds_used": 8,
+          "initial_score": 0.8879987597465515,
+          "final_score": 0.9280868768692017,
+          "score_improvement": 0.040088117122650146,
+          "converged": true,
+          "duration_seconds": 730.5547399520874,
+          "optimized_prompt": "ruby bracelet with unique twisted band featuring an ornate filigree pattern with micro-pav\u00e9 diamonds, subtle inclusions of rubies, a delicate twist at the clasp, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow screwdriver with short handle",
+          "prompt_index": 6,
+          "rounds_used": 18,
+          "initial_score": 0.9053404927253723,
+          "final_score": 0.9303984642028809,
+          "score_improvement": 0.025057971477508545,
+          "converged": false,
+          "duration_seconds": 1598.2704510688782,
+          "optimized_prompt": "a yellow screwdriver with a short, slender handle made from durable plastic, front view, precise details of ergonomic design, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow and white checkered robot pose",
+          "prompt_index": 7,
+          "rounds_used": 18,
+          "initial_score": 0.8478062748908997,
+          "final_score": 0.9063271284103394,
+          "score_improvement": 0.0585208535194397,
+          "converged": false,
+          "duration_seconds": 1702.4688065052032,
+          "optimized_prompt": "a sleek yellow and white checkered robot pose with a metallic sheen on the gears visible under a slightly worn, translucent plastic casing, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "shiny silver spherical robot with smooth finish",
+          "prompt_index": 8,
+          "rounds_used": 6,
+          "initial_score": 0.8152621984481812,
+          "final_score": 0.8983849287033081,
+          "score_improvement": 0.08312273025512695,
+          "converged": true,
+          "duration_seconds": 597.1588907241821,
+          "optimized_prompt": "a highly polished, mirror-like shiny silver spherical robot with a subtle sheen and a textured, almost matte finish on its surface, emitting a soft, ambient glow"
+        },
+        {
+          "prompt": "glass statue abstract with flowing shapes",
+          "prompt_index": 9,
+          "rounds_used": 8,
+          "initial_score": 0.8948708176612854,
+          "final_score": 0.9113835096359253,
+          "score_improvement": 0.016512691974639893,
+          "converged": true,
+          "duration_seconds": 730.7919178009033,
+          "optimized_prompt": "a slender glass statue featuring an intricate, layered pattern of translucent shapes with delicate, swirling curves and subtle reflections on its surface, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "glossy gold harp luxurious and enchanting",
+          "prompt_index": 10,
+          "rounds_used": 18,
+          "initial_score": 0.834125280380249,
+          "final_score": 0.9248824119567871,
+          "score_improvement": 0.09075713157653809,
+          "converged": false,
+          "duration_seconds": 1659.3788332939148,
+          "optimized_prompt": "glossy gold harp with intricately carved inlays of rubies, precision-crafted from the finest woods and adorned with delicate filigree patterns that evoke the intricate details of antique furniture."
+        },
+        {
+          "prompt": "violet succubus with long",
+          "prompt_index": 11,
+          "rounds_used": 5,
+          "initial_score": 0.89988112449646,
+          "final_score": 0.9263849258422852,
+          "score_improvement": 0.026503801345825195,
+          "converged": true,
+          "duration_seconds": 459.168416261673,
+          "optimized_prompt": "violet succubus with long, intricately patterned wings and a slender neck, adorned with delicate filigree, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small chisel with black tip",
+          "prompt_index": 12,
+          "rounds_used": 6,
+          "initial_score": 0.900450587272644,
+          "final_score": 0.9215264320373535,
+          "score_improvement": 0.021075844764709473,
+          "converged": true,
+          "duration_seconds": 563.336992263794,
+          "optimized_prompt": "a slender small chisel with a high-carbon black titanium tip featuring subtle curvature, enhanced microscopic texture, and precision-ground edges, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "deep navy robot with sophisticated style",
+          "prompt_index": 13,
+          "rounds_used": 12,
+          "initial_score": 0.9199672937393188,
+          "final_score": 0.9212703108787537,
+          "score_improvement": 0.0013030171394348145,
+          "converged": true,
+          "duration_seconds": 1131.573706626892,
+          "optimized_prompt": "a deep navy robot with precision-crafted angular lines and micro-scaled LED accents that subtly shift between warm and cool tones to enhance its sophisticated style, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "glistening yellow citrine prism",
+          "prompt_index": 14,
+          "rounds_used": 6,
+          "initial_score": 0.7806103229522705,
+          "final_score": 0.9193902611732483,
+          "score_improvement": 0.13877993822097778,
+          "converged": true,
+          "duration_seconds": 551.7514319419861,
+          "optimized_prompt": "a slender, intricately carved glistening yellow citrine prism that refracts light into a kaleidoscope of colors, revealing delicate inclusions and subtle wear marks that add to its intricate beauty, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "large blue crystal with irregular shape and sharp edges",
+          "prompt_index": 15,
+          "rounds_used": 18,
+          "initial_score": 0.9229838252067566,
+          "final_score": 0.9229838252067566,
+          "score_improvement": 0.0,
+          "converged": false,
+          "duration_seconds": 1773.9823784828186,
+          "optimized_prompt": "a large blue crystal with an irregularly shaped, angular silhouette featuring prominently defined sharp edges and a delicate milky sheen on its surface, front view, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "yellow lamp with bent neck",
+          "prompt_index": 16,
+          "rounds_used": 13,
+          "initial_score": 0.9045063257217407,
+          "final_score": 0.9304862022399902,
+          "score_improvement": 0.02597987651824951,
+          "converged": true,
+          "duration_seconds": 1233.200810432434,
+          "optimized_prompt": "a slender yellow lamp with an almost imperceptibly curved neck and subtly ridged texture, featuring a polished brass alloy and a delicate patina on its surface., front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "vibrant red vase with elegant swirl",
+          "prompt_index": 17,
+          "rounds_used": 12,
+          "initial_score": 0.7811461687088013,
+          "final_score": 0.9401920437812805,
+          "score_improvement": 0.15904587507247925,
+          "converged": true,
+          "duration_seconds": 1103.403310060501,
+          "optimized_prompt": "a vibrant red vase with elegant swirls that evoke a sense of energy and sophistication, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "small purple cylindrical creature with short tail and long legs",
+          "prompt_index": 18,
+          "rounds_used": 14,
+          "initial_score": 0.8965158462524414,
+          "final_score": 0.9261107444763184,
+          "score_improvement": 0.029594898223876953,
+          "converged": true,
+          "duration_seconds": 1313.6756098270416,
+          "optimized_prompt": "a small purple cylindrical creature with a tapering short tail and long, slender legs adorned in delicate, swirling patterns evoking a sense of gentle movement, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "silver robot wearing green scarf",
+          "prompt_index": 19,
+          "rounds_used": 17,
+          "initial_score": 0.8592285513877869,
+          "final_score": 0.9183586835861206,
+          "score_improvement": 0.05913013219833374,
+          "converged": true,
+          "duration_seconds": 1622.1832904815674,
+          "optimized_prompt": "a slender silver robot wearing an intricately woven vibrant green scarf with micro-polyester threads and interlocking hexagons on the hemline, featuring a delicate gradient effect on the fabric's texture, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "warm yellow woolen scarf with fringed edges",
+          "prompt_index": 20,
+          "rounds_used": 18,
+          "initial_score": 0.0,
+          "final_score": 0.8679327964782715,
+          "score_improvement": 0.8679327964782715,
+          "converged": false,
+          "duration_seconds": 1699.0053985118866,
+          "optimized_prompt": "a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "ruby bracelet adorned with faceted stones",
+          "prompt_index": 21,
+          "rounds_used": 10,
+          "initial_score": 0.8285992741584778,
+          "final_score": 0.9242755770683289,
+          "score_improvement": 0.09567630290985107,
+          "converged": true,
+          "duration_seconds": 912.239588022232,
+          "optimized_prompt": "a slender ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone"
+        },
+        {
+          "prompt": "purple suv high roof off-road tires",
+          "prompt_index": 22,
+          "rounds_used": 18,
+          "initial_score": 0.8896094560623169,
+          "final_score": 0.924807608127594,
+          "score_improvement": 0.0351981520652771,
+          "converged": false,
+          "duration_seconds": 1896.3873887062073,
+          "optimized_prompt": "a sleek, luxurious purple SUV with an aggressive off-road capability and advanced traction control systems featuring durable construction, high roof, and prominent front tires, accurate, complete, white background, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "sapphire mace with gold-plated head",
+          "prompt_index": 23,
+          "rounds_used": 11,
+          "initial_score": 0.935718297958374,
+          "final_score": 0.9712908267974854,
+          "score_improvement": 0.03557252883911133,
+          "converged": true,
+          "duration_seconds": 1074.514792919159,
+          "optimized_prompt": "a slender sapphire mace with a gold-plated head featuring detailed engravings and ornate knotwork patterns, precise craftsmanship"
+        },
+        {
+          "prompt": "teal camper van rooftop tent and awning",
+          "prompt_index": 24,
+          "rounds_used": 18,
+          "initial_score": 0.701653003692627,
+          "final_score": 0.8904194235801697,
+          "score_improvement": 0.18876641988754272,
+          "converged": false,
+          "duration_seconds": 1840.4148318767548,
+          "optimized_prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "teal suv with",
+          "prompt_index": 25,
+          "rounds_used": 9,
+          "initial_score": 0.5693155527114868,
+          "final_score": 0.9024031758308411,
+          "score_improvement": 0.33308762311935425,
+          "converged": true,
+          "duration_seconds": 953.6274514198303,
+          "optimized_prompt": "a slender teal SUV with aerodynamic lines, precision-crafted aluminum alloy wheels that accentuate its sleek design, and a subtle LED light strip running along the side mirrors"
+        },
+        {
+          "prompt": "silver pendant necklace featuring infinity symbol",
+          "prompt_index": 26,
+          "rounds_used": 18,
+          "initial_score": 0.8237489461898804,
+          "final_score": 0.8600658178329468,
+          "score_improvement": 0.036316871643066406,
+          "converged": false,
+          "duration_seconds": 1747.983154296875,
+          "optimized_prompt": "a delicate silver pendant necklace featuring an ornate infinity symbol with intricate, swirling filigree patterns, fine details, and a smooth, rounded design, front view, accurate, complete, white background"
+        }
+      ],
+      "episode_summary": {
+        "total_prompts": 26,
+        "successful_optimizations": 17,
+        "success_rate": 0.6538461538461539,
+        "total_rounds": 318,
+        "avg_rounds_per_prompt": 12.23076923076923,
+        "total_score_improvement": 2.5320907831192017,
+        "avg_score_improvement": 0.09738810704304622,
+        "episode_duration_seconds": 30423.6972053051,
+        "principles_learned": [
+          "Iterative improvement successful: 0.833 \u2192 0.903",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.897 \u2192 0.925",
+          "Best performing strategy in session: contextual_scene_building",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: material_focus",
+          "Explored 6 different strategies",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.905 \u2192 0.911",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.848 \u2192 0.904",
+          "Best performing strategy in session: technical_precision",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.815 \u2192 0.885",
+          "Best performing strategy in session: contextual_scene_building",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.895 \u2192 0.898",
+          "Best performing strategy in session: technical_precision",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.834 \u2192 0.872",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.900 \u2192 0.920",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.900 \u2192 0.922",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.781 \u2192 0.919",
+          "Best performing strategy in session: material_focus",
+          "Explored 2 different strategies",
+          "Best performing strategy in session: technical_precision",
+          "Explored 7 different strategies",
+          "Iterative improvement successful: 0.905 \u2192 0.913",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.781 \u2192 0.935",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.897 \u2192 0.918",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.859 \u2192 0.894",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 6 different strategies",
+          "Best performing strategy in session: minimalist_refinement",
+          "Explored 6 different strategies",
+          "Iterative improvement successful: 0.829 \u2192 0.888",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.890 \u2192 0.896",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.936 \u2192 0.964",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.702 \u2192 0.836",
+          "Best performing strategy in session: material_focus",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.569 \u2192 0.899",
+          "Best performing strategy in session: material_focus",
+          "Explored 2 different strategies",
+          "Iterative improvement successful: 0.824 \u2192 0.854",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 6 different strategies"
+        ],
+        "end_time": "2025-08-11T01:27:07.114309"
+      }
+    }
+  ],
+  "learning_analysis": {
+    "total_episodes": 2,
+    "success_rate_trend": {
+      "first_5_episodes": null,
+      "last_5_episodes": null,
+      "overall_average": 0.6923076923076923,
+      "final_episode": 0.6538461538461539
+    },
+    "efficiency_trend": {
+      "first_5_episodes_avg_rounds": null,
+      "last_5_episodes_avg_rounds": null,
+      "overall_average_rounds": 11.403846153846153,
+      "final_episode_rounds": 12.23076923076923
+    },
+    "improvement_trend": {
+      "first_5_episodes_avg_improvement": null,
+      "last_5_episodes_avg_improvement": null,
+      "overall_average_improvement": 0.0912006818331205,
+      "final_episode_improvement": 0.09738810704304622
+    },
+    "total_principles_learned": 135,
+    "unique_principles": 48
+  },
+  "test_prompts_used": [
+    "gray robot with two round eyes",
+    "small brass candlestick holder with spiral",
+    "magical potion bottle with starry label",
+    "classic fedora hat in rich brown leather",
+    "ruby bracelet with unique twisted band",
+    "yellow screwdriver with short handle",
+    "yellow and white checkered robot pose",
+    "shiny silver spherical robot with smooth finish",
+    "glass statue abstract with flowing shapes",
+    "glossy gold harp luxurious and enchanting",
+    "violet succubus with long",
+    "small chisel with black tip",
+    "deep navy robot with sophisticated style",
+    "glistening yellow citrine prism",
+    "large blue crystal with irregular shape and sharp edges",
+    "yellow lamp with bent neck",
+    "vibrant red vase with elegant swirl",
+    "small purple cylindrical creature with short tail and long legs",
+    "silver robot wearing green scarf",
+    "warm yellow woolen scarf with fringed edges",
+    "ruby bracelet adorned with faceted stones",
+    "purple suv high roof off-road tires",
+    "sapphire mace with gold-plated head",
+    "teal camper van rooftop tent and awning",
+    "teal suv with",
+    "silver pendant necklace featuring infinity symbol"
+  ],
+  "best_prompts": {
+    "gray robot with two round eyes": {
+      "score": 0.916129469871521,
+      "prompt": "a gray robot with two round eyes made of durable, high-tech polymers and equipped with precision-crafted tools for delicate assembly tasks, front view, accurate, complete, white background"
+    },
+    "small brass candlestick holder with spiral": {
+      "score": 0.926486611366272,
+      "prompt": "a slender small brass candlestick holder with an intricate, hand-crafted twist that spirals elegantly around its middle in a gentle, curved motion, precise, complete, white background, front view, accurate, complete, white background"
+    },
+    "magical potion bottle with starry label": {
+      "score": 0.9056794047355652,
+      "prompt": "a slender glass potion bottle adorned with an ethereal, starry silver label featuring delicate, swirling patterns and subtle shimmering effects in the moonlight, front view, accurate, complete, white background"
+    },
+    "classic fedora hat in rich brown leather": {
+      "score": 0.8065345883369446,
+      "prompt": "a classic fedora hat in rich, hand-tooled, and supple chocolate-brown leather with subtle scuffs and wear, front view"
+    },
+    "ruby bracelet with unique twisted band": {
+      "score": 0.9280868768692017,
+      "prompt": "ruby bracelet with unique twisted band featuring an ornate filigree pattern with micro-pav\u00e9 diamonds, subtle inclusions of rubies, a delicate twist at the clasp, front view, accurate, complete, white background"
+    },
+    "yellow screwdriver with short handle": {
+      "score": 0.9303984642028809,
+      "prompt": "a yellow screwdriver with a short, slender handle made from durable plastic, front view, precise details of ergonomic design, front view, accurate, complete, white background"
+    },
+    "yellow and white checkered robot pose": {
+      "score": 0.9063271284103394,
+      "prompt": "a sleek yellow and white checkered robot pose with a metallic sheen on the gears visible under a slightly worn, translucent plastic casing, front view, accurate, complete, white background"
+    },
+    "shiny silver spherical robot with smooth finish": {
+      "score": 0.8983849287033081,
+      "prompt": "a highly polished, mirror-like shiny silver spherical robot with a subtle sheen and a textured, almost matte finish on its surface, emitting a soft, ambient glow"
+    },
+    "glass statue abstract with flowing shapes": {
+      "score": 0.9113835096359253,
+      "prompt": "a slender glass statue featuring an intricate, layered pattern of translucent shapes with delicate, swirling curves and subtle reflections on its surface, front view, accurate, complete, white background"
+    },
+    "glossy gold harp luxurious and enchanting": {
+      "score": 0.9248824119567871,
+      "prompt": "glossy gold harp with intricately carved inlays of rubies, precision-crafted from the finest woods and adorned with delicate filigree patterns that evoke the intricate details of antique furniture."
+    },
+    "violet succubus with long": {
+      "score": 0.9263849258422852,
+      "prompt": "violet succubus with long, intricately patterned wings and a slender neck, adorned with delicate filigree, front view, accurate, complete, white background"
+    },
+    "small chisel with black tip": {
+      "score": 0.9215264320373535,
+      "prompt": "a slender small chisel with a high-carbon black titanium tip featuring subtle curvature, enhanced microscopic texture, and precision-ground edges, front view, accurate, complete, white background"
+    },
+    "deep navy robot with sophisticated style": {
+      "score": 0.9212703108787537,
+      "prompt": "a deep navy robot with precision-crafted angular lines and micro-scaled LED accents that subtly shift between warm and cool tones to enhance its sophisticated style, front view, accurate, complete, white background"
+    },
+    "glistening yellow citrine prism": {
+      "score": 0.9193902611732483,
+      "prompt": "a slender, intricately carved glistening yellow citrine prism that refracts light into a kaleidoscope of colors, revealing delicate inclusions and subtle wear marks that add to its intricate beauty, front view, accurate, complete, white background"
+    },
+    "large blue crystal with irregular shape and sharp edges": {
+      "score": 0.9229838252067566,
+      "prompt": "a large blue crystal with an irregularly shaped, angular silhouette featuring prominently defined sharp edges and a delicate milky sheen on its surface, front view, front view, accurate, complete, white background"
+    },
+    "yellow lamp with bent neck": {
+      "score": 0.9304862022399902,
+      "prompt": "a slender yellow lamp with an almost imperceptibly curved neck and subtly ridged texture, featuring a polished brass alloy and a delicate patina on its surface., front view, accurate, complete, white background"
+    },
+    "vibrant red vase with elegant swirl": {
+      "score": 0.9401920437812805,
+      "prompt": "a vibrant red vase with elegant swirls that evoke a sense of energy and sophistication, front view, accurate, complete, white background"
+    },
+    "small purple cylindrical creature with short tail and long legs": {
+      "score": 0.9261107444763184,
+      "prompt": "a small purple cylindrical creature with a tapering short tail and long, slender legs adorned in delicate, swirling patterns evoking a sense of gentle movement, front view, accurate, complete, white background"
+    },
+    "silver robot wearing green scarf": {
+      "score": 0.9183586835861206,
+      "prompt": "a slender silver robot wearing an intricately woven vibrant green scarf with micro-polyester threads and interlocking hexagons on the hemline, featuring a delicate gradient effect on the fabric's texture, front view, accurate, complete, white background"
+    },
+    "warm yellow woolen scarf with fringed edges": {
+      "score": 0.8679327964782715,
+      "prompt": "a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background"
+    },
+    "ruby bracelet adorned with faceted stones": {
+      "score": 0.9242755770683289,
+      "prompt": "a slender ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone"
+    },
+    "purple suv high roof off-road tires": {
+      "score": 0.924807608127594,
+      "prompt": "a sleek, luxurious purple SUV with an aggressive off-road capability and advanced traction control systems featuring durable construction, high roof, and prominent front tires, accurate, complete, white background, front view, accurate, complete, white background"
+    },
+    "sapphire mace with gold-plated head": {
+      "score": 0.9712908267974854,
+      "prompt": "a slender sapphire mace with a gold-plated head featuring detailed engravings and ornate knotwork patterns, precise craftsmanship"
+    },
+    "teal camper van rooftop tent and awning": {
+      "score": 0.8904194235801697,
+      "prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, white background"
+    },
+    "teal suv with": {
+      "score": 0.9024031758308411,
+      "prompt": "a slender teal SUV with aerodynamic lines, precision-crafted aluminum alloy wheels that accentuate its sleek design, and a subtle LED light strip running along the side mirrors"
+    },
+    "silver pendant necklace featuring infinity symbol": {
+      "score": 0.8600658178329468,
+      "prompt": "a delicate silver pendant necklace featuring an ornate infinity symbol with intricate, swirling filigree patterns, fine details, and a smooth, rounded design, front view, accurate, complete, white background"
+    }
+  }
+}

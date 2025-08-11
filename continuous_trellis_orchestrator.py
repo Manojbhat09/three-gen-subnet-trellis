@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any, Set
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
+import sys
 
 # Import the prompt optimizer
 try:
@@ -74,6 +75,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def _format_time_remaining(cooldown_until: float) -> str:
+    try:
+        remaining_seconds = max(0, int(cooldown_until - time.time()))
+        hours, remainder = divmod(remaining_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        parts = []
+        if hours:
+            parts.append(f"{hours}h")
+        if minutes:
+            parts.append(f"{minutes}m")
+        parts.append(f"{seconds}s")
+        return " ".join(parts)
+    except Exception:
+        return "-"
+
+def _is_valid_axon(axon) -> bool:
+    try:
+        ip = getattr(axon, 'ip', '') or ''
+        port = getattr(axon, 'port', 0) or 0
+        # Skip IPv6 or malformed IPs that generate invalid URLs in clients
+        if not isinstance(ip, str):
+            return False
+        if ip == '0.0.0.0' or ip.strip() == '':
+            return False
+        if ':' in ip:  # crude IPv6 detection; avoid http://::... errors
+            return False
+        if int(port) <= 0:
+            return False
+        return True
+    except Exception:
+        return False
 
 class PriorityServerCoordinator:
     """
@@ -406,6 +438,14 @@ class TaskDatabase:
                 created_at REAL DEFAULT (strftime('%s', 'now'))
             )
         ''')
+        # Lightweight schema migration for older DBs missing columns
+        try:
+            cursor.execute('PRAGMA table_info(tasks)')
+            existing_cols = {row[1] for row in cursor.fetchall()}
+            if 'total_processing_time' not in existing_cols:
+                cursor.execute('ALTER TABLE tasks ADD COLUMN total_processing_time REAL')
+        except Exception:
+            pass
         
         # Validators table
         cursor.execute('''
@@ -737,7 +777,7 @@ class ContinuousTrellisOrchestrator:
         
         # Initialize reproducibility system
         if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
+            self.reproducibility_system = LLMClosePromptReproducibility(episodic_memory_file="episodic_log_18/episodic_memory.json")
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
             self.reproducibility_system = None
@@ -818,6 +858,7 @@ class ContinuousTrellisOrchestrator:
             'submit_results': True,
             'output_dir': './continuous_trellis_outputs',
             'save_intermediate_results': True,
+            'show_cooldown_progress': True,   # Show countdown progress bar during validator cooldown
             
             # Timing settings
             'task_pull_interval': 45,  # seconds between validator scans
@@ -905,6 +946,14 @@ class ContinuousTrellisOrchestrator:
                 stake = float(neuron.stake)
                 trust = float(neuron.trust)
                 consensus = float(neuron.consensus)
+                
+                # Validate axon endpoint (IPv4 only; skip bad endpoints)
+                try:
+                    axon = self.metagraph.axons[uid]
+                    if not _is_valid_axon(axon):
+                        continue
+                except Exception:
+                    continue
                 
                 # Apply filtering criteria
                 if stake < self.config['min_validator_stake']:
@@ -994,16 +1043,63 @@ class ContinuousTrellisOrchestrator:
         
         # Check cooldown
         if validator.cooldown_until and current_time < validator.cooldown_until:
+            remaining = int(validator.cooldown_until - current_time)
+            self.logger.info(
+                f"⏳ UID {validator.uid} on cooldown: next pull in {remaining}s (~{_format_time_remaining(validator.cooldown_until)})"
+            )
             return False
         
         # Check if we pulled recently (respect pull interval)
         if validator.last_task_pull:
             time_since_pull = current_time - validator.last_task_pull
             if time_since_pull < self.config['task_pull_interval']:
+                wait_for = int(self.config['task_pull_interval'] - time_since_pull)
+                if wait_for > 0:
+                    self.logger.info(
+                        f"⏳ Waiting {wait_for}s before next pull attempt for UID {validator.uid}"
+                    )
                 return False
         
         return True
     
+    async def _show_cooldown_progress(self, validator_uid: int, cooldown_until: float):
+        """Display a simple progress bar until cooldown elapses."""
+        if not self.config.get('show_cooldown_progress', True):
+            return
+        remaining = int(cooldown_until - time.time())
+        if remaining <= 0:
+            return
+        total = remaining
+        bar_width = 30
+        self.logger.info(
+            f"⏳ Cooldown for UID {validator_uid}: {remaining}s (~{_format_time_remaining(cooldown_until)})"
+        )
+        try:
+            use_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
+            last_logged = -999
+            while remaining > 0:
+                if use_tty:
+                    done = total - remaining
+                    filled = int(bar_width * done / max(1, total))
+                    bar = '█' * filled + '-' * (bar_width - filled)
+                    mins, secs = divmod(remaining, 60)
+                    timer = f"{mins:02d}:{secs:02d}"
+                    print(f"UID {validator_uid} cooldown |{bar}| {timer} remaining", end='\r', flush=True)
+                else:
+                    # Log every 10 seconds on non-TTY outputs
+                    if remaining % 10 == 0 and remaining != last_logged:
+                        self.logger.info(
+                            f"⏳ UID {validator_uid} cooldown: {remaining}s left (~{_format_time_remaining(cooldown_until)})"
+                        )
+                        last_logged = remaining
+                await asyncio.sleep(1)
+                remaining = int(cooldown_until - time.time())
+            if use_tty:
+                print()  # newline after completion
+        except Exception:
+            print()
+            return
+
     async def pull_task_from_validator(self, validator: ValidatorState) -> Optional[TaskRecord]:
         """Pull task from a specific validator with deduplication"""
         try:
@@ -1024,6 +1120,12 @@ class ContinuousTrellisOrchestrator:
                 self.stats['server_status_check_errors'] = self.stats.get('server_status_check_errors', 0) + 1
                 return None  # Don't pull tasks when we can't check server status
             if not self.is_validator_available(validator):
+                # If we are skipping due to cooldown, show progress bar (non-blocking)
+                if validator.cooldown_until and time.time() < validator.cooldown_until:
+                    try:
+                        asyncio.create_task(self._show_cooldown_progress(validator.uid, validator.cooldown_until))
+                    except Exception:
+                        pass
                 return None
             
             self.logger.debug(f"📡 Pulling from UID {validator.uid} ({validator.stake:.1f} TAO)")
@@ -1043,9 +1145,15 @@ class ContinuousTrellisOrchestrator:
             
             start_time = time.time()
             
+            # Validate axon endpoint to avoid InvalidUrlClientError
+            axon_info = neuron.axon_info
+            if not _is_valid_axon(axon_info):
+                self.logger.warning(f"⚠️ Skipping UID {validator.uid} due to invalid axon endpoint {getattr(axon_info,'ip',None)}:{getattr(axon_info,'port',None)}")
+                return None
+
             # Query the validator
             response = await self.dendrite.forward(
-                axons=[neuron.axon_info],
+                axons=[axon_info],
                 synapse=synapse,
                 timeout=self.config['submission_timeout']
             )
@@ -1069,9 +1177,14 @@ class ContinuousTrellisOrchestrator:
                     validator.total_tasks_pulled += 1
                     validator.last_task_received = time.time()
                     
-                    # Update cooldown if provided
-                    if hasattr(resp, 'cooldown_until'):
+                    # Update cooldown if provided and show progress
+                    if hasattr(resp, 'cooldown_until') and resp.cooldown_until:
                         validator.cooldown_until = resp.cooldown_until
+                        if validator.cooldown_until > time.time():
+                            try:
+                                asyncio.create_task(self._show_cooldown_progress(validator.uid, validator.cooldown_until))
+                            except Exception:
+                                pass
                     
                     # Create task record with response time tracking
                     prompt_hash = hashlib.sha256(resp.task.prompt.encode()).hexdigest()
@@ -1097,6 +1210,14 @@ class ContinuousTrellisOrchestrator:
                     self.stats['tasks_pulled'] += 1
                     return task
                 else:
+                    # Update cooldown if provided and show progress
+                    if hasattr(resp, 'cooldown_until') and resp.cooldown_until:
+                        validator.cooldown_until = resp.cooldown_until
+                        if validator.cooldown_until > time.time():
+                            try:
+                                asyncio.create_task(self._show_cooldown_progress(validator.uid, validator.cooldown_until))
+                            except Exception:
+                                pass
                     self.logger.debug(f"⚠️ No task from UID {validator.uid}")
                     return None
             else:

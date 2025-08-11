@@ -1,0 +1,305 @@
+{
+  "run_metadata": {
+    "num_episodes": 2,
+    "target_score": 0.99,
+    "max_rounds_per_prompt": 18,
+    "total_prompts_per_episode": 7,
+    "total_optimizations": 14,
+    "overall_duration_seconds": 10370.631806135178,
+    "start_time": "2025-08-10T04:08:21.939770"
+  },
+  "episode_results": [
+    {
+      "episode": 1,
+      "start_time": "2025-08-10T01:15:31.315004",
+      "prompt_results": [
+        {
+          "prompt": "silver robot wearing green scarf",
+          "prompt_index": 1,
+          "rounds_used": 14,
+          "initial_score": 0.6474609971046448,
+          "final_score": 0.9034320712089539,
+          "score_improvement": 0.2559710741043091,
+          "converged": true,
+          "duration_seconds": 904.5805985927582,
+          "optimized_prompt": "a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "warm yellow woolen scarf with fringed edges",
+          "prompt_index": 2,
+          "rounds_used": 12,
+          "initial_score": 0.0,
+          "final_score": 0.831508219242096,
+          "score_improvement": 0.831508219242096,
+          "converged": true,
+          "duration_seconds": 783.063726902008,
+          "optimized_prompt": "a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "ruby bracelet adorned with faceted stones",
+          "prompt_index": 3,
+          "rounds_used": 8,
+          "initial_score": 0.6446024775505066,
+          "final_score": 0.8737099766731262,
+          "score_improvement": 0.22910749912261963,
+          "converged": true,
+          "duration_seconds": 525.9001290798187,
+          "optimized_prompt": "a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "purple suv high roof off-road tires",
+          "prompt_index": 4,
+          "rounds_used": 10,
+          "initial_score": 0.694740355014801,
+          "final_score": 0.8989015221595764,
+          "score_improvement": 0.2041611671447754,
+          "converged": true,
+          "duration_seconds": 699.4545159339905,
+          "optimized_prompt": "a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "sapphire mace with gold-plated head",
+          "prompt_index": 5,
+          "rounds_used": 18,
+          "initial_score": 0.940000057220459,
+          "final_score": 0.9636027216911316,
+          "score_improvement": 0.023602664470672607,
+          "converged": false,
+          "duration_seconds": 1146.3989036083221,
+          "optimized_prompt": "a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern"
+        },
+        {
+          "prompt": "teal camper van rooftop tent and awning",
+          "prompt_index": 6,
+          "rounds_used": 13,
+          "initial_score": 0.769327700138092,
+          "final_score": 0.8679682016372681,
+          "score_improvement": 0.09864050149917603,
+          "converged": true,
+          "duration_seconds": 870.2516627311707,
+          "optimized_prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "teal suv with",
+          "prompt_index": 7,
+          "rounds_used": 8,
+          "initial_score": 0.751099705696106,
+          "final_score": 0.9014739990234375,
+          "score_improvement": 0.15037429332733154,
+          "converged": true,
+          "duration_seconds": 545.8455913066864,
+          "optimized_prompt": "a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background"
+        }
+      ],
+      "episode_summary": {
+        "total_prompts": 7,
+        "successful_optimizations": 6,
+        "success_rate": 0.8571428571428571,
+        "total_rounds": 83,
+        "avg_rounds_per_prompt": 11.857142857142858,
+        "total_score_improvement": 1.7933654189109802,
+        "avg_score_improvement": 0.25619505984442575,
+        "episode_duration_seconds": 5475.5681302547455,
+        "principles_learned": [
+          "Iterative improvement successful: 0.647 \u2192 0.862",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 4 different strategies",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 5 different strategies",
+          "Iterative improvement successful: 0.645 \u2192 0.864",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.695 \u2192 0.890",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.940 \u2192 0.950",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.769 \u2192 0.770",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 6 different strategies",
+          "Iterative improvement successful: 0.751 \u2192 0.901",
+          "Best performing strategy in session: conservative_enhancement",
+          "Explored 4 different strategies"
+        ],
+        "end_time": "2025-08-10T02:46:46.883142"
+      }
+    },
+    {
+      "episode": 2,
+      "start_time": "2025-08-10T02:46:48.891871",
+      "prompt_results": [
+        {
+          "prompt": "silver robot wearing green scarf",
+          "prompt_index": 1,
+          "rounds_used": 7,
+          "initial_score": 0.5633604526519775,
+          "final_score": 0.9034320712089539,
+          "score_improvement": 0.3400716185569763,
+          "converged": true,
+          "duration_seconds": 455.82997012138367,
+          "optimized_prompt": "a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "warm yellow woolen scarf with fringed edges",
+          "prompt_index": 2,
+          "rounds_used": 6,
+          "initial_score": 0.8531122803688049,
+          "final_score": 0.8679327964782715,
+          "score_improvement": 0.014820516109466553,
+          "converged": true,
+          "duration_seconds": 404.2594246864319,
+          "optimized_prompt": "a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "ruby bracelet adorned with faceted stones",
+          "prompt_index": 3,
+          "rounds_used": 6,
+          "initial_score": 0.872917890548706,
+          "final_score": 0.9204292893409729,
+          "score_improvement": 0.047511398792266846,
+          "converged": true,
+          "duration_seconds": 390.36087703704834,
+          "optimized_prompt": "a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone"
+        },
+        {
+          "prompt": "purple suv high roof off-road tires",
+          "prompt_index": 4,
+          "rounds_used": 16,
+          "initial_score": 0.7728654146194458,
+          "final_score": 0.8989015221595764,
+          "score_improvement": 0.12603610754013062,
+          "converged": true,
+          "duration_seconds": 1138.7219092845917,
+          "optimized_prompt": "a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "sapphire mace with gold-plated head",
+          "prompt_index": 5,
+          "rounds_used": 11,
+          "initial_score": 0.8748506307601929,
+          "final_score": 0.9645014405250549,
+          "score_improvement": 0.08965080976486206,
+          "converged": true,
+          "duration_seconds": 697.817818403244,
+          "optimized_prompt": "a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and ornate knotwork details, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "teal camper van rooftop tent and awning",
+          "prompt_index": 6,
+          "rounds_used": 8,
+          "initial_score": 0.8364871740341187,
+          "final_score": 0.8835259675979614,
+          "score_improvement": 0.04703879356384277,
+          "converged": true,
+          "duration_seconds": 553.8960773944855,
+          "optimized_prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, front view, accurate, complete, white background"
+        },
+        {
+          "prompt": "teal suv with",
+          "prompt_index": 7,
+          "rounds_used": 18,
+          "initial_score": 0.8196646571159363,
+          "final_score": 0.9014739990234375,
+          "score_improvement": 0.08180934190750122,
+          "converged": false,
+          "duration_seconds": 1252.0891721248627,
+          "optimized_prompt": "a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background"
+        }
+      ],
+      "episode_summary": {
+        "total_prompts": 7,
+        "successful_optimizations": 6,
+        "success_rate": 0.8571428571428571,
+        "total_rounds": 72,
+        "avg_rounds_per_prompt": 10.285714285714286,
+        "total_score_improvement": 0.7469385862350464,
+        "avg_score_improvement": 0.10670551231929234,
+        "episode_duration_seconds": 4893.046361207962,
+        "principles_learned": [
+          "Iterative improvement successful: 0.563 \u2192 0.871",
+          "Best performing strategy in session: technical_precision",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 3 different strategies",
+          "Best performing strategy in session: artistic_elaboration",
+          "Explored 3 different strategies",
+          "Iterative improvement successful: 0.773 \u2192 0.780",
+          "Best performing strategy in session: aggressive_transformation",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.875 \u2192 0.961",
+          "Best performing strategy in session: hybrid_approach",
+          "Explored 5 different strategies",
+          "Best performing strategy in session: material_focus",
+          "Explored 4 different strategies",
+          "Iterative improvement successful: 0.820 \u2192 0.869",
+          "Best performing strategy in session: technical_precision",
+          "Explored 4 different strategies"
+        ],
+        "end_time": "2025-08-10T04:08:21.938245"
+      }
+    }
+  ],
+  "learning_analysis": {
+    "total_episodes": 2,
+    "success_rate_trend": {
+      "first_5_episodes": null,
+      "last_5_episodes": null,
+      "overall_average": 0.8571428571428571,
+      "final_episode": 0.8571428571428571
+    },
+    "efficiency_trend": {
+      "first_5_episodes_avg_rounds": null,
+      "last_5_episodes_avg_rounds": null,
+      "overall_average_rounds": 11.071428571428573,
+      "final_episode_rounds": 10.285714285714286
+    },
+    "improvement_trend": {
+      "first_5_episodes_avg_improvement": null,
+      "last_5_episodes_avg_improvement": null,
+      "overall_average_improvement": 0.18145028608185904,
+      "final_episode_improvement": 0.10670551231929234
+    },
+    "total_principles_learned": 38,
+    "unique_principles": 20
+  },
+  "test_prompts_used": [
+    "silver robot wearing green scarf",
+    "warm yellow woolen scarf with fringed edges",
+    "ruby bracelet adorned with faceted stones",
+    "purple suv high roof off-road tires",
+    "sapphire mace with gold-plated head",
+    "teal camper van rooftop tent and awning",
+    "teal suv with"
+  ],
+  "best_prompts": {
+    "silver robot wearing green scarf": {
+      "score": 0.9034320712089539,
+      "prompt": "a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background"
+    },
+    "warm yellow woolen scarf with fringed edges": {
+      "score": 0.8679327964782715,
+      "prompt": "a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background"
+    },
+    "ruby bracelet adorned with faceted stones": {
+      "score": 0.9204292893409729,
+      "prompt": "a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone"
+    },
+    "purple suv high roof off-road tires": {
+      "score": 0.8989015221595764,
+      "prompt": "a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background"
+    },
+    "sapphire mace with gold-plated head": {
+      "score": 0.9645014405250549,
+      "prompt": "a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and ornate knotwork details, front view, accurate, complete, white background"
+    },
+    "teal camper van rooftop tent and awning": {
+      "score": 0.8835259675979614,
+      "prompt": "teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, front view, accurate, complete, white background"
+    },
+    "teal suv with": {
+      "score": 0.9014739990234375,
+      "prompt": "a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background"
+    }
+  }
+}

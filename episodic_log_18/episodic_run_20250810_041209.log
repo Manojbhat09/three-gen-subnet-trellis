@@ -1,0 +1,40 @@
+2025-08-10 04:12:12,055 - INFO - 📚 Loaded RL memory: 8 strategies, 50 sessions
+2025-08-10 04:12:12,056 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-10 04:12:12,056 - INFO -    Strategy tracking: 8 strategies
+2025-08-10 04:12:12,056 - INFO -    Past sessions: 50
+2025-08-10 04:12:12,056 - INFO -    Exploration rate: 0.78
+2025-08-10 04:12:12,056 - INFO -    Max rounds per optimization: 15
+2025-08-10 04:12:12,056 - INFO -    Min rounds before convergence: 5
+2025-08-10 04:12:12,056 - INFO -    Adaptive convergence: ENABLED
+2025-08-10 04:12:12,065 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-10 04:12:12,066 - INFO - Starting episodic optimization: 2 episodes, 16 prompts per episode
+2025-08-10 04:12:12,066 - INFO - Target score: 0.99, Max rounds per prompt: 18
+2025-08-10 04:12:12,066 - INFO - 
+============================================================
+2025-08-10 04:12:12,066 - INFO - STARTING EPISODE 1/2
+2025-08-10 04:12:12,066 - INFO - ============================================================
+2025-08-10 04:12:12,066 - INFO - 🔍 Checking server health at episode start...
+2025-08-10 04:12:12,072 - INFO - ✅ Server health check passed
+2025-08-10 04:12:12,074 - INFO - 
+--- Episode 1, Prompt 1 (Total: 16) ---
+2025-08-10 04:12:12,074 - INFO - Optimizing: 'violet succubus with long'
+2025-08-10 04:12:12,074 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 04:12:12,081 - INFO - ✅ Server is available (status: completed)
+2025-08-10 04:12:12,081 - INFO - 📝 Marked server as used at 1754799132.0819392
+2025-08-10 04:12:12,082 - INFO - ✅ Server is available and marked as used
+2025-08-10 04:12:12,082 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 04:12:12,082 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-10 04:12:12,082 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 04:12:12,088 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'violet succubus with long'
+2025-08-10 04:12:12,088 - INFO -    Session: rl_session_1754799132_1035
+2025-08-10 04:12:12,088 - INFO -    Max rounds: 18
+2025-08-10 04:12:12,088 - INFO -    Min rounds before convergence: 5
+2025-08-10 04:12:12,088 - INFO -    Target score: 0.99
+2025-08-10 04:12:12,089 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 04:12:12,089 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-10 04:12:16,414 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:12:16,414 - INFO -       🔍 Validating...
+2025-08-10 04:12:16,414 - INFO -       📝 Using optimized prompt for generation: 'violet succubus with long, flowing locks and intricate silver jewelry that catches the light as it moves, front view, accurate, complete, white background...'
+2025-08-10 04:12:16,414 - INFO -       🎯 Computing scores against original prompt: 'violet succubus with long...'

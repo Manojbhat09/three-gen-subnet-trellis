@@ -1,0 +1,2064 @@
+2025-08-10 01:15:31,299 - INFO - 📚 Loaded RL memory: 8 strategies, 50 sessions
+2025-08-10 01:15:31,299 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-10 01:15:31,299 - INFO -    Strategy tracking: 8 strategies
+2025-08-10 01:15:31,299 - INFO -    Past sessions: 50
+2025-08-10 01:15:31,299 - INFO -    Exploration rate: 0.59
+2025-08-10 01:15:31,299 - INFO -    Max rounds per optimization: 15
+2025-08-10 01:15:31,299 - INFO -    Min rounds before convergence: 5
+2025-08-10 01:15:31,300 - INFO -    Adaptive convergence: ENABLED
+2025-08-10 01:15:31,307 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-10 01:15:31,307 - INFO - Starting episodic optimization: 2 episodes, 7 prompts per episode
+2025-08-10 01:15:31,307 - INFO - Target score: 0.99, Max rounds per prompt: 18
+2025-08-10 01:15:31,307 - INFO - 
+============================================================
+2025-08-10 01:15:31,307 - INFO - STARTING EPISODE 1/2
+2025-08-10 01:15:31,307 - INFO - ============================================================
+2025-08-10 01:15:31,308 - INFO - 🔍 Checking server health at episode start...
+2025-08-10 01:15:31,314 - INFO - ✅ Server health check passed
+2025-08-10 01:15:31,317 - INFO - 
+--- Episode 1, Prompt 1 (Total: 7) ---
+2025-08-10 01:15:31,317 - INFO - Optimizing: 'silver robot wearing green scarf'
+2025-08-10 01:15:31,318 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 01:15:31,323 - INFO - ✅ Server is available (status: completed)
+2025-08-10 01:15:31,323 - INFO - 📝 Marked server as used at 1754788531.323812
+2025-08-10 01:15:31,323 - INFO - ✅ Server is available and marked as used
+2025-08-10 01:15:31,324 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 01:15:31,324 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-10 01:15:31,324 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 01:15:31,326 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'silver robot wearing green scarf'
+2025-08-10 01:15:31,327 - INFO -    Session: rl_session_1754788531_1049
+2025-08-10 01:15:31,327 - INFO -    Max rounds: 18
+2025-08-10 01:15:31,327 - INFO -    Min rounds before convergence: 5
+2025-08-10 01:15:31,327 - INFO -    Target score: 0.99
+2025-08-10 01:15:31,327 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 01:15:31,327 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:15:34,594 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:15:34,594 - INFO -       🔍 Validating...
+2025-08-10 01:15:34,594 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns and subtle sheen, front view, accurate, complete, white background...'
+2025-08-10 01:15:34,595 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:16:35,376 - INFO -       📊 Validation score: 0.6475
+2025-08-10 01:16:35,376 - INFO -       🎯 New best score: 0.6475
+2025-08-10 01:16:35,377 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 01:16:35,377 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 01:16:38,412 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:16:38,413 - INFO -       🔍 Validating...
+2025-08-10 01:16:38,413 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with intricate patterns and subtle sheen, front view from above, front view, accurate, complete, white background...'
+2025-08-10 01:16:38,413 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:17:36,043 - INFO -       📊 Validation score: 0.3522
+2025-08-10 01:17:36,043 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:17:36,043 - INFO -       🔍 Increasing exploration to 0.69
+2025-08-10 01:17:36,043 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 01:17:36,043 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 01:17:39,188 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:17:39,188 - INFO -       🔍 Validating...
+2025-08-10 01:17:39,188 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns and subtle sheen, front view, front view, accurate, complete, white background...'
+2025-08-10 01:17:39,189 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:18:39,487 - INFO -       📊 Validation score: 0.5069
+2025-08-10 01:18:39,488 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:18:39,488 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 01:18:39,488 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 01:18:42,489 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:18:42,489 - INFO -       🔍 Validating...
+2025-08-10 01:18:42,489 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric for added durability and a slight sheen...'
+2025-08-10 01:18:42,490 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:19:51,502 - INFO -       📊 Validation score: 0.9003
+2025-08-10 01:19:51,502 - INFO -       🎯 New best score: 0.9003
+2025-08-10 01:19:51,503 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 01:19:51,503 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 01:19:51,503 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 01:19:54,902 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:19:54,903 - INFO -       🔍 Validating...
+2025-08-10 01:19:54,903 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns of interlocking hexagons and subtle sheen, front view, accurate, complete, white background...'
+2025-08-10 01:19:54,903 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:20:54,733 - INFO -       📊 Validation score: 0.8623
+2025-08-10 01:20:54,733 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:20:54,733 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 01:20:54,733 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:20:58,348 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:20:58,349 - INFO -       🔍 Validating...
+2025-08-10 01:20:58,349 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf made from a unique blend of recycled polyester and organic cotton with subtle sheen and intricate patterns woven into the fabric...'
+2025-08-10 01:20:58,349 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:22:02,327 - INFO -       📊 Validation score: 0.8855
+2025-08-10 01:22:02,328 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:22:02,328 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 01:22:02,328 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:22:05,879 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:22:05,879 - INFO -       🔍 Validating...
+2025-08-10 01:22:05,879 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background...'
+2025-08-10 01:22:05,879 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:23:04,507 - INFO -       📊 Validation score: 0.9034
+2025-08-10 01:23:04,507 - INFO -       🎯 New best score: 0.9034
+2025-08-10 01:23:04,507 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 01:23:04,507 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 01:23:04,507 - INFO -       🔍 Explore performing better - increasing epsilon to 0.74
+2025-08-10 01:23:04,508 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:23:07,657 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:23:07,657 - INFO -       🔍 Validating...
+2025-08-10 01:23:07,658 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric at an angle of 45 degrees for a dynamic look, front view, accurate, complete, white background...'
+2025-08-10 01:23:07,658 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:24:05,333 - INFO -       📊 Validation score: 0.7361
+2025-08-10 01:24:05,334 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:24:05,334 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 01:24:05,334 - INFO -       🔍 Explore performing better - increasing epsilon to 0.79
+2025-08-10 01:24:05,334 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:24:08,957 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:24:08,957 - INFO -       🔍 Validating...
+2025-08-10 01:24:08,957 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot with an intricately woven green scarf featuring subtle sheen and micro-scale embroidery on the fabric's surface, front view, accurate, complete, white background...'
+2025-08-10 01:24:08,957 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:25:07,934 - INFO -       📊 Validation score: 0.5782
+2025-08-10 01:25:07,935 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:25:07,935 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 01:25:07,935 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:25:07,936 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 01:25:11,464 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:25:11,464 - INFO -       🔍 Validating...
+2025-08-10 01:25:11,464 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric in a delicate lattice pattern featuring subtle sheen and a hint of texture, front view, accurate, complete, white background...'
+2025-08-10 01:25:11,465 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:26:09,822 - INFO -       📊 Validation score: 0.4936
+2025-08-10 01:26:09,822 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:26:09,823 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-10 01:26:09,823 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 01:26:09,823 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:26:09,823 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:26:13,195 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:26:13,195 - INFO -       🔍 Validating...
+2025-08-10 01:26:13,195 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns of interlocking hexagons and subtle sheen, front view, front view, accurate, complete, white background...'
+2025-08-10 01:26:13,195 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:27:14,858 - INFO -       📊 Validation score: 0.8643
+2025-08-10 01:27:14,859 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 01:27:14,859 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 01:27:14,859 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:27:14,859 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 01:27:17,986 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:27:17,987 - INFO -       🔍 Validating...
+2025-08-10 01:27:17,987 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with micro-scale embroidery featuring interlocking hexagons and delicate floral motifs, front view, accurate, complete, white background...'
+2025-08-10 01:27:17,987 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:28:25,624 - INFO -       📊 Validation score: 0.8977
+2025-08-10 01:28:25,625 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 01:28:25,625 - INFO - 
+   🔄 RL Round 13/18
+2025-08-10 01:28:25,625 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:28:25,625 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-10 01:28:33,814 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:28:33,814 - INFO -       🔍 Validating...
+2025-08-10 01:28:33,814 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns of interlocking hexagons and subtle sheen, front view, accurate, complete, white background...'
+2025-08-10 01:28:33,814 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:29:32,109 - INFO -       📊 Validation score: 0.8622
+2025-08-10 01:29:32,110 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:29:32,110 - INFO - 
+   🔄 RL Round 14/18
+2025-08-10 01:29:32,110 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:29:32,110 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-10 01:29:35,527 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:29:35,528 - INFO -       🔍 Validating...
+2025-08-10 01:29:35,528 - INFO -       📝 Using optimized prompt for generation: 'a sleek silver robot wearing a vibrant green scarf with intricate patterns of interlocking hexagons and subtle sheen on the metallic surface, front view, accurate, complete, white background...'
+2025-08-10 01:29:35,528 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 01:30:35,868 - INFO -       📊 Validation score: 0.8625
+2025-08-10 01:30:35,869 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.000)
+2025-08-10 01:30:35,903 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 01:30:35,903 - INFO -    Best prompt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background
+2025-08-10 01:30:35,903 - INFO -    Best score: 0.9034
+2025-08-10 01:30:35,903 - INFO -    Rounds: 14
+2025-08-10 01:30:35,903 - INFO -    Convergence: True
+2025-08-10 01:30:35,904 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.000)
+2025-08-10 01:30:35,904 - INFO -    Exploration ratio: 64.3%
+2025-08-10 01:30:35,904 - INFO -    Insights learned: 3
+2025-08-10 01:30:35,904 - INFO -    Total time: 904.54s
+2025-08-10 01:30:35,904 - INFO - Prompt optimized in 14 rounds: 0.647 → 0.903 (+0.256)
+2025-08-10 01:30:35,904 - INFO - ✅ Target score achieved!
+2025-08-10 01:30:35,906 - INFO - 
+--- Episode 1, Prompt 2 (Total: 7) ---
+2025-08-10 01:30:35,906 - INFO - Optimizing: 'warm yellow woolen scarf with fringed edges'
+2025-08-10 01:30:35,906 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 01:30:35,913 - INFO - ✅ Server is available (status: completed)
+2025-08-10 01:30:35,913 - INFO - 📝 Marked server as used at 1754789435.9139051
+2025-08-10 01:30:35,914 - INFO - ✅ Server is available and marked as used
+2025-08-10 01:30:35,914 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 01:30:35,914 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 01:30:35,914 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 01:30:35,917 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'warm yellow woolen scarf with fringed edges'
+2025-08-10 01:30:35,917 - INFO -    Session: rl_session_1754789435_2110
+2025-08-10 01:30:35,918 - INFO -    Max rounds: 18
+2025-08-10 01:30:35,918 - INFO -    Min rounds before convergence: 5
+2025-08-10 01:30:35,918 - INFO -    Target score: 0.99
+2025-08-10 01:30:35,918 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 01:30:35,918 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:30:35,918 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-10 01:30:39,552 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:30:39,553 - INFO -       🔍 Validating...
+2025-08-10 01:30:39,553 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with subtle sheen, featuring intricate fringing in a gradient from pale cream to deep honey, subtly textured to resemble worn velvet, front view, accurate, complete, white background...'
+2025-08-10 01:30:39,553 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:31:42,189 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-10 01:31:42,189 - INFO -       📊 Validation score: 0.0000
+2025-08-10 01:31:42,190 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 01:31:42,190 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:31:42,190 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-10 01:31:45,527 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:31:45,528 - INFO -       🔍 Validating...
+2025-08-10 01:31:45,528 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths and subtle sheen on the fabric, front view, accurate, complete, white background...'
+2025-08-10 01:31:45,528 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:32:44,822 - INFO -       📊 Validation score: 0.8297
+2025-08-10 01:32:44,823 - INFO -       🎯 New best score: 0.8297
+2025-08-10 01:32:44,823 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 01:32:44,823 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:32:44,824 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-10 01:32:48,178 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:32:48,178 - INFO -       🔍 Validating...
+2025-08-10 01:32:48,179 - INFO -       📝 Using optimized prompt for generation: 'a soft and warm yellow woolen scarf with delicate fringing that catches a hint of sunlight, its subtle sheen glistening ever so slightly in the right light, front view, accurate, complete, white background...'
+2025-08-10 01:32:48,179 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:33:48,652 - INFO -       📊 Validation score: 0.8029
+2025-08-10 01:33:48,652 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:33:48,652 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 01:33:48,653 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:33:48,653 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 01:33:52,915 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:33:52,916 - INFO -       🔍 Validating...
+2025-08-10 01:33:52,916 - INFO -       📝 Using optimized prompt for generation: 'a soft and warm yellow woolen scarf with delicate, hand-knotted fringes in a subtle gradient of texture and sheen, front view, accurate, complete, white background...'
+2025-08-10 01:33:52,916 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:34:57,137 - INFO -       📊 Validation score: 0.8260
+2025-08-10 01:34:57,137 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:34:57,137 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 01:34:57,137 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:34:57,137 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 01:35:00,198 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:35:00,198 - INFO -       🔍 Validating...
+2025-08-10 01:35:00,198 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background...'
+2025-08-10 01:35:00,198 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:36:02,664 - INFO -       📊 Validation score: 0.8315
+2025-08-10 01:36:02,664 - INFO -       🎯 New best score: 0.8315
+2025-08-10 01:36:02,665 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:36:02,665 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 01:36:02,665 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 01:36:02,665 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:36:02,665 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 01:36:05,717 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:36:05,717 - INFO -       🔍 Validating...
+2025-08-10 01:36:05,717 - INFO -       📝 Using optimized prompt for generation: 'a warm, soft-hued woolen scarf with delicate fringes in varying lengths and subtle sheen...'
+2025-08-10 01:36:05,717 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:37:03,974 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-10 01:37:03,974 - INFO -       📊 Validation score: 0.0000
+2025-08-10 01:37:03,975 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:37:03,975 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 01:37:03,975 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:37:03,975 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 01:37:07,745 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:37:07,745 - INFO -       🔍 Validating...
+2025-08-10 01:37:07,746 - INFO -       📝 Using optimized prompt for generation: 'a soft and warm yellow woolen scarf with delicate, hand-tied fringes in varying lengths and slightly asymmetrical tassels that catch the light softly...'
+2025-08-10 01:37:07,746 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:38:10,219 - INFO -       📊 Validation score: 0.7208
+2025-08-10 01:38:10,220 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:38:10,220 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 01:38:10,220 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:38:10,221 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 01:38:14,313 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:38:14,314 - INFO -       🔍 Validating...
+2025-08-10 01:38:14,314 - INFO -       📝 Using optimized prompt for generation: 'a warm yellow woolen scarf with delicate, hand-knotted fringes that catch a hint of sunlight as it drapes elegantly across the shoulder, front view, accurate, complete, white background...'
+2025-08-10 01:38:14,314 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:39:15,760 - INFO -       📊 Validation score: 0.8304
+2025-08-10 01:39:15,761 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:39:15,761 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 01:39:15,761 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 01:39:15,761 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:39:15,761 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 01:39:18,804 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:39:18,804 - INFO -       🔍 Validating...
+2025-08-10 01:39:18,804 - INFO -       📝 Using optimized prompt for generation: 'a long, delicate woolen scarf with intricately tied fringes that catch a soft, warm glow...'
+2025-08-10 01:39:18,804 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:40:17,680 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-10 01:40:17,680 - INFO -       📊 Validation score: 0.0000
+2025-08-10 01:40:17,680 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:40:17,680 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 01:40:17,681 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:40:17,681 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 01:40:20,870 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:40:20,871 - INFO -       🔍 Validating...
+2025-08-10 01:40:20,871 - INFO -       📝 Using optimized prompt for generation: 'a soft and warm yellow woolen scarf with delicate fringes that gently curve inward at the edges, subtly textured to resemble the gentle rustle of leaves in autumn., front view, accurate, complete, white background...'
+2025-08-10 01:40:20,871 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:41:24,922 - INFO -       📊 Validation score: 0.7437
+2025-08-10 01:41:24,922 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:41:24,923 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 01:41:24,923 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:41:24,923 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 01:41:28,860 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:41:28,861 - INFO -       🔍 Validating...
+2025-08-10 01:41:28,861 - INFO -       📝 Using optimized prompt for generation: 'a warm yellow woolen scarf with delicate fringes that gently curve inward at the edges and feature subtle, woven textures of fine wool threads, front view, accurate, complete, white background...'
+2025-08-10 01:41:28,861 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:42:34,237 - INFO -       📊 Validation score: 0.8197
+2025-08-10 01:42:34,237 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:42:34,237 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 01:42:34,237 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 01:42:34,238 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:42:34,238 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 01:42:37,583 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:42:37,584 - INFO -       🔍 Validating...
+2025-08-10 01:42:37,584 - INFO -       📝 Using optimized prompt for generation: 'a soft and warm yellow woolen scarf with delicate, hand-knotted fringes in varying lengths and a subtle sheen that catches the light, front view, accurate, complete, white background...'
+2025-08-10 01:42:37,584 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 01:43:38,943 - INFO -       📊 Validation score: 0.8177
+2025-08-10 01:43:38,944 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:43:38,944 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.002)
+2025-08-10 01:43:38,976 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 01:43:38,977 - INFO -    Best prompt: a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background
+2025-08-10 01:43:38,977 - INFO -    Best score: 0.8315
+2025-08-10 01:43:38,977 - INFO -    Rounds: 12
+2025-08-10 01:43:38,977 - INFO -    Convergence: True
+2025-08-10 01:43:38,977 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.002)
+2025-08-10 01:43:38,977 - INFO -    Exploration ratio: 83.3%
+2025-08-10 01:43:38,977 - INFO -    Insights learned: 2
+2025-08-10 01:43:38,977 - INFO -    Total time: 783.03s
+2025-08-10 01:43:38,977 - INFO - Prompt optimized in 12 rounds: 0.000 → 0.832 (+0.832)
+2025-08-10 01:43:38,977 - INFO - ✅ Target score achieved!
+2025-08-10 01:43:38,979 - INFO - 
+--- Episode 1, Prompt 3 (Total: 7) ---
+2025-08-10 01:43:38,979 - INFO - Optimizing: 'ruby bracelet adorned with faceted stones'
+2025-08-10 01:43:38,979 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 01:43:38,985 - INFO - ✅ Server is available (status: completed)
+2025-08-10 01:43:38,985 - INFO - 📝 Marked server as used at 1754790218.985764
+2025-08-10 01:43:38,985 - INFO - ✅ Server is available and marked as used
+2025-08-10 01:43:38,985 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 01:43:38,986 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 01:43:38,986 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 01:43:38,988 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'ruby bracelet adorned with faceted stones'
+2025-08-10 01:43:38,988 - INFO -    Session: rl_session_1754790218_9684
+2025-08-10 01:43:38,988 - INFO -    Max rounds: 18
+2025-08-10 01:43:38,988 - INFO -    Min rounds before convergence: 5
+2025-08-10 01:43:38,988 - INFO -    Target score: 0.99
+2025-08-10 01:43:38,989 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 01:43:38,989 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:43:38,989 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 01:43:42,908 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:43:42,908 - INFO -       🔍 Validating...
+2025-08-10 01:43:42,909 - INFO -       📝 Using optimized prompt for generation: 'ruby bracelet adorned with faceted stones, carefully crafted to refract light and showcase the vibrant colors of each stone, front view, accurate, complete, white background...'
+2025-08-10 01:43:42,909 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:44:43,953 - INFO -       📊 Validation score: 0.6446
+2025-08-10 01:44:43,953 - INFO -       🎯 New best score: 0.6446
+2025-08-10 01:44:43,954 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 01:44:43,954 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:44:43,954 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 01:44:47,051 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:44:47,052 - INFO -       🔍 Validating...
+2025-08-10 01:44:47,052 - INFO -       📝 Using optimized prompt for generation: 'ruby bracelet adorned with faceted stones that are intricately cut to maximize brilliance and depth, showcasing subtle facets that catch the light, front view, accurate, complete, white background...'
+2025-08-10 01:44:47,052 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:45:50,503 - INFO -       📊 Validation score: 0.8601
+2025-08-10 01:45:50,504 - INFO -       🎯 New best score: 0.8601
+2025-08-10 01:45:50,504 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 01:45:50,504 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 01:45:50,504 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:45:50,504 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:45:54,988 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:45:54,988 - INFO -       🔍 Validating...
+2025-08-10 01:45:54,988 - INFO -       📝 Using optimized prompt for generation: 'ruby bracelet adorned with faceted stones, carefully polished to reveal the subtle dance of light and color within each stone, front view, accurate, complete, white background...'
+2025-08-10 01:45:54,988 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:46:53,828 - INFO -       📊 Validation score: 0.8328
+2025-08-10 01:46:53,828 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:46:53,829 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 01:46:53,829 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:46:53,829 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:46:57,532 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:46:57,533 - INFO -       🔍 Validating...
+2025-08-10 01:46:57,533 - INFO -       📝 Using optimized prompt for generation: 'ruby bracelet adorned with faceted stones, meticulously cut to accentuate their angular facets and subtle sparkle, front view, accurate, complete, white background...'
+2025-08-10 01:46:57,533 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:48:00,706 - INFO -       📊 Validation score: 0.8107
+2025-08-10 01:48:00,707 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:48:00,707 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 01:48:00,707 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 01:48:00,707 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 01:48:07,990 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:48:07,990 - INFO -       🔍 Validating...
+2025-08-10 01:48:07,991 - INFO -       📝 Using optimized prompt for generation: 'a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background...'
+2025-08-10 01:48:07,991 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:49:10,710 - INFO -       📊 Validation score: 0.8737
+2025-08-10 01:49:10,711 - INFO -       🎯 New best score: 0.8737
+2025-08-10 01:49:10,711 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:49:10,711 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:49:10,711 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 01:49:10,711 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 01:49:14,890 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:49:14,890 - INFO -       🔍 Validating...
+2025-08-10 01:49:14,891 - INFO -       📝 Using optimized prompt for generation: 'ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their deep, rich colors in a subtle yet elegant manner, front view, accurate, complete, white background...'
+2025-08-10 01:49:14,891 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:50:15,458 - INFO -       📊 Validation score: 0.7943
+2025-08-10 01:50:15,459 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:50:15,459 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:50:15,459 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 01:50:15,459 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 01:50:19,103 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:50:19,104 - INFO -       🔍 Validating...
+2025-08-10 01:50:19,104 - INFO -       📝 Using optimized prompt for generation: 'a slender ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their deep red hues, front view, accurate, complete, white background...'
+2025-08-10 01:50:19,104 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:51:17,767 - INFO -       📊 Validation score: 0.8680
+2025-08-10 01:51:17,767 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:51:17,767 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 01:51:17,768 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 01:51:17,768 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:51:21,397 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:51:21,398 - INFO -       🔍 Validating...
+2025-08-10 01:51:21,398 - INFO -       📝 Using optimized prompt for generation: 'a slender ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their deep, rich colors and subtle sparkle...'
+2025-08-10 01:51:21,399 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 01:52:24,825 - INFO -       📊 Validation score: 0.8635
+2025-08-10 01:52:24,825 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:52:24,826 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.004)
+2025-08-10 01:52:24,883 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 01:52:24,884 - INFO -    Best prompt: a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background
+2025-08-10 01:52:24,884 - INFO -    Best score: 0.8737
+2025-08-10 01:52:24,884 - INFO -    Rounds: 8
+2025-08-10 01:52:24,885 - INFO -    Convergence: True
+2025-08-10 01:52:24,885 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.004)
+2025-08-10 01:52:24,885 - INFO -    Exploration ratio: 75.0%
+2025-08-10 01:52:24,885 - INFO -    Insights learned: 3
+2025-08-10 01:52:24,885 - INFO -    Total time: 525.84s
+2025-08-10 01:52:24,886 - INFO - Prompt optimized in 8 rounds: 0.645 → 0.874 (+0.229)
+2025-08-10 01:52:24,886 - INFO - ✅ Target score achieved!
+2025-08-10 01:52:24,888 - INFO - 
+--- Episode 1, Prompt 4 (Total: 7) ---
+2025-08-10 01:52:24,888 - INFO - Optimizing: 'purple suv high roof off-road tires'
+2025-08-10 01:52:24,888 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 01:52:24,895 - INFO - ✅ Server is available (status: completed)
+2025-08-10 01:52:24,895 - INFO - 📝 Marked server as used at 1754790744.8958368
+2025-08-10 01:52:24,896 - INFO - ✅ Server is available and marked as used
+2025-08-10 01:52:24,896 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 01:52:24,896 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 01:52:24,896 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 01:52:24,899 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'purple suv high roof off-road tires'
+2025-08-10 01:52:24,899 - INFO -    Session: rl_session_1754790744_4351
+2025-08-10 01:52:24,899 - INFO -    Max rounds: 18
+2025-08-10 01:52:24,899 - INFO -    Min rounds before convergence: 5
+2025-08-10 01:52:24,899 - INFO -    Target score: 0.99
+2025-08-10 01:52:24,900 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 01:52:24,900 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:52:29,753 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:52:29,753 - INFO -       🔍 Validating...
+2025-08-10 01:52:29,753 - INFO -       📝 Using optimized prompt for generation: 'a rugged purple SUV with high roof off-road tires and sleek, aerodynamic design, front view, accurate, complete, white background...'
+2025-08-10 01:52:29,754 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:53:34,340 - INFO -       📊 Validation score: 0.6947
+2025-08-10 01:53:34,340 - INFO -       🎯 New best score: 0.6947
+2025-08-10 01:53:34,341 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 01:53:34,341 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:53:38,087 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:53:38,088 - INFO -       🔍 Validating...
+2025-08-10 01:53:38,088 - INFO -       📝 Using optimized prompt for generation: 'a sleek purple SUV with a high roof and aggressive off-road tires, showcasing its rugged yet luxurious design from a sharp, 3/4 view, front view, accurate, complete, white background...'
+2025-08-10 01:53:38,088 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:54:40,211 - INFO -       📊 Validation score: 0.8460
+2025-08-10 01:54:40,211 - INFO -       🎯 New best score: 0.8460
+2025-08-10 01:54:40,211 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:54:40,211 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 01:54:40,211 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:54:44,229 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:54:44,229 - INFO -       🔍 Validating...
+2025-08-10 01:54:44,229 - INFO -       📝 Using optimized prompt for generation: 'a high roof purple SUV with aggressive off-road tires and sleek, aerodynamic design in front view, front view, accurate, complete, white background...'
+2025-08-10 01:54:44,229 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:55:52,581 - INFO -       📊 Validation score: 0.7828
+2025-08-10 01:55:52,582 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:55:52,582 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 01:55:52,582 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 01:55:57,013 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:55:57,014 - INFO -       🔍 Validating...
+2025-08-10 01:55:57,014 - INFO -       📝 Using optimized prompt for generation: 'a rugged purple SUV with high roof off-road tires featuring aggressive tread patterns and durable construction...'
+2025-08-10 01:55:57,014 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:57:04,139 - INFO -       📊 Validation score: 0.6857
+2025-08-10 01:57:04,140 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:57:04,140 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 01:57:04,140 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 01:57:07,873 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:57:07,873 - INFO -       🔍 Validating...
+2025-08-10 01:57:07,873 - INFO -       📝 Using optimized prompt for generation: 'a sleek, high-roof purple SUV with aggressively designed off-road tires and subtle, aerodynamic accents, front view, accurate, complete, white background...'
+2025-08-10 01:57:07,873 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:58:12,299 - INFO -       📊 Validation score: 0.8273
+2025-08-10 01:58:12,300 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:58:12,300 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 01:58:12,300 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 01:58:12,300 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 01:58:21,603 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:58:21,604 - INFO -       🔍 Validating...
+2025-08-10 01:58:21,604 - INFO -       📝 Using optimized prompt for generation: 'a sleek, high-roof purple SUV with aggressively designed off-road tires, adorned with metallic trimmings and a distinctive front grille that accentuates its rugged yet luxurious appearance...'
+2025-08-10 01:58:21,604 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 01:59:30,105 - INFO -       📊 Validation score: 0.5303
+2025-08-10 01:59:30,106 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 01:59:30,106 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 01:59:30,107 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 01:59:30,107 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 01:59:33,752 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 01:59:33,753 - INFO -       🔍 Validating...
+2025-08-10 01:59:33,753 - INFO -       📝 Using optimized prompt for generation: 'a rugged purple SUV with high roof off-road tires featuring advanced traction control systems and durable materials...'
+2025-08-10 01:59:33,753 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 02:00:40,291 - INFO -       📊 Validation score: 0.6152
+2025-08-10 02:00:40,292 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 02:00:40,292 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 02:00:40,292 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 02:00:40,292 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 02:00:44,144 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:00:44,145 - INFO -       🔍 Validating...
+2025-08-10 02:00:44,145 - INFO -       📝 Using optimized prompt for generation: 'a sleek, high-roof purple SUV with aggressively designed off-road tires featuring advanced traction control systems and durable, rubberized sidewalls, front view, accurate, complete, white background...'
+2025-08-10 02:00:44,145 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 02:01:47,793 - INFO -       📊 Validation score: 0.7228
+2025-08-10 02:01:47,793 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 02:01:47,794 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 02:01:47,794 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 02:01:47,794 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 02:01:50,986 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:01:50,987 - INFO -       🔍 Validating...
+2025-08-10 02:01:50,987 - INFO -       📝 Using optimized prompt for generation: 'a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background...'
+2025-08-10 02:01:50,987 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 02:02:56,682 - INFO -       📊 Validation score: 0.8989
+2025-08-10 02:02:56,683 - INFO -       🎯 New best score: 0.8989
+2025-08-10 02:02:56,683 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 02:02:56,683 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 02:02:56,683 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:03:00,973 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:03:00,973 - INFO -       🔍 Validating...
+2025-08-10 02:03:00,973 - INFO -       📝 Using optimized prompt for generation: 'a rugged purple SUV with high roof off-road tires featuring advanced suspension systems and durable materials, front view, accurate, complete, white background...'
+2025-08-10 02:03:00,973 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 02:04:04,310 - INFO -       📊 Validation score: 0.8902
+2025-08-10 02:04:04,310 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.009)
+2025-08-10 02:04:04,349 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 02:04:04,349 - INFO -    Best prompt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background
+2025-08-10 02:04:04,349 - INFO -    Best score: 0.8989
+2025-08-10 02:04:04,350 - INFO -    Rounds: 10
+2025-08-10 02:04:04,350 - INFO -    Convergence: True
+2025-08-10 02:04:04,350 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.009)
+2025-08-10 02:04:04,350 - INFO -    Exploration ratio: 80.0%
+2025-08-10 02:04:04,350 - INFO -    Insights learned: 3
+2025-08-10 02:04:04,350 - INFO -    Total time: 699.41s
+2025-08-10 02:04:04,350 - INFO - Prompt optimized in 10 rounds: 0.695 → 0.899 (+0.204)
+2025-08-10 02:04:04,350 - INFO - ✅ Target score achieved!
+2025-08-10 02:04:04,352 - INFO - 
+--- Episode 1, Prompt 5 (Total: 7) ---
+2025-08-10 02:04:04,352 - INFO - Optimizing: 'sapphire mace with gold-plated head'
+2025-08-10 02:04:04,352 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 02:04:04,359 - INFO - ✅ Server is available (status: completed)
+2025-08-10 02:04:04,359 - INFO - 📝 Marked server as used at 1754791444.3596513
+2025-08-10 02:04:04,359 - INFO - ✅ Server is available and marked as used
+2025-08-10 02:04:04,359 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 02:04:04,360 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 02:04:04,360 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 02:04:04,363 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'sapphire mace with gold-plated head'
+2025-08-10 02:04:04,364 - INFO -    Session: rl_session_1754791444_1345
+2025-08-10 02:04:04,364 - INFO -    Max rounds: 18
+2025-08-10 02:04:04,364 - INFO -    Min rounds before convergence: 5
+2025-08-10 02:04:04,364 - INFO -    Target score: 0.99
+2025-08-10 02:04:04,364 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 02:04:04,364 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 02:04:07,463 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:04:07,463 - INFO -       🔍 Validating...
+2025-08-10 02:04:07,464 - INFO -       📝 Using optimized prompt for generation: 'a sapphire mace with an intricately gold-plated head featuring subtle engravings and a delicate filigree pattern, front view, accurate, complete, white background...'
+2025-08-10 02:04:07,464 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:05:03,839 - INFO -       📊 Validation score: 0.9400
+2025-08-10 02:05:03,839 - INFO -       🎯 New best score: 0.9400
+2025-08-10 02:05:03,839 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 02:05:03,839 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 02:05:07,340 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:05:07,341 - INFO -       🔍 Validating...
+2025-08-10 02:05:07,341 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring a delicate filigree pattern and subtle nuances in the metal's texture, hinting at its high karat content, front view, accurate, complete, white background...'
+2025-08-10 02:05:07,341 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:06:07,820 - INFO -       📊 Validation score: 0.4175
+2025-08-10 02:06:07,820 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:06:07,821 - INFO -       🔍 Increasing exploration to 0.73
+2025-08-10 02:06:07,821 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 02:06:07,821 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:06:12,237 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:06:12,238 - INFO -       🔍 Validating...
+2025-08-10 02:06:12,238 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern...'
+2025-08-10 02:06:12,238 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:07:13,271 - INFO -       📊 Validation score: 0.9636
+2025-08-10 02:07:13,271 - INFO -       🎯 New best score: 0.9636
+2025-08-10 02:07:13,272 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:07:13,272 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 02:07:13,272 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 02:07:16,601 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:07:16,602 - INFO -       🔍 Validating...
+2025-08-10 02:07:16,602 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, ornate filigree patterns, and a subtle texture to the metalwork, front view, accurate, complete, white background...'
+2025-08-10 02:07:16,602 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:08:12,927 - INFO -       📊 Validation score: 0.9099
+2025-08-10 02:08:12,928 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:08:12,928 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 02:08:12,928 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:08:30,105 - WARNING - [TRELLIS] Exception clearing GPU cache: HTTPConnectionPool(host='localhost', port=8096): Read timed out. (read timeout=10)
+2025-08-10 02:08:30,106 - INFO -       🔍 Validating...
+2025-08-10 02:08:30,106 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and a subtle ornateness, front view, accurate, complete, white background...'
+2025-08-10 02:08:30,106 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:09:29,515 - INFO -       📊 Validation score: 0.9082
+2025-08-10 02:09:29,516 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:09:29,516 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 02:09:29,516 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:09:33,808 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:09:33,809 - INFO -       🔍 Validating...
+2025-08-10 02:09:33,809 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle texture to the metalwork...'
+2025-08-10 02:09:33,809 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:10:36,355 - INFO -       📊 Validation score: 0.9615
+2025-08-10 02:10:36,356 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:10:36,356 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 02:10:36,356 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:10:39,683 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:10:39,684 - INFO -       🔍 Validating...
+2025-08-10 02:10:39,684 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and a subtle filigree pattern along its length, front view, accurate, complete, white background...'
+2025-08-10 02:10:39,684 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:11:36,017 - INFO -       📊 Validation score: 0.8327
+2025-08-10 02:11:36,017 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:11:36,018 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 02:11:36,018 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:11:39,772 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:11:39,772 - INFO -       🔍 Validating...
+2025-08-10 02:11:39,772 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and a subtle sheen, front view, accurate, complete, white background...'
+2025-08-10 02:11:39,773 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:12:37,016 - INFO -       📊 Validation score: 0.9614
+2025-08-10 02:12:37,016 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:12:37,016 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 02:12:37,017 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:12:40,592 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:12:40,592 - INFO -       🔍 Validating...
+2025-08-10 02:12:40,593 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate filigree patterns, subtle engravings, and a touch of worn leather, front view, accurate, complete, white background...'
+2025-08-10 02:12:40,593 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:13:42,063 - INFO -       📊 Validation score: 0.9462
+2025-08-10 02:13:42,064 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:13:42,064 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 02:13:42,065 - INFO -       🔍 Explore performing better - increasing epsilon to 0.72
+2025-08-10 02:13:42,065 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 02:13:46,206 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:13:46,207 - INFO -       🔍 Validating...
+2025-08-10 02:13:46,207 - INFO -       📝 Using optimized prompt for generation: 'a sapphire mace with a intricately gold-plated head featuring delicate etchings and ornate scrollwork...'
+2025-08-10 02:13:46,207 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:14:47,441 - INFO -       📊 Validation score: 0.9214
+2025-08-10 02:14:47,442 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:14:47,442 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 02:14:47,442 - INFO -       🔍 Explore performing better - increasing epsilon to 0.77
+2025-08-10 02:14:47,442 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 02:14:51,424 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:14:51,425 - INFO -       🔍 Validating...
+2025-08-10 02:14:51,425 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate filigree patterns, ornate scrollwork, and a subtle golden patina, front view, accurate, complete, white background...'
+2025-08-10 02:14:51,425 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:15:49,673 - INFO -       📊 Validation score: 0.4843
+2025-08-10 02:15:49,674 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:15:49,674 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-10 02:15:49,674 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 02:15:49,674 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:15:53,538 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:15:53,538 - INFO -       🔍 Validating...
+2025-08-10 02:15:53,538 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, a subtle crest, and ornate scrollwork along its handle, front view, accurate, complete, white background...'
+2025-08-10 02:15:53,539 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:16:54,320 - INFO -       📊 Validation score: 0.8978
+2025-08-10 02:16:54,320 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:16:54,320 - INFO - 
+   🔄 RL Round 13/18
+2025-08-10 02:16:54,321 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 02:16:58,035 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:16:58,035 - INFO -       🔍 Validating...
+2025-08-10 02:16:58,035 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate etchings and ornate scrollwork surrounding a subtle star pattern at its crown, front view, accurate, complete, white background...'
+2025-08-10 02:16:58,035 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:17:56,818 - INFO -       📊 Validation score: 0.9206
+2025-08-10 02:17:56,819 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 02:17:56,819 - INFO - 
+   🔄 RL Round 14/18
+2025-08-10 02:17:56,819 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:18:00,543 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:18:00,544 - INFO -       🔍 Validating...
+2025-08-10 02:18:00,544 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate etchings on its silvered surface, front view, accurate, complete, white background...'
+2025-08-10 02:18:00,544 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:18:56,963 - INFO -       📊 Validation score: 0.6792
+2025-08-10 02:18:56,963 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:18:56,963 - INFO - 
+   🔄 RL Round 15/18
+2025-08-10 02:18:56,964 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:19:00,956 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:19:00,957 - INFO -       🔍 Validating...
+2025-08-10 02:19:00,957 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate filigree patterns, subtle etchings, and a touch of warm patina...'
+2025-08-10 02:19:00,957 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:20:02,232 - INFO -       📊 Validation score: 0.8696
+2025-08-10 02:20:02,233 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:20:02,233 - INFO - 
+   🔄 RL Round 16/18
+2025-08-10 02:20:02,233 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:20:06,852 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:20:06,853 - INFO -       🔍 Validating...
+2025-08-10 02:20:06,853 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring subtle engravings and delicate filigree patterns, front view, accurate, complete, white background...'
+2025-08-10 02:20:06,853 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:21:08,469 - INFO -       📊 Validation score: 0.9421
+2025-08-10 02:21:08,469 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:21:08,470 - INFO - 
+   🔄 RL Round 17/18
+2025-08-10 02:21:08,470 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:21:12,907 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:21:12,907 - INFO -       🔍 Validating...
+2025-08-10 02:21:12,907 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and a subtle pattern of interlocking gemstones, front view, accurate, complete, white background...'
+2025-08-10 02:21:12,907 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:22:09,235 - INFO -       📊 Validation score: 0.7581
+2025-08-10 02:22:09,235 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:22:09,235 - INFO - 
+   🔄 RL Round 18/18
+2025-08-10 02:22:09,236 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:22:12,445 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:22:12,446 - INFO -       🔍 Validating...
+2025-08-10 02:22:12,446 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate etchings and ornate scrollwork, front view, accurate, complete, white background...'
+2025-08-10 02:22:12,446 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 02:23:10,713 - INFO -       📊 Validation score: 0.9502
+2025-08-10 02:23:10,757 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 02:23:10,757 - INFO -    Best prompt: a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern
+2025-08-10 02:23:10,757 - INFO -    Best score: 0.9636
+2025-08-10 02:23:10,758 - INFO -    Rounds: 18
+2025-08-10 02:23:10,758 - INFO -    Convergence: False
+2025-08-10 02:23:10,758 - INFO -    Convergence reason: Not converged
+2025-08-10 02:23:10,758 - INFO -    Exploration ratio: 66.7%
+2025-08-10 02:23:10,758 - INFO -    Insights learned: 3
+2025-08-10 02:23:10,758 - INFO -    Total time: 1146.35s
+2025-08-10 02:23:10,758 - INFO - Prompt optimized in 18 rounds: 0.940 → 0.964 (+0.024)
+2025-08-10 02:23:10,759 - INFO - ⏰ Max rounds reached
+2025-08-10 02:23:10,760 - INFO - 
+--- Episode 1, Prompt 6 (Total: 7) ---
+2025-08-10 02:23:10,760 - INFO - Optimizing: 'teal camper van rooftop tent and awning'
+2025-08-10 02:23:10,760 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 02:23:10,770 - INFO - ✅ Server is available (status: completed)
+2025-08-10 02:23:10,770 - INFO - 📝 Marked server as used at 1754792590.770404
+2025-08-10 02:23:10,770 - INFO - ✅ Server is available and marked as used
+2025-08-10 02:23:10,770 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 02:23:10,770 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 02:23:10,770 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 02:23:10,773 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'teal camper van rooftop tent and awning'
+2025-08-10 02:23:10,773 - INFO -    Session: rl_session_1754792590_6469
+2025-08-10 02:23:10,774 - INFO -    Max rounds: 18
+2025-08-10 02:23:10,774 - INFO -    Min rounds before convergence: 5
+2025-08-10 02:23:10,774 - INFO -    Target score: 0.99
+2025-08-10 02:23:10,774 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 02:23:10,774 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 02:23:14,215 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:23:14,215 - INFO -       🔍 Validating...
+2025-08-10 02:23:14,215 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent and retractable awning, front view, accurate, complete, white background...'
+2025-08-10 02:23:14,215 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:24:21,235 - INFO -       📊 Validation score: 0.7693
+2025-08-10 02:24:21,235 - INFO -       🎯 New best score: 0.7693
+2025-08-10 02:24:21,235 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 02:24:21,236 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 02:24:26,055 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:24:26,055 - INFO -       🔍 Validating...
+2025-08-10 02:24:26,055 - INFO -       📝 Using optimized prompt for generation: 'a teal camper van with a sleek, modern rooftop tent featuring a retractable awning and gleaming silver accents, front view, accurate, comprehensive, front view, accurate, complete, white background...'
+2025-08-10 02:24:26,056 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:25:27,945 - INFO -       📊 Validation score: 0.7843
+2025-08-10 02:25:27,945 - INFO -       🎯 New best score: 0.7843
+2025-08-10 02:25:27,946 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 02:25:27,946 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 02:25:27,946 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 02:25:32,586 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:25:32,587 - INFO -       🔍 Validating...
+2025-08-10 02:25:32,587 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with a sleek, modern rooftop tent featuring a retractable awning and gleaming silver accents, perfect for a tranquil lakeside getaway, front view, accurate, complete, white background...'
+2025-08-10 02:25:32,587 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:26:36,399 - INFO -       📊 Validation score: 0.8374
+2025-08-10 02:26:36,399 - INFO -       🎯 New best score: 0.8374
+2025-08-10 02:26:36,399 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 02:26:36,399 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 02:26:36,400 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 02:26:40,811 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:26:40,812 - INFO -       🔍 Validating...
+2025-08-10 02:26:40,812 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with a sleek, modern rooftop tent featuring a retractable awning and gleaming silver accents on the roof's edge, side view, front view, accurate, complete, white background...'
+2025-08-10 02:26:40,812 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:27:43,636 - INFO -       📊 Validation score: 0.8302
+2025-08-10 02:27:43,636 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:27:43,636 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 02:27:43,637 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 02:27:58,948 - WARNING - [TRELLIS] Exception clearing GPU cache: HTTPConnectionPool(host='localhost', port=8096): Read timed out. (read timeout=10)
+2025-08-10 02:27:58,948 - INFO -       🔍 Validating...
+2025-08-10 02:27:58,948 - INFO -       📝 Using optimized prompt for generation: 'a teal camper van with a sleek, modern rooftop tent featuring a retractable awning and gleaming silver accents on the roof rails, front view, accurate, complete, white background...'
+2025-08-10 02:27:58,948 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:29:01,003 - INFO -       📊 Validation score: 0.8147
+2025-08-10 02:29:01,004 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:29:01,004 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 02:29:01,004 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:29:04,133 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:29:04,134 - INFO -       🔍 Validating...
+2025-08-10 02:29:04,134 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, front view, accurate, complete, white background...'
+2025-08-10 02:29:04,134 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:30:04,119 - INFO -       📊 Validation score: 0.8491
+2025-08-10 02:30:04,119 - INFO -       🎯 New best score: 0.8491
+2025-08-10 02:30:04,119 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 02:30:04,119 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 02:30:04,120 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 02:30:07,557 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:30:07,558 - INFO -       🔍 Validating...
+2025-08-10 02:30:07,558 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background...'
+2025-08-10 02:30:07,558 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:31:11,446 - INFO -       📊 Validation score: 0.8680
+2025-08-10 02:31:11,446 - INFO -       🎯 New best score: 0.8680
+2025-08-10 02:31:11,447 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 02:31:11,447 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 02:31:11,447 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:31:14,989 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:31:14,990 - INFO -       🔍 Validating...
+2025-08-10 02:31:14,990 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring a retractable awning and gleaming silver accents, side view...'
+2025-08-10 02:31:14,990 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:32:17,822 - INFO -       📊 Validation score: 0.7797
+2025-08-10 02:32:17,822 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:32:17,822 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 02:32:17,822 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:32:21,819 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:32:21,819 - INFO -       🔍 Validating...
+2025-08-10 02:32:21,820 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring a retractable awning made from durable, water-resistant nylon and gleaming silver accents on the roof's edges, front view, accurate, complete, white background...'
+2025-08-10 02:32:21,820 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:33:21,824 - INFO -       📊 Validation score: 0.8657
+2025-08-10 02:33:21,825 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:33:21,825 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 02:33:21,825 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-10 02:33:25,046 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:33:25,046 - INFO -       🔍 Validating...
+2025-08-10 02:33:25,046 - INFO -       📝 Using optimized prompt for generation: 'a sturdy teal camper van with a sleek, modern rooftop tent featuring a durable retractable awning and gleaming silver accents, front view, accurate, complete, white background...'
+2025-08-10 02:33:25,046 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:34:25,490 - INFO -       📊 Validation score: 0.6154
+2025-08-10 02:34:25,491 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:34:25,491 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 02:34:25,491 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:34:28,863 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:34:28,863 - INFO -       🔍 Validating...
+2025-08-10 02:34:28,864 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents and durable materials, front view, accurate, complete, white background...'
+2025-08-10 02:34:28,864 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:35:33,902 - INFO -       📊 Validation score: 0.8327
+2025-08-10 02:35:33,903 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:35:33,903 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 02:35:33,903 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 02:35:37,007 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:35:37,007 - INFO -       🔍 Validating...
+2025-08-10 02:35:37,007 - INFO -       📝 Using optimized prompt for generation: 'a teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, front view, accurate, complete, white background...'
+2025-08-10 02:35:37,007 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:36:37,335 - INFO -       📊 Validation score: 0.7731
+2025-08-10 02:36:37,336 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:36:37,336 - INFO - 
+   🔄 RL Round 13/18
+2025-08-10 02:36:37,336 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:36:40,488 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:36:40,488 - INFO -       🔍 Validating...
+2025-08-10 02:36:40,488 - INFO -       📝 Using optimized prompt for generation: 'a premium teal camper van with a sleek, modern rooftop tent featuring a retractable awning made from durable, weather-resistant materials and gleaming silver accents, front view, accurate, complete, white background...'
+2025-08-10 02:36:40,489 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 02:37:40,945 - INFO -       📊 Validation score: 0.7701
+2025-08-10 02:37:40,946 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.003)
+2025-08-10 02:37:41,020 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 02:37:41,020 - INFO -    Best prompt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background
+2025-08-10 02:37:41,020 - INFO -    Best score: 0.8680
+2025-08-10 02:37:41,020 - INFO -    Rounds: 13
+2025-08-10 02:37:41,021 - INFO -    Convergence: True
+2025-08-10 02:37:41,021 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.003)
+2025-08-10 02:37:41,021 - INFO -    Exploration ratio: 76.9%
+2025-08-10 02:37:41,021 - INFO -    Insights learned: 3
+2025-08-10 02:37:41,021 - INFO -    Total time: 870.17s
+2025-08-10 02:37:41,022 - INFO - Prompt optimized in 13 rounds: 0.769 → 0.868 (+0.099)
+2025-08-10 02:37:41,022 - INFO - ✅ Target score achieved!
+2025-08-10 02:37:41,024 - INFO - 
+--- Episode 1, Prompt 7 (Total: 7) ---
+2025-08-10 02:37:41,025 - INFO - Optimizing: 'teal suv with'
+2025-08-10 02:37:41,025 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 02:37:41,035 - INFO - ✅ Server is available (status: completed)
+2025-08-10 02:37:41,035 - INFO - 📝 Marked server as used at 1754793461.0355928
+2025-08-10 02:37:41,035 - INFO - ✅ Server is available and marked as used
+2025-08-10 02:37:41,035 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 02:37:41,035 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 02:37:41,036 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 02:37:41,040 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'teal suv with'
+2025-08-10 02:37:41,040 - INFO -    Session: rl_session_1754793461_5271
+2025-08-10 02:37:41,040 - INFO -    Max rounds: 18
+2025-08-10 02:37:41,040 - INFO -    Min rounds before convergence: 5
+2025-08-10 02:37:41,040 - INFO -    Target score: 0.99
+2025-08-10 02:37:41,040 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 02:37:41,041 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:37:44,952 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:37:44,952 - INFO -       🔍 Validating...
+2025-08-10 02:37:44,953 - INFO -       📝 Using optimized prompt for generation: 'teal suv with sleek design and tinted windows, front view, accurate, complete, white background...'
+2025-08-10 02:37:44,953 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:39:13,401 - INFO -       📊 Validation score: 0.7511
+2025-08-10 02:39:13,402 - INFO -       🎯 New best score: 0.7511
+2025-08-10 02:39:13,402 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 02:39:13,402 - INFO -       🔍 Explore performing better - increasing epsilon to 0.74
+2025-08-10 02:39:13,402 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:39:17,247 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:39:17,247 - INFO -       🔍 Validating...
+2025-08-10 02:39:17,247 - INFO -       📝 Using optimized prompt for generation: 'teal SUV with sleek design and tinted windows, front view, accurate, complete, white background, high-quality lighting, front view, accurate, complete, white background...'
+2025-08-10 02:39:17,247 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:40:16,848 - INFO -       📊 Validation score: 0.6405
+2025-08-10 02:40:16,849 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:40:16,849 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 02:40:16,849 - INFO -       🎯 Strategy: artistic_elaboration (exploit)
+2025-08-10 02:40:19,956 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:40:19,956 - INFO -       🔍 Validating...
+2025-08-10 02:40:19,956 - INFO -       📝 Using optimized prompt for generation: 'teal suv with sleek, aerodynamic lines, tinted windows that blend seamlessly into the body, front view...'
+2025-08-10 02:40:19,956 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:41:23,742 - INFO -       📊 Validation score: 0.7415
+2025-08-10 02:41:23,743 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 02:41:23,743 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 02:41:23,743 - INFO -       🔍 Explore performing better - increasing epsilon to 0.79
+2025-08-10 02:41:23,743 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 02:41:27,148 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:41:27,149 - INFO -       🔍 Validating...
+2025-08-10 02:41:27,149 - INFO -       📝 Using optimized prompt for generation: 'a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a sporty front bumper that adds to its aggressive stance, front view, accurate, complete, white background...'
+2025-08-10 02:41:27,149 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:42:31,072 - INFO -       📊 Validation score: 0.8962
+2025-08-10 02:42:31,072 - INFO -       🎯 New best score: 0.8962
+2025-08-10 02:42:31,072 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 02:42:31,072 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 02:42:31,072 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:42:31,072 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:42:35,023 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:42:35,024 - INFO -       🔍 Validating...
+2025-08-10 02:42:35,024 - INFO -       📝 Using optimized prompt for generation: 'teal suv with sleek design and aerodynamic lines, tinted windows that blend seamlessly into the body, clean wheels with precise spoke patterns, front view, accurate, complete, white background...'
+2025-08-10 02:42:35,024 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:43:34,139 - INFO -       📊 Validation score: 0.7993
+2025-08-10 02:43:34,140 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:43:34,140 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 02:43:34,140 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:43:34,140 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 02:43:38,787 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:43:38,787 - INFO -       🔍 Validating...
+2025-08-10 02:43:38,787 - INFO -       📝 Using optimized prompt for generation: 'teal SUV with sleek design and aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle metallic sheen in the sunlight...'
+2025-08-10 02:43:38,787 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:44:38,642 - INFO -       📊 Validation score: 0.5116
+2025-08-10 02:44:38,643 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:44:38,643 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 02:44:38,644 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-10 02:44:42,322 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:44:42,322 - INFO -       🔍 Validating...
+2025-08-10 02:44:42,322 - INFO -       📝 Using optimized prompt for generation: 'a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 02:44:42,322 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:45:44,794 - INFO -       📊 Validation score: 0.9015
+2025-08-10 02:45:44,794 - INFO -       🎯 New best score: 0.9015
+2025-08-10 02:45:44,794 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-10 02:45:44,795 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 02:45:44,795 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:45:47,778 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:45:47,779 - INFO -       🔍 Validating...
+2025-08-10 02:45:47,779 - INFO -       📝 Using optimized prompt for generation: 'teal SUV with sleek, aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 02:45:47,779 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 02:46:46,846 - INFO -       📊 Validation score: 0.9012
+2025-08-10 02:46:46,846 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.000)
+2025-08-10 02:46:46,880 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 02:46:46,880 - INFO -    Best prompt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background
+2025-08-10 02:46:46,880 - INFO -    Best score: 0.9015
+2025-08-10 02:46:46,880 - INFO -    Rounds: 8
+2025-08-10 02:46:46,880 - INFO -    Convergence: True
+2025-08-10 02:46:46,880 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.000)
+2025-08-10 02:46:46,880 - INFO -    Exploration ratio: 75.0%
+2025-08-10 02:46:46,881 - INFO -    Insights learned: 3
+2025-08-10 02:46:46,881 - INFO -    Total time: 545.81s
+2025-08-10 02:46:46,881 - INFO - Prompt optimized in 8 rounds: 0.751 → 0.901 (+0.150)
+2025-08-10 02:46:46,881 - INFO - ✅ Target score achieved!
+2025-08-10 02:46:46,883 - INFO - 
+============================================================
+2025-08-10 02:46:46,883 - INFO - EPISODE 1 SUMMARY
+2025-08-10 02:46:46,883 - INFO - ============================================================
+2025-08-10 02:46:46,883 - INFO - Success Rate: 85.7% (6/7)
+2025-08-10 02:46:46,883 - INFO - Average Rounds: 11.9
+2025-08-10 02:46:46,883 - INFO - Average Score Improvement: +0.256
+2025-08-10 02:46:46,883 - INFO - Episode Duration: 5475.6s
+2025-08-10 02:46:46,883 - INFO - New Principles Learned: 20
+2025-08-10 02:46:48,885 - INFO - 
+============================================================
+2025-08-10 02:46:48,885 - INFO - STARTING EPISODE 2/2
+2025-08-10 02:46:48,885 - INFO - ============================================================
+2025-08-10 02:46:48,885 - INFO - 🔍 Checking server health at episode start...
+2025-08-10 02:46:48,891 - INFO - ✅ Server health check passed
+2025-08-10 02:46:48,893 - INFO - 
+--- Episode 2, Prompt 1 (Total: 7) ---
+2025-08-10 02:46:48,893 - INFO - Optimizing: 'silver robot wearing green scarf'
+2025-08-10 02:46:48,893 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 02:46:48,898 - INFO - ✅ Server is available (status: completed)
+2025-08-10 02:46:48,898 - INFO - 📝 Marked server as used at 1754794008.898932
+2025-08-10 02:46:48,899 - INFO - ✅ Server is available and marked as used
+2025-08-10 02:46:48,899 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 02:46:48,899 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 02:46:48,899 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 02:46:48,901 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'silver robot wearing green scarf'
+2025-08-10 02:46:48,901 - INFO -    Session: rl_session_1754794008_9433
+2025-08-10 02:46:48,901 - INFO -    Max rounds: 18
+2025-08-10 02:46:48,902 - INFO -    Min rounds before convergence: 5
+2025-08-10 02:46:48,902 - INFO -    Target score: 0.99
+2025-08-10 02:46:48,902 - INFO -       🎯 Found previous best attempt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background (score: 0.9034)
+2025-08-10 02:46:48,902 - INFO -       🎯 Strategy used: hybrid_approach
+2025-08-10 02:46:48,902 - INFO -       🎯 Session ID: rl_session_1754788531_1049
+2025-08-10 02:46:48,902 - INFO -       🎯 Past final best prompt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background
+2025-08-10 02:46:48,902 - INFO -       🎯 Past final best score: 0.903
+2025-08-10 02:46:48,902 - INFO -       🎯 Past session ID: rl_session_1754788531_1049
+2025-08-10 02:46:48,902 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.647 → 0.862, Best performing strategy in session: hybrid_approach, Explored 4 different strategies
+2025-08-10 02:46:48,902 - INFO -       🎯 Past strategy performance updates: {'conservative_enhancement': -0.0954572537493712, 'material_focus': -0.06099811813497824, 'hybrid_approach': 0.027587391194765054, 'minimalist_refinement': 0.04456983965028338}
+2025-08-10 02:46:48,902 - INFO -       🎯 Past final best prompt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background
+2025-08-10 02:46:48,903 - INFO -       🎯 Past final best score: 0.903
+2025-08-10 02:46:48,903 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 02:46:48,903 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:46:48,903 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:46:52,247 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:46:52,247 - INFO -       🔍 Validating...
+2025-08-10 02:46:52,247 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background...'
+2025-08-10 02:46:52,247 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:47:50,596 - INFO -       📊 Validation score: 0.5634
+2025-08-10 02:47:50,596 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 02:47:50,596 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:47:54,241 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:47:54,241 - INFO -       🔍 Validating...
+2025-08-10 02:47:54,241 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and a subtle metallic sheen on its polished surface, front view, accurate, complete, white background...'
+2025-08-10 02:47:54,241 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:48:54,283 - INFO -       📊 Validation score: 0.7178
+2025-08-10 02:48:54,284 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:48:54,284 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 02:48:54,284 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 02:49:04,804 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:49:04,805 - INFO -       🔍 Validating...
+2025-08-10 02:49:04,805 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric, adorned with an intricate network of interconnected diamonds and subtle sheen, front view...'
+2025-08-10 02:49:04,805 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:50:08,515 - INFO -       📊 Validation score: 0.7469
+2025-08-10 02:50:08,516 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 02:50:08,516 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 02:50:08,516 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 02:50:11,638 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:50:11,639 - INFO -       🔍 Validating...
+2025-08-10 02:50:11,639 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background...'
+2025-08-10 02:50:11,639 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:51:09,113 - INFO -       📊 Validation score: 0.5449
+2025-08-10 02:51:09,114 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:51:09,114 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 02:51:09,114 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 02:51:12,482 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:51:12,483 - INFO -       🔍 Validating...
+2025-08-10 02:51:12,483 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and subtle sheen of metal accents on the edges, front view, accurate, complete, white background...'
+2025-08-10 02:51:12,483 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:52:09,673 - INFO -       📊 Validation score: 0.5603
+2025-08-10 02:52:09,673 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 02:52:09,674 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 02:52:09,674 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:52:13,463 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:52:13,463 - INFO -       🔍 Validating...
+2025-08-10 02:52:13,463 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with densely woven micro-polyester threads featuring an intricate pattern of interlocking hexagons, detailed front view on the chest area, white background...'
+2025-08-10 02:52:13,463 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:53:16,500 - INFO -       📊 Validation score: 0.8726
+2025-08-10 02:53:16,501 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 02:53:16,501 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 02:53:16,501 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:53:16,501 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 02:53:20,815 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:53:20,816 - INFO -       🔍 Validating...
+2025-08-10 02:53:20,816 - INFO -       📝 Using optimized prompt for generation: 'a slender silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and subtle texture variation along the edges...'
+2025-08-10 02:53:20,816 - INFO -       🎯 Computing scores against original prompt: 'silver robot wearing green scarf...'
+2025-08-10 02:54:24,692 - INFO -       📊 Validation score: 0.8708
+2025-08-10 02:54:24,693 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.002)
+2025-08-10 02:54:24,727 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 02:54:24,727 - INFO -    Best prompt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background
+2025-08-10 02:54:24,728 - INFO -    Best score: 0.9034
+2025-08-10 02:54:24,728 - INFO -    Rounds: 7
+2025-08-10 02:54:24,728 - INFO -    Convergence: True
+2025-08-10 02:54:24,728 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.002)
+2025-08-10 02:54:24,728 - INFO -    Exploration ratio: 57.1%
+2025-08-10 02:54:24,728 - INFO -    Insights learned: 3
+2025-08-10 02:54:24,728 - INFO -    Total time: 455.79s
+2025-08-10 02:54:24,729 - INFO - Prompt optimized in 7 rounds: 0.563 → 0.903 (+0.340)
+2025-08-10 02:54:24,729 - INFO - ✅ Target score achieved!
+2025-08-10 02:54:24,731 - INFO - 
+--- Episode 2, Prompt 2 (Total: 7) ---
+2025-08-10 02:54:24,731 - INFO - Optimizing: 'warm yellow woolen scarf with fringed edges'
+2025-08-10 02:54:24,731 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 02:54:24,740 - INFO - ✅ Server is available (status: completed)
+2025-08-10 02:54:24,740 - INFO - 📝 Marked server as used at 1754794464.7402244
+2025-08-10 02:54:24,740 - INFO - ✅ Server is available and marked as used
+2025-08-10 02:54:24,740 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 02:54:24,740 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 02:54:24,740 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 02:54:24,743 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'warm yellow woolen scarf with fringed edges'
+2025-08-10 02:54:24,743 - INFO -    Session: rl_session_1754794464_2537
+2025-08-10 02:54:24,743 - INFO -    Max rounds: 18
+2025-08-10 02:54:24,743 - INFO -    Min rounds before convergence: 5
+2025-08-10 02:54:24,743 - INFO -    Target score: 0.99
+2025-08-10 02:54:24,743 - INFO -       🎯 Found previous best attempt: a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background (score: 0.8315)
+2025-08-10 02:54:24,743 - INFO -       🎯 Strategy used: technical_precision
+2025-08-10 02:54:24,744 - INFO -       🎯 Session ID: rl_session_1754789435_2110
+2025-08-10 02:54:24,744 - INFO -       🎯 Past final best prompt: a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background
+2025-08-10 02:54:24,744 - INFO -       🎯 Past final best score: 0.832
+2025-08-10 02:54:24,744 - INFO -       🎯 Past session ID: rl_session_1754789435_2110
+2025-08-10 02:54:24,744 - INFO -       🎯 Past learned insights: Best performing strategy in session: conservative_enhancement, Explored 5 different strategies
+2025-08-10 02:54:24,744 - INFO -       🎯 Past strategy performance updates: {'minimalist_refinement': 0.10427863117288705, 'conservative_enhancement': 0.040509432240167786, 'technical_precision': 0.18060880735630924, 'aggressive_transformation': 0.09420101990390717, 'artistic_elaboration': 0.08218184614642454}
+2025-08-10 02:54:24,744 - INFO -       🎯 Past final best prompt: a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light, front view, accurate, complete, white background
+2025-08-10 02:54:24,744 - INFO -       🎯 Past final best score: 0.832
+2025-08-10 02:54:24,744 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 02:54:24,744 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:54:24,744 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:54:28,865 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:54:28,865 - INFO -       🔍 Validating...
+2025-08-10 02:54:28,865 - INFO -       📝 Using optimized prompt for generation: 'a warm yellow woolen scarf with subtle, textured fringes that evoke a sense of softness and tactility...'
+2025-08-10 02:54:28,866 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 02:55:32,844 - INFO -       📊 Validation score: 0.8531
+2025-08-10 02:55:32,845 - INFO -       🎯 New best score: 0.8531
+2025-08-10 02:55:32,845 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 02:55:32,845 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 02:55:36,147 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:55:36,148 - INFO -       🔍 Validating...
+2025-08-10 02:55:36,148 - INFO -       📝 Using optimized prompt for generation: 'a soft, warm yellow woolen scarf with intricately woven fringes in graduated lengths, subtly textured to evoke a sense of tactility and depth, front view, accurate, complete, white background...'
+2025-08-10 02:55:36,148 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 02:56:33,399 - INFO -       📊 Validation score: 0.8453
+2025-08-10 02:56:33,400 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 02:56:33,400 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 02:56:33,400 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:56:33,400 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 02:56:37,875 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:56:37,875 - INFO -       🔍 Validating...
+2025-08-10 02:56:37,875 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background...'
+2025-08-10 02:56:37,875 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 02:57:39,999 - INFO -       📊 Validation score: 0.8679
+2025-08-10 02:57:39,999 - INFO -       🎯 New best score: 0.8679
+2025-08-10 02:57:40,000 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 02:57:40,000 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 02:57:40,000 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:57:40,000 - INFO -       🎯 Strategy: technical_precision (exploit)
+2025-08-10 02:57:43,160 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 02:57:43,161 - INFO -       🔍 Validating...
+2025-08-10 02:57:43,161 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with intricately woven, hand-tied fringes in varying lengths that subtly enhance its softness, front view, accurate, complete, white background...'
+2025-08-10 02:57:43,161 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 02:58:44,547 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-10 02:58:44,547 - INFO -       📊 Validation score: 0.0000
+2025-08-10 02:58:44,548 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 02:58:44,548 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 02:58:44,548 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 02:58:56,890 - WARNING - [TRELLIS] Exception clearing GPU cache: HTTPConnectionPool(host='localhost', port=8096): Read timed out. (read timeout=10)
+2025-08-10 02:58:56,890 - INFO -       🔍 Validating...
+2025-08-10 02:58:56,891 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with delicate, hand-tied fringes in varying lengths, subtly sheened to catch the softest light and slightly textured for a tactile experience, front view, accurate, complete, white background...'
+2025-08-10 02:58:56,891 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 03:00:07,106 - INFO -       📊 Validation score: 0.8359
+2025-08-10 03:00:07,106 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:00:07,106 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:00:07,107 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:00:07,107 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:00:10,613 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:00:10,613 - INFO -       🔍 Validating...
+2025-08-10 03:00:10,613 - INFO -       📝 Using optimized prompt for generation: 'a warm golden-hued woolen scarf with intricately woven hand-tied fringes in varying lengths, gently curved edges, and a soft sheen that catches subtle light reflections, front view, accurate, complete, white background...'
+2025-08-10 03:00:10,614 - INFO -       🎯 Computing scores against original prompt: 'warm yellow woolen scarf with fringed edges...'
+2025-08-10 03:01:08,960 - INFO -       📊 Validation score: 0.8413
+2025-08-10 03:01:08,961 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.005)
+2025-08-10 03:01:08,998 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 03:01:08,999 - INFO -    Best prompt: a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background
+2025-08-10 03:01:08,999 - INFO -    Best score: 0.8679
+2025-08-10 03:01:08,999 - INFO -    Rounds: 6
+2025-08-10 03:01:08,999 - INFO -    Convergence: True
+2025-08-10 03:01:08,999 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.005)
+2025-08-10 03:01:08,999 - INFO -    Exploration ratio: 83.3%
+2025-08-10 03:01:08,999 - INFO -    Insights learned: 2
+2025-08-10 03:01:08,999 - INFO -    Total time: 404.22s
+2025-08-10 03:01:08,999 - INFO - Prompt optimized in 6 rounds: 0.853 → 0.868 (+0.015)
+2025-08-10 03:01:08,999 - INFO - ✅ Target score achieved!
+2025-08-10 03:01:09,001 - INFO - 
+--- Episode 2, Prompt 3 (Total: 7) ---
+2025-08-10 03:01:09,001 - INFO - Optimizing: 'ruby bracelet adorned with faceted stones'
+2025-08-10 03:01:09,001 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 03:01:09,007 - INFO - ✅ Server is available (status: completed)
+2025-08-10 03:01:09,008 - INFO - 📝 Marked server as used at 1754794869.0080087
+2025-08-10 03:01:09,008 - INFO - ✅ Server is available and marked as used
+2025-08-10 03:01:09,008 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 03:01:09,008 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 03:01:09,008 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 03:01:09,010 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'ruby bracelet adorned with faceted stones'
+2025-08-10 03:01:09,010 - INFO -    Session: rl_session_1754794869_4494
+2025-08-10 03:01:09,011 - INFO -    Max rounds: 18
+2025-08-10 03:01:09,011 - INFO -    Min rounds before convergence: 5
+2025-08-10 03:01:09,011 - INFO -    Target score: 0.99
+2025-08-10 03:01:09,011 - INFO -       🎯 Found previous best attempt: a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background (score: 0.8737)
+2025-08-10 03:01:09,011 - INFO -       🎯 Strategy used: conservative_enhancement
+2025-08-10 03:01:09,011 - INFO -       🎯 Session ID: rl_session_1754790218_9684
+2025-08-10 03:01:09,011 - INFO -       🎯 Past final best prompt: a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background
+2025-08-10 03:01:09,011 - INFO -       🎯 Past final best score: 0.874
+2025-08-10 03:01:09,011 - INFO -       🎯 Past session ID: rl_session_1754790218_9684
+2025-08-10 03:01:09,011 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.645 → 0.864, Best performing strategy in session: conservative_enhancement, Explored 3 different strategies
+2025-08-10 03:01:09,011 - INFO -       🎯 Past strategy performance updates: {'artistic_elaboration': 0.006452197659581382, 'hybrid_approach': 0.04689147984546105, 'conservative_enhancement': 0.03002132892422449}
+2025-08-10 03:01:09,012 - INFO -       🎯 Past final best prompt: a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance, front view, accurate, complete, white background
+2025-08-10 03:01:09,012 - INFO -       🎯 Past final best score: 0.874
+2025-08-10 03:01:09,012 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 03:01:09,012 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:01:09,012 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:01:13,470 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:01:13,470 - INFO -       🔍 Validating...
+2025-08-10 03:01:13,471 - INFO -       📝 Using optimized prompt for generation: 'a delicate, antique-inspired ruby bracelet adorned with intricately cut faceted stones that refract light and showcase their subtle brilliance from multiple angles, against a soft focus, muted pastel background...'
+2025-08-10 03:01:13,471 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:02:14,645 - INFO -       📊 Validation score: 0.8729
+2025-08-10 03:02:14,646 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 03:02:14,646 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:02:14,646 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:02:17,788 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:02:17,789 - INFO -       🔍 Validating...
+2025-08-10 03:02:17,789 - INFO -       📝 Using optimized prompt for generation: 'a delicate, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit their subtle brilliance from multiple angles, front view, accurate, complete, white background...'
+2025-08-10 03:02:17,789 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:03:19,857 - INFO -       📊 Validation score: 0.6797
+2025-08-10 03:03:19,858 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:03:19,858 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 03:03:19,858 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:03:19,858 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:03:23,623 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:03:23,623 - INFO -       🔍 Validating...
+2025-08-10 03:03:23,623 - INFO -       📝 Using optimized prompt for generation: 'a slender, antique-inspired ruby bracelet adorned with expertly cut faceted stones that refract light and highlight their subtle brilliance from a precise angle, front view, accurate, complete, white background...'
+2025-08-10 03:03:23,623 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:04:21,890 - INFO -       📊 Validation score: 0.9189
+2025-08-10 03:04:21,890 - INFO -       🎯 New best score: 0.9189
+2025-08-10 03:04:21,890 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 03:04:21,890 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 03:04:21,890 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:04:21,891 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:04:25,490 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:04:25,491 - INFO -       🔍 Validating...
+2025-08-10 03:04:25,491 - INFO -       📝 Using optimized prompt for generation: 'a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone...'
+2025-08-10 03:04:25,491 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:05:28,127 - INFO -       📊 Validation score: 0.9204
+2025-08-10 03:05:28,127 - INFO -       🎯 New best score: 0.9204
+2025-08-10 03:05:28,128 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:05:28,128 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 03:05:28,128 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:05:28,128 - INFO -       🎯 Strategy: artistic_elaboration (exploit)
+2025-08-10 03:05:32,085 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:05:32,085 - INFO -       🔍 Validating...
+2025-08-10 03:05:32,085 - INFO -       📝 Using optimized prompt for generation: 'a slender, antique-inspired ruby bracelet adorned with precisely cut faceted stones that refract light and reveal their subtle brilliance, front view, accurate, complete, neutral background, front view, accurate, complete, white background...'
+2025-08-10 03:05:32,086 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:06:35,350 - INFO -       📊 Validation score: 0.8194
+2025-08-10 03:06:35,351 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:06:35,351 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:06:35,351 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:06:35,351 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:06:35,352 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:06:38,970 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:06:38,971 - INFO -       🔍 Validating...
+2025-08-10 03:06:38,971 - INFO -       📝 Using optimized prompt for generation: 'a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light, showcasing their subtle brilliance in a warm, gentle glow...'
+2025-08-10 03:06:38,971 - INFO -       🎯 Computing scores against original prompt: 'ruby bracelet adorned with faceted stones...'
+2025-08-10 03:07:39,327 - INFO -       📊 Validation score: 0.8161
+2025-08-10 03:07:39,328 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:07:39,328 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.003)
+2025-08-10 03:07:39,368 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 03:07:39,368 - INFO -    Best prompt: a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone
+2025-08-10 03:07:39,368 - INFO -    Best score: 0.9204
+2025-08-10 03:07:39,368 - INFO -    Rounds: 6
+2025-08-10 03:07:39,368 - INFO -    Convergence: True
+2025-08-10 03:07:39,368 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.003)
+2025-08-10 03:07:39,368 - INFO -    Exploration ratio: 50.0%
+2025-08-10 03:07:39,368 - INFO -    Insights learned: 2
+2025-08-10 03:07:39,368 - INFO -    Total time: 390.32s
+2025-08-10 03:07:39,369 - INFO - Prompt optimized in 6 rounds: 0.873 → 0.920 (+0.048)
+2025-08-10 03:07:39,369 - INFO - ✅ Target score achieved!
+2025-08-10 03:07:39,370 - INFO - 
+--- Episode 2, Prompt 4 (Total: 7) ---
+2025-08-10 03:07:39,371 - INFO - Optimizing: 'purple suv high roof off-road tires'
+2025-08-10 03:07:39,371 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 03:07:39,379 - INFO - ✅ Server is available (status: completed)
+2025-08-10 03:07:39,379 - INFO - 📝 Marked server as used at 1754795259.3796089
+2025-08-10 03:07:39,379 - INFO - ✅ Server is available and marked as used
+2025-08-10 03:07:39,379 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 03:07:39,379 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 03:07:39,380 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 03:07:39,382 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'purple suv high roof off-road tires'
+2025-08-10 03:07:39,382 - INFO -    Session: rl_session_1754795259_1485
+2025-08-10 03:07:39,382 - INFO -    Max rounds: 18
+2025-08-10 03:07:39,382 - INFO -    Min rounds before convergence: 5
+2025-08-10 03:07:39,382 - INFO -    Target score: 0.99
+2025-08-10 03:07:39,383 - INFO -       🎯 Found previous best attempt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background (score: 0.8989)
+2025-08-10 03:07:39,383 - INFO -       🎯 Strategy used: conservative_enhancement
+2025-08-10 03:07:39,383 - INFO -       🎯 Session ID: rl_session_1754790744_4351
+2025-08-10 03:07:39,383 - INFO -       🎯 Past final best prompt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background
+2025-08-10 03:07:39,383 - INFO -       🎯 Past final best score: 0.899
+2025-08-10 03:07:39,383 - INFO -       🎯 Past session ID: rl_session_1754790744_4351
+2025-08-10 03:07:39,383 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.695 → 0.890, Best performing strategy in session: conservative_enhancement, Explored 3 different strategies
+2025-08-10 03:07:39,383 - INFO -       🎯 Past strategy performance updates: {'conservative_enhancement': -0.01900853763163768, 'aggressive_transformation': -0.036978218904678894, 'technical_precision': 0.21797785627933441}
+2025-08-10 03:07:39,383 - INFO -       🎯 Past final best prompt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background
+2025-08-10 03:07:39,383 - INFO -       🎯 Past final best score: 0.899
+2025-08-10 03:07:39,383 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 03:07:39,384 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:07:39,384 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:07:42,704 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:07:42,705 - INFO -       🔍 Validating...
+2025-08-10 03:07:42,705 - INFO -       📝 Using optimized prompt for generation: 'a luxurious purple SUV with a high roof featuring advanced off-road tires, sleek design, and durable construction, front view, accurate, complete, front view, accurate, complete, white background...'
+2025-08-10 03:07:42,705 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:08:45,829 - INFO -       📊 Validation score: 0.7729
+2025-08-10 03:08:45,830 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 03:08:45,830 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:08:45,831 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:08:48,896 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:08:48,896 - INFO -       🔍 Validating...
+2025-08-10 03:08:48,896 - INFO -       📝 Using optimized prompt for generation: 'a high-performance purple SUV with a sleek, aerodynamic high roof featuring advanced, rugged off-road tires with aggressive tread patterns and integrated winch capabilities, side view, accurate, complete, neutral background, front view, accurate, complete, white background...'
+2025-08-10 03:08:48,896 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:10:23,003 - INFO -       📊 Validation score: 0.7968
+2025-08-10 03:10:23,004 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:10:23,004 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 03:10:23,004 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:10:23,004 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:10:26,968 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:10:26,968 - INFO -       🔍 Validating...
+2025-08-10 03:10:26,969 - INFO -       📝 Using optimized prompt for generation: 'a high-performance purple SUV with a sleek, aerodynamic high roof featuring advanced off-road tires with enhanced traction control and durable construction for improved stability and maneuverability, front view, front view, accurate, complete, white background...'
+2025-08-10 03:10:26,969 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:11:30,967 - INFO -       📊 Validation score: 0.3423
+2025-08-10 03:11:30,968 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:11:30,968 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-10 03:11:30,968 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 03:11:30,968 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:11:35,350 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:11:35,351 - INFO -       🔍 Validating...
+2025-08-10 03:11:35,351 - INFO -       📝 Using optimized prompt for generation: 'a robust purple SUV with a high roof and advanced off-road tires featuring enhanced traction control systems and durable construction, front view, accurate, complete, white background...'
+2025-08-10 03:11:35,351 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:12:43,858 - INFO -       📊 Validation score: 0.7585
+2025-08-10 03:12:43,859 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:12:43,859 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 03:12:43,859 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:12:48,480 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:12:48,481 - INFO -       🔍 Validating...
+2025-08-10 03:12:48,481 - INFO -       📝 Using optimized prompt for generation: 'a sleek purple SUV with a high roof, featuring advanced off-road capabilities and a spacious interior for passengers and gear, showcasing its high-performance off-road tires with large lug nuts, front view, accurate, complete, white background...'
+2025-08-10 03:12:48,481 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:13:56,489 - INFO -       📊 Validation score: 0.8932
+2025-08-10 03:13:56,489 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:13:56,490 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:13:56,490 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:14:00,250 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:14:00,250 - INFO -       🔍 Validating...
+2025-08-10 03:14:00,251 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with an elevated high roof and specially designed off-road tires featuring advanced traction control systems and durable construction, showcasing unique wheel designs and aerodynamic features from multiple angles, front view, accurate, complete, white background...'
+2025-08-10 03:14:00,251 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:15:03,288 - INFO -       📊 Validation score: 0.7326
+2025-08-10 03:15:03,288 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:15:03,289 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 03:15:03,289 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:15:07,179 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:15:07,179 - INFO -       🔍 Validating...
+2025-08-10 03:15:07,179 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with a high roof featuring advanced off-road tires and sleek design, front view, accurate, complete, white background...'
+2025-08-10 03:15:07,179 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:16:14,162 - INFO -       📊 Validation score: 0.8670
+2025-08-10 03:16:14,162 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:16:14,163 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 03:16:14,163 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:16:17,676 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:16:17,677 - INFO -       🔍 Validating...
+2025-08-10 03:16:17,677 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with a high roof featuring aggressive off-road tires and enhanced traction control, front view, front view, accurate, complete, white background...'
+2025-08-10 03:16:17,677 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:17:23,208 - INFO -       📊 Validation score: 0.7950
+2025-08-10 03:17:23,208 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:17:23,209 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 03:17:23,209 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:17:26,921 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:17:26,921 - INFO -       🔍 Validating...
+2025-08-10 03:17:26,922 - INFO -       📝 Using optimized prompt for generation: 'a high-performance purple SUV with a sleek, aerodynamic high roof featuring advanced off-road tires with aggressive tread patterns and reinforced sidewalls, front view, front view, accurate, complete, white background...'
+2025-08-10 03:17:26,922 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:18:32,321 - INFO -       📊 Validation score: 0.8379
+2025-08-10 03:18:32,322 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 03:18:32,322 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 03:18:32,323 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:18:36,101 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:18:36,102 - INFO -       🔍 Validating...
+2025-08-10 03:18:36,102 - INFO -       📝 Using optimized prompt for generation: 'a menacing purple SUV with a high roof and ferociously off-road tires featuring enhanced traction control systems and rugged construction, front view...'
+2025-08-10 03:18:36,102 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:19:44,906 - INFO -       📊 Validation score: 0.8698
+2025-08-10 03:19:44,907 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 03:19:44,907 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 03:19:44,907 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:19:48,564 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:19:48,565 - INFO -       🔍 Validating...
+2025-08-10 03:19:48,565 - INFO -       📝 Using optimized prompt for generation: 'a menacing purple SUV with an elevated high roof, featuring advanced off-road capabilities and uniquely designed aggressive off-road tires that enhance traction control systems for enhanced stability in challenging environments., front view, accurate, complete, white background...'
+2025-08-10 03:19:48,565 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:20:54,762 - INFO -       📊 Validation score: 0.5940
+2025-08-10 03:20:54,763 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:20:54,763 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 03:20:54,763 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:20:59,020 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:20:59,021 - INFO -       🔍 Validating...
+2025-08-10 03:20:59,021 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with a high roof, featuring advanced off-road capabilities, sleek design, durable construction, and robust off-road tires, front view, front view, accurate, complete, white background...'
+2025-08-10 03:20:59,021 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:22:04,934 - INFO -       📊 Validation score: 0.8769
+2025-08-10 03:22:04,935 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:22:04,935 - INFO - 
+   🔄 RL Round 13/18
+2025-08-10 03:22:04,935 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:22:08,961 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:22:08,962 - INFO -       🔍 Validating...
+2025-08-10 03:22:08,962 - INFO -       📝 Using optimized prompt for generation: 'a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background...'
+2025-08-10 03:22:08,962 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:23:16,219 - INFO -       📊 Validation score: 0.8987
+2025-08-10 03:23:16,220 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 03:23:16,220 - INFO - 
+   🔄 RL Round 14/18
+2025-08-10 03:23:16,220 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:23:19,796 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:23:19,797 - INFO -       🔍 Validating...
+2025-08-10 03:23:19,797 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with a sleek, aerodynamic high roof featuring advanced off-road capabilities and a durable construction that enhances its rugged appearance, side view, front view, accurate, complete, white background...'
+2025-08-10 03:23:19,797 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:24:21,299 - INFO -       📊 Validation score: 0.8161
+2025-08-10 03:24:21,299 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:24:21,299 - INFO - 
+   🔄 RL Round 15/18
+2025-08-10 03:24:21,300 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:24:24,541 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:24:24,541 - INFO -       🔍 Validating...
+2025-08-10 03:24:24,541 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with a high roof and advanced off-road tires featuring enhanced traction control systems and durable construction, front view, accurate, complete, white background...'
+2025-08-10 03:24:24,541 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:25:28,767 - INFO -       📊 Validation score: 0.7807
+2025-08-10 03:25:28,767 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:25:28,767 - INFO - 
+   🔄 RL Round 16/18
+2025-08-10 03:25:28,768 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:25:33,933 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:25:33,933 - INFO -       🔍 Validating...
+2025-08-10 03:25:33,934 - INFO -       📝 Using optimized prompt for generation: 'a refined purple SUV with an elevated high roof, featuring advanced off-road capabilities and sleek, aerodynamic design elements, including a premium interior with luxurious materials and advanced infotainment systems, accurate, complete, white background, front view, accurate, complete, white background...'
+2025-08-10 03:25:33,934 - INFO -       🎯 Computing scores against original prompt: 'purple suv high roof off-road tires...'
+2025-08-10 03:26:38,067 - INFO -       📊 Validation score: 0.7800
+2025-08-10 03:26:38,068 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.001)
+2025-08-10 03:26:38,100 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 03:26:38,100 - INFO -    Best prompt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background
+2025-08-10 03:26:38,100 - INFO -    Best score: 0.8989
+2025-08-10 03:26:38,101 - INFO -    Rounds: 16
+2025-08-10 03:26:38,101 - INFO -    Convergence: True
+2025-08-10 03:26:38,101 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.001)
+2025-08-10 03:26:38,101 - INFO -    Exploration ratio: 75.0%
+2025-08-10 03:26:38,101 - INFO -    Insights learned: 3
+2025-08-10 03:26:38,101 - INFO -    Total time: 1138.69s
+2025-08-10 03:26:38,101 - INFO - Prompt optimized in 16 rounds: 0.773 → 0.899 (+0.126)
+2025-08-10 03:26:38,101 - INFO - ✅ Target score achieved!
+2025-08-10 03:26:38,103 - INFO - 
+--- Episode 2, Prompt 5 (Total: 7) ---
+2025-08-10 03:26:38,103 - INFO - Optimizing: 'sapphire mace with gold-plated head'
+2025-08-10 03:26:38,103 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 03:26:38,110 - INFO - ✅ Server is available (status: completed)
+2025-08-10 03:26:38,110 - INFO - 📝 Marked server as used at 1754796398.110687
+2025-08-10 03:26:38,110 - INFO - ✅ Server is available and marked as used
+2025-08-10 03:26:38,111 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 03:26:38,111 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 03:26:38,111 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 03:26:38,115 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'sapphire mace with gold-plated head'
+2025-08-10 03:26:38,116 - INFO -    Session: rl_session_1754796398_8492
+2025-08-10 03:26:38,116 - INFO -    Max rounds: 18
+2025-08-10 03:26:38,116 - INFO -    Min rounds before convergence: 5
+2025-08-10 03:26:38,116 - INFO -    Target score: 0.99
+2025-08-10 03:26:38,116 - INFO -       🎯 Found previous best attempt: a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern (score: 0.9636)
+2025-08-10 03:26:38,116 - INFO -       🎯 Strategy used: hybrid_approach
+2025-08-10 03:26:38,117 - INFO -       🎯 Session ID: rl_session_1754791444_1345
+2025-08-10 03:26:38,117 - INFO -       🎯 Past final best prompt: a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern
+2025-08-10 03:26:38,117 - INFO -       🎯 Past final best score: 0.964
+2025-08-10 03:26:38,117 - INFO -       🎯 Past session ID: rl_session_1754791444_1345
+2025-08-10 03:26:38,117 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.940 → 0.950, Best performing strategy in session: hybrid_approach, Explored 4 different strategies
+2025-08-10 03:26:38,117 - INFO -       🎯 Past strategy performance updates: {'conservative_enhancement': -0.013418752612050833, 'hybrid_approach': 0.02410345099790212, 'artistic_elaboration': -0.036542213866825435, 'technical_precision': 0.11260031759320632}
+2025-08-10 03:26:38,117 - INFO -       🎯 Past final best prompt: a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern
+2025-08-10 03:26:38,118 - INFO -       🎯 Past final best score: 0.964
+2025-08-10 03:26:38,118 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 03:26:38,118 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:26:42,673 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:26:42,673 - INFO -       🔍 Validating...
+2025-08-10 03:26:42,674 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and a subtle filigree pattern, its surface adorned with microscopic etchings that catch the light like tiny stars, weighing approximately 1.2 pounds in the hand...'
+2025-08-10 03:26:42,674 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:27:39,705 - INFO -       📊 Validation score: 0.8749
+2025-08-10 03:27:39,706 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 03:27:39,706 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:27:42,903 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:27:42,904 - INFO -       🔍 Validating...
+2025-08-10 03:27:42,904 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, a subtle filigree pattern, and a precision-crafted balance point...'
+2025-08-10 03:27:42,904 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:28:42,479 - INFO -       📊 Validation score: 0.9189
+2025-08-10 03:28:42,480 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:28:42,480 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 03:28:42,480 - INFO -       🔍 Explore performing better - increasing epsilon to 0.78
+2025-08-10 03:28:42,480 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:28:45,490 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:28:45,490 - INFO -       🔍 Validating...
+2025-08-10 03:28:45,490 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, a sophisticated filigree pattern, and a touch of subtle oxidation on the metalwork, front view, accurate, complete, white background...'
+2025-08-10 03:28:45,491 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:29:47,374 - INFO -       📊 Validation score: 0.8102
+2025-08-10 03:29:47,375 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:29:47,375 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 03:29:47,376 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:29:57,873 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:29:57,874 - INFO -       🔍 Validating...
+2025-08-10 03:29:57,874 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings in the shape of leaves and vines, with subtle filigree patterns woven throughout, front view, accurate, complete, white background...'
+2025-08-10 03:29:57,874 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:30:54,815 - INFO -       📊 Validation score: 0.7011
+2025-08-10 03:30:54,816 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:30:54,816 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 03:30:54,816 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:30:54,816 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 03:30:58,922 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:30:58,922 - INFO -       🔍 Validating...
+2025-08-10 03:30:58,922 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, an ornate filigree pattern, and a raised, polished surface, front view, accurate, complete, white background...'
+2025-08-10 03:30:58,923 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:31:57,644 - INFO -       📊 Validation score: 0.9315
+2025-08-10 03:31:57,645 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 03:31:57,645 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:31:57,645 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:32:02,312 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:32:02,312 - INFO -       🔍 Validating...
+2025-08-10 03:32:02,312 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with a intricately gold-plated head featuring delicate engravings and an ornate filigree pattern...'
+2025-08-10 03:32:02,312 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:33:07,122 - INFO -       📊 Validation score: 0.9180
+2025-08-10 03:33:07,122 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:33:07,122 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 03:33:07,123 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:33:10,451 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:33:10,451 - INFO -       🔍 Validating...
+2025-08-10 03:33:10,451 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and ornate knotwork details, front view, accurate, complete, white background...'
+2025-08-10 03:33:10,452 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:34:09,054 - INFO -       📊 Validation score: 0.9645
+2025-08-10 03:34:09,054 - INFO -       🎯 New best score: 0.9645
+2025-08-10 03:34:09,054 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:34:09,055 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:34:09,055 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 03:34:09,055 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:34:09,055 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:34:12,543 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:34:12,543 - INFO -       🔍 Validating...
+2025-08-10 03:34:12,543 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, a subtle filigree pattern, and a precision-crafted golden ferrule, front view, accurate, complete, white background...'
+2025-08-10 03:34:12,544 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:35:09,832 - INFO -       📊 Validation score: 0.9142
+2025-08-10 03:35:09,832 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:35:09,832 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:35:09,832 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 03:35:09,833 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:35:09,833 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:35:13,440 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:35:13,441 - INFO -       🔍 Validating...
+2025-08-10 03:35:13,441 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring a unique filigree pattern with interlocking florals, front view, accurate, complete, white background...'
+2025-08-10 03:35:13,441 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:36:12,337 - INFO -       📊 Validation score: 0.9482
+2025-08-10 03:36:12,338 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:36:12,338 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 03:36:12,338 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 03:36:12,339 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:36:12,339 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:36:15,236 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:36:15,236 - INFO -       🔍 Validating...
+2025-08-10 03:36:15,236 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and a subtle filigree pattern on the hilt...'
+2025-08-10 03:36:15,236 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:37:14,448 - INFO -       📊 Validation score: 0.9640
+2025-08-10 03:37:14,449 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:37:14,449 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:37:14,449 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 03:37:14,449 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:37:14,449 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:37:17,499 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:37:17,499 - INFO -       🔍 Validating...
+2025-08-10 03:37:17,499 - INFO -       📝 Using optimized prompt for generation: 'a slender sapphire mace with an intricately gold-plated head featuring delicate engravings, ornate inlays of silver and copper, and a subtle yet sophisticated pattern, front view, accurate, complete, white background...'
+2025-08-10 03:37:17,499 - INFO -       🎯 Computing scores against original prompt: 'sapphire mace with gold-plated head...'
+2025-08-10 03:38:15,896 - INFO -       📊 Validation score: 0.9607
+2025-08-10 03:38:15,896 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:38:15,896 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.003)
+2025-08-10 03:38:15,927 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 03:38:15,928 - INFO -    Best prompt: a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and ornate knotwork details, front view, accurate, complete, white background
+2025-08-10 03:38:15,928 - INFO -    Best score: 0.9645
+2025-08-10 03:38:15,928 - INFO -    Rounds: 11
+2025-08-10 03:38:15,928 - INFO -    Convergence: True
+2025-08-10 03:38:15,928 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.003)
+2025-08-10 03:38:15,928 - INFO -    Exploration ratio: 81.8%
+2025-08-10 03:38:15,928 - INFO -    Insights learned: 3
+2025-08-10 03:38:15,928 - INFO -    Total time: 697.78s
+2025-08-10 03:38:15,928 - INFO - Prompt optimized in 11 rounds: 0.875 → 0.965 (+0.090)
+2025-08-10 03:38:15,928 - INFO - ✅ Target score achieved!
+2025-08-10 03:38:15,930 - INFO - 
+--- Episode 2, Prompt 6 (Total: 7) ---
+2025-08-10 03:38:15,930 - INFO - Optimizing: 'teal camper van rooftop tent and awning'
+2025-08-10 03:38:15,930 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 03:38:15,937 - INFO - ✅ Server is available (status: completed)
+2025-08-10 03:38:15,937 - INFO - 📝 Marked server as used at 1754797095.937277
+2025-08-10 03:38:15,937 - INFO - ✅ Server is available and marked as used
+2025-08-10 03:38:15,937 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 03:38:15,937 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 03:38:15,937 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 03:38:15,940 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'teal camper van rooftop tent and awning'
+2025-08-10 03:38:15,940 - INFO -    Session: rl_session_1754797095_8384
+2025-08-10 03:38:15,940 - INFO -    Max rounds: 18
+2025-08-10 03:38:15,940 - INFO -    Min rounds before convergence: 5
+2025-08-10 03:38:15,940 - INFO -    Target score: 0.99
+2025-08-10 03:38:15,940 - INFO -       🎯 Found previous best attempt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background (score: 0.8680)
+2025-08-10 03:38:15,940 - INFO -       🎯 Strategy used: aggressive_transformation
+2025-08-10 03:38:15,940 - INFO -       🎯 Session ID: rl_session_1754792590_6469
+2025-08-10 03:38:15,940 - INFO -       🎯 Past final best prompt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background
+2025-08-10 03:38:15,941 - INFO -       🎯 Past final best score: 0.868
+2025-08-10 03:38:15,941 - INFO -       🎯 Past session ID: rl_session_1754792590_6469
+2025-08-10 03:38:15,941 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.769 → 0.770, Best performing strategy in session: aggressive_transformation, Explored 6 different strategies
+2025-08-10 03:38:15,941 - INFO -       🎯 Past strategy performance updates: {'material_focus': 0.023548525193459513, 'aggressive_transformation': 0.10481888360878955, 'artistic_elaboration': 0.06056286739530914, 'technical_precision': 0.08601474046372526, 'hybrid_approach': -0.023071590270354547, 'conservative_enhancement': -0.07763110035983822}
+2025-08-10 03:38:15,941 - INFO -       🎯 Past final best prompt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background
+2025-08-10 03:38:15,941 - INFO -       🎯 Past final best score: 0.868
+2025-08-10 03:38:15,941 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 03:38:15,941 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:38:15,941 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:38:19,333 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:38:19,333 - INFO -       🔍 Validating...
+2025-08-10 03:38:19,334 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, clean lines, and precise stitching, front view, accurate, complete, white background, with subtle morning light casting a warm glow on the vehicle's surface...'
+2025-08-10 03:38:19,334 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:39:23,058 - INFO -       📊 Validation score: 0.8365
+2025-08-10 03:39:23,059 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 03:39:23,060 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:39:23,060 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-10 03:39:28,196 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:39:28,197 - INFO -       🔍 Validating...
+2025-08-10 03:39:28,198 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with streamlined silhouette featuring retractable awning, gleaming silver accents, clean lines, and precision stitching, side view, showcasing the compact design and sturdy build, high-contrast lighting...'
+2025-08-10 03:39:28,199 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:40:36,203 - INFO -       📊 Validation score: 0.4794
+2025-08-10 03:40:36,203 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:40:36,203 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-10 03:40:36,204 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 03:40:36,204 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:40:36,204 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:40:39,947 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:40:39,948 - INFO -       🔍 Validating...
+2025-08-10 03:40:39,948 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, aerodynamic lines, retractable awning featuring gleaming silver accents, precise stitching, and a prominent roof rack, front view, accurate, complete, white background...'
+2025-08-10 03:40:39,948 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:41:44,196 - INFO -       📊 Validation score: 0.4910
+2025-08-10 03:41:44,197 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:41:44,197 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-10 03:41:44,197 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 03:41:44,197 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:41:44,197 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-10 03:41:47,992 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:41:47,993 - INFO -       🔍 Validating...
+2025-08-10 03:41:47,993 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning, gleaming silver accents, clean lines, precise stitching, and ergonomic design elements, front view, accurate, complete, white background...'
+2025-08-10 03:41:47,993 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:42:50,834 - INFO -       📊 Validation score: 0.7873
+2025-08-10 03:42:50,834 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-10 03:42:50,835 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 03:42:50,835 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:42:50,835 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:42:56,067 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:42:56,068 - INFO -       🔍 Validating...
+2025-08-10 03:42:56,068 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, front view, accurate, complete, white background...'
+2025-08-10 03:42:56,068 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:44:02,501 - INFO -       📊 Validation score: 0.8835
+2025-08-10 03:44:02,501 - INFO -       🎯 New best score: 0.8835
+2025-08-10 03:44:02,501 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:44:02,501 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 03:44:02,501 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:44:02,502 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:44:05,706 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:44:05,706 - INFO -       🔍 Validating...
+2025-08-10 03:44:05,706 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, precision-crafted lines, and meticulous stitching, perfectly capturing its rugged essence...'
+2025-08-10 03:44:05,707 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:45:09,828 - INFO -       📊 Validation score: 0.5352
+2025-08-10 03:45:09,829 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:45:09,829 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 03:45:09,829 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:45:13,483 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:45:13,484 - INFO -       🔍 Validating...
+2025-08-10 03:45:13,484 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, modern rooftop tent featuring retractable awning, gleaming silver accents, precision-crafted stitching, clean lines, and a subtle sheen to the metalwork, front view, accurate, complete, white background...'
+2025-08-10 03:45:13,484 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:46:18,794 - INFO -       📊 Validation score: 0.7915
+2025-08-10 03:46:18,794 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:46:18,794 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 03:46:18,794 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 03:46:23,026 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:46:23,026 - INFO -       🔍 Validating...
+2025-08-10 03:46:23,026 - INFO -       📝 Using optimized prompt for generation: 'teal camper van with sleek, aerodynamic lines, retractable awning featuring gleaming silver accents and precision-crafted stitching, front view, accurate, complete, front view, accurate, complete, white background...'
+2025-08-10 03:46:23,027 - INFO -       🎯 Computing scores against original prompt: 'teal camper van rooftop tent and awning...'
+2025-08-10 03:47:29,796 - INFO -       📊 Validation score: 0.7864
+2025-08-10 03:47:29,796 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.005)
+2025-08-10 03:47:29,832 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 03:47:29,832 - INFO -    Best prompt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, front view, accurate, complete, white background
+2025-08-10 03:47:29,832 - INFO -    Best score: 0.8835
+2025-08-10 03:47:29,832 - INFO -    Rounds: 8
+2025-08-10 03:47:29,832 - INFO -    Convergence: True
+2025-08-10 03:47:29,832 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.005)
+2025-08-10 03:47:29,832 - INFO -    Exploration ratio: 75.0%
+2025-08-10 03:47:29,833 - INFO -    Insights learned: 2
+2025-08-10 03:47:29,833 - INFO -    Total time: 553.86s
+2025-08-10 03:47:29,833 - INFO - Prompt optimized in 8 rounds: 0.836 → 0.884 (+0.047)
+2025-08-10 03:47:29,833 - INFO - ✅ Target score achieved!
+2025-08-10 03:47:29,835 - INFO - 
+--- Episode 2, Prompt 7 (Total: 7) ---
+2025-08-10 03:47:29,836 - INFO - Optimizing: 'teal suv with'
+2025-08-10 03:47:29,836 - INFO - 🔍 Checking server availability before optimization...
+2025-08-10 03:47:29,846 - INFO - ✅ Server is available (status: completed)
+2025-08-10 03:47:29,846 - INFO - 📝 Marked server as used at 1754797649.8465657
+2025-08-10 03:47:29,846 - INFO - ✅ Server is available and marked as used
+2025-08-10 03:47:29,846 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-10 03:47:29,846 - INFO -       🔧 Overriding endpoint: generate/baolei/
+2025-08-10 03:47:29,846 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-10 03:47:29,849 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'teal suv with'
+2025-08-10 03:47:29,849 - INFO -    Session: rl_session_1754797649_5376
+2025-08-10 03:47:29,849 - INFO -    Max rounds: 18
+2025-08-10 03:47:29,849 - INFO -    Min rounds before convergence: 5
+2025-08-10 03:47:29,850 - INFO -    Target score: 0.99
+2025-08-10 03:47:29,850 - INFO -       🎯 Found previous best attempt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background (score: 0.9015)
+2025-08-10 03:47:29,850 - INFO -       🎯 Strategy used: conservative_enhancement
+2025-08-10 03:47:29,850 - INFO -       🎯 Session ID: rl_session_1754793461_5271
+2025-08-10 03:47:29,850 - INFO -       🎯 Past final best prompt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background
+2025-08-10 03:47:29,850 - INFO -       🎯 Past final best score: 0.901
+2025-08-10 03:47:29,850 - INFO -       🎯 Past session ID: rl_session_1754793461_5271
+2025-08-10 03:47:29,850 - INFO -       🎯 Past learned insights: Iterative improvement successful: 0.751 → 0.901, Best performing strategy in session: conservative_enhancement, Explored 4 different strategies
+2025-08-10 03:47:29,850 - INFO -       🎯 Past strategy performance updates: {'hybrid_approach': -0.05576789430910967, 'artistic_elaboration': 0.03834170800668546, 'conservative_enhancement': -0.04962978082865466, 'technical_precision': 0.11055864715308461}
+2025-08-10 03:47:29,850 - INFO -       🎯 Past final best prompt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background
+2025-08-10 03:47:29,850 - INFO -       🎯 Past final best score: 0.901
+2025-08-10 03:47:29,851 - INFO - 
+   🔄 RL Round 1/18
+2025-08-10 03:47:29,851 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:47:33,178 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:47:33,179 - INFO -       🔍 Validating...
+2025-08-10 03:47:33,179 - INFO -       📝 Using optimized prompt for generation: 'a sleek teal SUV with aerodynamic lines, subtle LED light strips along the side mirrors, and precision-crafted alloy wheels with a matte finish, front view, accurate, complete, white background...'
+2025-08-10 03:47:33,179 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:48:36,823 - INFO -       📊 Validation score: 0.8197
+2025-08-10 03:48:36,825 - INFO - 
+   🔄 RL Round 2/18
+2025-08-10 03:48:36,825 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 03:48:40,676 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:48:40,676 - INFO -       🔍 Validating...
+2025-08-10 03:48:40,676 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines, precision-crafted tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, precise details, accurate, complete, white background, front view, accurate, complete, white background...'
+2025-08-10 03:48:40,676 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:50:13,951 - INFO -       📊 Validation score: 0.8889
+2025-08-10 03:50:13,952 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-10 03:50:13,952 - INFO - 
+   🔄 RL Round 3/18
+2025-08-10 03:50:13,952 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-10 03:50:18,276 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:50:18,277 - INFO -       🔍 Validating...
+2025-08-10 03:50:18,277 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that seamlessly integrate into the vehicle's skin, and a delicate LED light strip tracing along the side mirrors' edges, front view, front view, accurate, complete, white background...'
+2025-08-10 03:50:18,277 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:51:22,511 - INFO -       📊 Validation score: 0.8536
+2025-08-10 03:51:22,511 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:51:22,511 - INFO - 
+   🔄 RL Round 4/18
+2025-08-10 03:51:22,511 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:51:25,739 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:51:25,740 - INFO -       🔍 Validating...
+2025-08-10 03:51:25,741 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines, precision-crafted tinted windows that subtly enhance visibility from various angles, and a discreet LED light strip running along the side mirrors, front view...'
+2025-08-10 03:51:25,741 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:52:32,566 - INFO -       📊 Validation score: 0.8557
+2025-08-10 03:52:32,566 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 03:52:32,567 - INFO - 
+   🔄 RL Round 5/18
+2025-08-10 03:52:32,567 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:52:32,567 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:52:37,356 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:52:37,356 - INFO -       🔍 Validating...
+2025-08-10 03:52:37,357 - INFO -       📝 Using optimized prompt for generation: 'a sleek teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows with a soft blue glow, and a delicate LED light strip woven into the side mirror's design, front view, accurate, complete, white background...'
+2025-08-10 03:52:37,357 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:53:39,397 - INFO -       📊 Validation score: 0.8217
+2025-08-10 03:53:39,398 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:53:39,398 - INFO - 
+   🔄 RL Round 6/18
+2025-08-10 03:53:39,398 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:53:39,398 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:53:42,673 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:53:42,673 - INFO -       🔍 Validating...
+2025-08-10 03:53:42,673 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows with a subtle gradient effect, and a gentle LED light strip along the side mirrors...'
+2025-08-10 03:53:42,673 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:54:47,945 - INFO -       📊 Validation score: 0.8427
+2025-08-10 03:54:47,945 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 03:54:47,946 - INFO - 
+   🔄 RL Round 7/18
+2025-08-10 03:54:47,946 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:54:47,946 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 03:54:51,557 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:54:51,558 - INFO -       🔍 Validating...
+2025-08-10 03:54:51,558 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows, and a subtle LED light strip along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 03:54:51,558 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:55:53,726 - INFO -       📊 Validation score: 0.8999
+2025-08-10 03:55:53,727 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 03:55:53,727 - INFO - 
+   🔄 RL Round 8/18
+2025-08-10 03:55:53,727 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:55:53,727 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:55:58,220 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:55:58,220 - INFO -       🔍 Validating...
+2025-08-10 03:55:58,221 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly curve into the body, precision-crafted tinted windows that enhance visibility, and a delicate LED light strip running along the side mirrors in a gentle, sweeping motion, front view, accurate, complete, front view, accurate, complete, white background...'
+2025-08-10 03:55:58,221 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:56:59,495 - INFO -       📊 Validation score: 0.8526
+2025-08-10 03:56:59,496 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:56:59,496 - INFO - 
+   🔄 RL Round 9/18
+2025-08-10 03:56:59,496 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:56:59,497 - INFO -       🎯 Strategy: technical_precision (exploit)
+2025-08-10 03:57:03,381 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:57:03,382 - INFO -       🔍 Validating...
+2025-08-10 03:57:03,382 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows, and a delicate LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 03:57:03,382 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:58:07,837 - INFO -       📊 Validation score: 0.8882
+2025-08-10 03:58:07,838 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 03:58:07,838 - INFO - 
+   🔄 RL Round 10/18
+2025-08-10 03:58:07,838 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:58:07,839 - INFO -       🎯 Strategy: technical_precision (exploit)
+2025-08-10 03:58:12,062 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:58:12,062 - INFO -       🔍 Validating...
+2025-08-10 03:58:12,062 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, tinted windows that blend seamlessly into the exterior surface, and a subtle LED light strip running along the side mirrors, front view, front view, accurate, complete, white background...'
+2025-08-10 03:58:12,063 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 03:59:15,009 - INFO -       📊 Validation score: 0.6145
+2025-08-10 03:59:15,010 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 03:59:15,010 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 03:59:15,010 - INFO - 
+   🔄 RL Round 11/18
+2025-08-10 03:59:15,010 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 03:59:15,011 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 03:59:18,410 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 03:59:18,411 - INFO -       🔍 Validating...
+2025-08-10 03:59:18,411 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that enhance visibility during low-light conditions, and a discreet LED light strip running along the side mirrors, front view, front view, accurate, complete, white background...'
+2025-08-10 03:59:18,411 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:00:22,328 - INFO -       📊 Validation score: 0.8593
+2025-08-10 04:00:22,328 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:00:22,329 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 04:00:22,329 - INFO - 
+   🔄 RL Round 12/18
+2025-08-10 04:00:22,329 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:00:22,329 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 04:00:26,816 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:00:26,817 - INFO -       🔍 Validating...
+2025-08-10 04:00:26,817 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, tinted windows that seamlessly integrate into the paint job, and a minimalist LED light strip running along the side mirrors, front view, front view, accurate, complete, white background...'
+2025-08-10 04:00:26,817 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:01:32,793 - INFO -       📊 Validation score: 0.7941
+2025-08-10 04:01:32,794 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:01:32,794 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 04:01:32,794 - INFO - 
+   🔄 RL Round 13/18
+2025-08-10 04:01:32,794 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:01:32,794 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-10 04:01:36,166 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:01:36,167 - INFO -       🔍 Validating...
+2025-08-10 04:01:36,167 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that blend seamlessly into the paint job, and a subtle LED light strip running along the side mirrors, front view, front view, accurate, complete, white background...'
+2025-08-10 04:01:36,167 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:02:43,180 - INFO -       📊 Validation score: 0.8626
+2025-08-10 04:02:43,181 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:02:43,181 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-10 04:02:43,181 - INFO - 
+   🔄 RL Round 14/18
+2025-08-10 04:02:43,181 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:02:43,181 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-10 04:02:48,689 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:02:48,689 - INFO -       🔍 Validating...
+2025-08-10 04:02:48,689 - INFO -       📝 Using optimized prompt for generation: 'a refined sleek teal SUV with aerodynamic lines that subtly taper into the body, tinted windows that perfectly complement the vehicle's aerodynamic profile, and a subtle LED light strip running along the side mirrors...'
+2025-08-10 04:02:48,689 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:03:51,258 - INFO -       📊 Validation score: 0.8776
+2025-08-10 04:03:51,259 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:03:51,259 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-10 04:03:51,259 - INFO - 
+   🔄 RL Round 15/18
+2025-08-10 04:03:51,259 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:03:51,259 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 04:03:55,569 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:03:55,569 - INFO -       🔍 Validating...
+2025-08-10 04:03:55,569 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that enhance visibility, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 04:03:55,570 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:04:59,026 - INFO -       📊 Validation score: 0.8530
+2025-08-10 04:04:59,026 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:04:59,027 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 04:04:59,027 - INFO - 
+   🔄 RL Round 16/18
+2025-08-10 04:04:59,027 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:04:59,027 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 04:05:03,419 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:05:03,420 - INFO -       🔍 Validating...
+2025-08-10 04:05:03,420 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows with a subtle gradient effect, and a minimalist LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 04:05:03,420 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:06:06,783 - INFO -       📊 Validation score: 0.8052
+2025-08-10 04:06:06,784 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:06:06,784 - INFO -       📉 Score declined: Consider different approach
+2025-08-10 04:06:06,784 - INFO - 
+   🔄 RL Round 17/18
+2025-08-10 04:06:06,784 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:06:06,784 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-10 04:06:11,873 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:06:11,874 - INFO -       🔍 Validating...
+2025-08-10 04:06:11,874 - INFO -       📝 Using optimized prompt for generation: 'a sleek teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that blend seamlessly into the profile, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 04:06:11,874 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:07:15,560 - INFO -       📊 Validation score: 0.8981
+2025-08-10 04:07:15,561 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:07:15,561 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-10 04:07:15,561 - INFO - 
+   🔄 RL Round 18/18
+2025-08-10 04:07:15,561 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-10 04:07:15,562 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-10 04:07:19,086 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.277362688}
+2025-08-10 04:07:19,087 - INFO -       🔍 Validating...
+2025-08-10 04:07:19,087 - INFO -       📝 Using optimized prompt for generation: 'a refined teal SUV with aerodynamic lines that subtly taper into the body, precision-crafted tinted windows that enhance visibility without obstruction, and a gentle LED light strip running along the side mirrors, front view, accurate, complete, white background...'
+2025-08-10 04:07:19,087 - INFO -       🎯 Computing scores against original prompt: 'teal suv with...'
+2025-08-10 04:08:21,894 - INFO -       📊 Validation score: 0.8690
+2025-08-10 04:08:21,895 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-10 04:08:21,934 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-10 04:08:21,934 - INFO -    Best prompt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background
+2025-08-10 04:08:21,935 - INFO -    Best score: 0.9015
+2025-08-10 04:08:21,935 - INFO -    Rounds: 18
+2025-08-10 04:08:21,935 - INFO -    Convergence: False
+2025-08-10 04:08:21,935 - INFO -    Convergence reason: Not converged
+2025-08-10 04:08:21,935 - INFO -    Exploration ratio: 83.3%
+2025-08-10 04:08:21,935 - INFO -    Insights learned: 3
+2025-08-10 04:08:21,935 - INFO -    Total time: 1252.05s
+2025-08-10 04:08:21,935 - INFO - Prompt optimized in 18 rounds: 0.820 → 0.901 (+0.082)
+2025-08-10 04:08:21,936 - INFO - ⏰ Max rounds reached
+2025-08-10 04:08:21,938 - INFO - 
+============================================================
+2025-08-10 04:08:21,938 - INFO - EPISODE 2 SUMMARY
+2025-08-10 04:08:21,938 - INFO - ============================================================
+2025-08-10 04:08:21,938 - INFO - Success Rate: 85.7% (6/7)
+2025-08-10 04:08:21,938 - INFO - Average Rounds: 10.3
+2025-08-10 04:08:21,938 - INFO - Average Score Improvement: +0.107
+2025-08-10 04:08:21,938 - INFO - Episode Duration: 4893.0s
+2025-08-10 04:08:21,938 - INFO - New Principles Learned: 18
+2025-08-10 04:08:21,940 - INFO - Final results saved to: episodic_log_18/final_episodic_results_20250810_040821.json
+2025-08-10 04:08:21,940 - INFO - 
+Best prompts and scores for each test prompt:
+2025-08-10 04:08:21,940 - INFO - Prompt: silver robot wearing green scarf
+  Best Score: 0.903
+  Best Prompt: a sleek silver robot wearing a vibrant green scarf with micro-polyester threads woven into the fabric and intricate patterns of interlocking hexagons, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,940 - INFO - Prompt: warm yellow woolen scarf with fringed edges
+  Best Score: 0.868
+  Best Prompt: a warm golden-hued woolen scarf with delicately woven, hand-tied fringes in varying lengths that subtly sheen to capture the softest light, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,940 - INFO - Prompt: ruby bracelet adorned with faceted stones
+  Best Score: 0.920
+  Best Prompt: a slender, antique-inspired ruby bracelet adorned with expertly faceted stones that refract light and exhibit subtle luster in the center of each stone
+
+2025-08-10 04:08:21,941 - INFO - Prompt: purple suv high roof off-road tires
+  Best Score: 0.899
+  Best Prompt: a sleek purple SUV with a high roof and aggressive off-road tires featuring advanced traction control systems and durable construction, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,941 - INFO - Prompt: sapphire mace with gold-plated head
+  Best Score: 0.965
+  Best Prompt: a slender sapphire mace with an intricately gold-plated head featuring delicate engravings and ornate knotwork details, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,941 - INFO - Prompt: teal camper van rooftop tent and awning
+  Best Score: 0.884
+  Best Prompt: teal camper van with sleek, modern rooftop tent featuring retractable awning and gleaming silver accents, streamlined silhouette, precise stitching, front view, accurate, complete, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,941 - INFO - Prompt: teal suv with
+  Best Score: 0.901
+  Best Prompt: a sleek teal SUV with aerodynamic lines, tinted windows that blend seamlessly into the body, and a subtle LED light strip running along the side mirrors, front view, accurate, complete, white background
+
+2025-08-10 04:08:21,941 - INFO - 
+================================================================================
+2025-08-10 04:08:21,941 - INFO - FINAL EPISODIC OPTIMIZATION SUMMARY
+2025-08-10 04:08:21,941 - INFO - ================================================================================
+2025-08-10 04:08:21,941 - INFO - Total Episodes: 2
+2025-08-10 04:08:21,941 - INFO - Total Optimizations: 14
+2025-08-10 04:08:21,941 - INFO - Overall Duration: 10370.6s (172.8 minutes)
+2025-08-10 04:08:21,941 - INFO - 
+LEARNING PROGRESSION:
+2025-08-10 04:08:21,941 - INFO - 
+PRINCIPLES LEARNED:
+2025-08-10 04:08:21,941 - INFO - Total Principles: 38
+2025-08-10 04:08:21,941 - INFO - Unique Principles: 20
+2025-08-10 04:08:21,941 - INFO - 
+================================================================================

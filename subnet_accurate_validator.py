@@ -7,6 +7,10 @@ to match production validation logic exactly, resolving validation discrepancies
 import subprocess
 import sys
 import os
+
+# Fix CUDA deterministic behavior before any CUDA operations
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+
 import contextlib
 import base64
 import time
@@ -203,6 +207,68 @@ def validate_with_production_logic(ply_data: bytes, prompt: str) -> dict:
         }
     finally:
         # Cleanup
+        with suppress_stdout():
+            validator.unload_pipelines()
+        gc.collect()
+        torch.cuda.empty_cache()
+
+# New: raw PLY validation (compression=0)
+def validate_with_production_logic_raw(ply_raw_data: bytes, prompt: str) -> dict:
+    """
+    Run production validation assuming data is already decompressed raw PLY bytes.
+    Sends compression=0 to decode_and_validate_txt.
+    """
+    validator = ValidationEngine(verbose=True)
+    with suppress_stdout():
+        validator.load_pipelines()
+    zstd_decompressor = zstandard.ZstdDecompressor()
+    renderer = Renderer()
+    ply_data_loader = PlyLoader()
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    try:
+        encoded_data = base64.b64encode(ply_raw_data).decode('utf-8')
+        request_data = RequestData(
+            prompt=prompt,
+            data=encoded_data,
+            compression=0,  # raw PLY
+            generate_preview=False,
+            preview_score_threshold=0.8
+        )
+        validation_result: ValidationResultData = decode_and_validate_txt(
+            request=request_data,
+            ply_data_loader=ply_data_loader,
+            renderer=renderer,
+            zstd_decompressor=zstd_decompressor,
+            validator=validator,
+            include_time_stat=True
+        )
+        response = validation_result.response_data
+        time_stats = validation_result.time_stat
+        return {
+            'validation_engine_score': response.score,
+            'alignment_score': response.alignment_score,
+            'quality_score': response.iqa,
+            'ssim_score': response.ssim,
+            'lpips_score': response.lpips,
+            'time_stats': {
+                'loading_time': time_stats.loading_data_time if time_stats else 0.0,
+                'rendering_time': time_stats.image_rendering_time if time_stats else 0.0,
+                'validation_time': time_stats.validation_time if time_stats else 0.0,
+                'total_time': time_stats.total_time if time_stats else 0.0,
+            } if time_stats else None
+        }
+    except Exception as e:
+        return {
+            'validation_engine_score': 0.0,
+            'alignment_score': 0.0,
+            'quality_score': 0.0,
+            'ssim_score': 0.0,
+            'lpips_score': 0.0,
+            'error': str(e)
+        }
+    finally:
         with suppress_stdout():
             validator.unload_pipelines()
         gc.collect()

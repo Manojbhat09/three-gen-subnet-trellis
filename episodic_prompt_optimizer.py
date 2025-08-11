@@ -317,7 +317,7 @@ class EpisodicPromptOptimizer:
         self.enable_reproducibility_optimization = REPRODUCIBILITY_SYSTEM_AVAILABLE
         # Initialize reproducibility system
         if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
+            self.reproducibility_system = LLMClosePromptReproducibility(episodic_memory_file=os.path.join(self.log_dir, "episodic_memory.json"))
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
             self.reproducibility_system = None
