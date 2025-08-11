@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from PIL import Image
 import io
 from sentence_transformers import SentenceTransformer
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -116,26 +117,14 @@ class ImageInterrogatorInterface:
             
             if style_focus == "detailed":
                 # Use full interrogation with all features
-                result = self.interrogator.interrogate(
-                    image, 
-                    question_prompt=question_prompt,
-                    min_flavors=8, 
-                    max_flavors=32
-                )
+                # Some versions of clip_interrogator do not accept 'question_prompt' kwarg; call with image only
+                result = self.interrogator.interrogate(image)
             elif style_focus == "3d_optimized":
                 # Focus on 3D-specific features
-                result = self.interrogator.interrogate_classic(
-                    image,
-                    question_prompt=question_prompt,
-                    max_flavors=16
-                )
+                result = self.interrogator.interrogate_classic(image)
             elif style_focus == "clip_optimized":
                 # Use fast interrogation optimized for CLIP
-                result = self.interrogator.interrogate_fast(
-                    image,
-                    question_prompt=question_prompt,
-                    max_flavors=24
-                )
+                result = self.interrogator.interrogate_fast(image)
             else:
                 # Default to standard interrogation
                 result = self.interrogator.interrogate(image)
@@ -143,14 +132,15 @@ class ImageInterrogatorInterface:
             # Clean up the result
             cleaned_result = self._clean_interrogation_result(result)
             
-            # Unload to free memory
-            self._unload_interrogator()
+            # NOTE: Keep interrogator loaded for subsequent strategy calls; caller will unload when finished
+            # self._unload_interrogator()
             
             return cleaned_result
                 
         except Exception as e:
             logger.error(f"Image interrogation error: {e}")
-            self._unload_interrogator()
+            # Do not unload here; caller may want to retry
+            # self._unload_interrogator()
             return None
     
     def _get_interrogation_prompt(self, style_focus: str) -> str:
@@ -213,6 +203,11 @@ class CLIPAlignmentOptimizer:
             clip_model_name=interrogator_clip_model,  # Use same CLIP model as production
             caption_model_name="blip-large"
         )
+        # Reduce flavor budget to limit stylistic drift
+        try:
+            self.interrogator.config.flavor_intermediate_count = 128
+        except Exception:
+            pass
         self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
         
         # CLIP model (lazy loaded)
@@ -230,10 +225,46 @@ class CLIPAlignmentOptimizer:
         self.convergence_threshold = 0.01  # Stop if improvement < 1%
         self.target_score = 0.8  # Aim for excellent scores
         
+        # Interrogator preferences
+        self.use_interrogator = True
+        self.interrogator_mode = "clip_optimized"  # fast mode
+        self.max_new_terms = 2
+        self.min_phrase_similarity = 0.55
+        self.block_trending = True
+        self.block_artists = True
+        self.block_movements = True
+        self.block_mediums = True
+        self.allowed_modifiers = [
+            "three dimensional", "3d", "well lit", "studio lighting", "high quality", "sharp", "clear",
+            "front view", "full object", "single object", "centered composition",
+            "clean product render", "isolated on white background", "plain white background",
+        ]
+        self.min_sentence_similarity_final = 0.84
+        self.max_added_tokens = 6
+        self.grid_search_max_terms = 2
+        self.grid_search_max_candidates = 24
+        # Require at least 50% relative improvement over original to consider convergence/target met
+        self.min_improvement_ratio = 0.50
+        self.min_convergence_ratio = 0.50
+        # Organic suffix via LLM (optional)
+        self.use_organic_suffix = True
+        self.organic_llm_url = os.getenv("ORGANIC_LLM_URL", "http://localhost:11434/api/chat")
+        self.organic_llm_model = os.getenv("ORGANIC_LLM_MODEL", "llama3.2:3b")
+        # Disable slower strategies by default
+        self.enable_grid_search = False
+        self.use_semantic_enhancement = False
+
+        # Known drift patterns (subset)
+        self._trending_sites = set([
+            'artstation', 'behance', 'cg society', 'cgsociety', 'deviantart', 'dribbble',
+            'flickr', 'instagram', 'pexels', 'pinterest', 'pixabay', 'pixiv', 'polycount',
+            'reddit', 'shutterstock', 'tumblr', 'unsplash', 'zbrush central'
+        ])
+        
         logger.info(f"🎯 CLIP Alignment Optimizer initialized")
         logger.info(f"   Server: {hunyuan_server_url}")
         logger.info(f"   CLIP Model: {clip_model_name}/{clip_pretrained}")
-    
+ 
     def load_clip_model(self):
         """Load CLIP model for scoring"""
         if self._clip_model is not None:
@@ -251,12 +282,11 @@ class CLIPAlignmentOptimizer:
         # Set up normalization (same as production)
         mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).view(1, 3, 1, 1) * 3
         std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).view(1, 3, 1, 1) * 3
-        self._normalize_transform = torch.nn.Sequential(
-            torch.nn.Normalize(mean.squeeze(), std.squeeze())
-        )
+        from torchvision import transforms as _tv_transforms
+        self._normalize_transform = _tv_transforms.Normalize(mean.squeeze(), std.squeeze())
         
         logger.info("✅ CLIP model loaded successfully")
-    
+ 
     def unload_clip_model(self):
         """Unload CLIP model to free memory"""
         if self._clip_model is not None:
@@ -266,7 +296,7 @@ class CLIPAlignmentOptimizer:
             self._clip_tokenizer = None
             torch.cuda.empty_cache()
             logger.info("🧹 CLIP model unloaded")
-    
+ 
     def compute_clip_score(self, prompt: str, image: Image.Image) -> float:
         """Compute CLIP alignment score (same as production)"""
         if self._clip_model is None:
@@ -300,7 +330,156 @@ class CLIPAlignmentOptimizer:
         except Exception as e:
             logger.error(f"CLIP scoring failed: {e}")
             return 0.0
-    
+
+    def _tokenize_phrases(self, text: str) -> list[str]:
+        parts = [p.strip() for p in text.split(',')]
+        parts = [p for p in parts if p]
+        return parts
+
+    def _is_blocked_phrase(self, phrase_lower: str) -> bool:
+        if self.block_artists and (phrase_lower.startswith("by ") or phrase_lower.startswith("inspired by ")):
+            return True
+        if self.block_trending and ("trending" in phrase_lower or any(site in phrase_lower for site in self._trending_sites)):
+            return True
+        # Heuristic: drop explicit movement/medium keywords that often induce style drift
+        blocked_keywords = [
+            "movement", "cubism", "impressionism", "baroque", "renaissance",
+            "digital painting", "watercolor", "oil painting", "photorealism", "low poly",
+        ]
+        if self.block_movements or self.block_mediums:
+            if any(k in phrase_lower for k in blocked_keywords):
+                return True
+        return False
+
+    def _conservative_blend_interrogated(self, original: str, interrogated: str, lora_endpoint: str) -> str:
+        """Blend interrogator output with original using conservative, alignment-friendly rules."""
+        original_lower = original.lower()
+        # Significant tokens from original (basic noun-lock heuristic)
+        import re
+        orig_tokens = [t for t in re.findall(r"[a-zA-Z]+", original_lower) if len(t) >= 3]
+        orig_token_set = set(orig_tokens)
+        phrases = self._tokenize_phrases(interrogated)
+        # Drop blocked phrases and those already present in original
+        candidates = []
+        for p in phrases:
+            pl = p.lower()
+            if self._is_blocked_phrase(pl):
+                continue
+            if pl in original_lower:
+                continue
+            # avoid obvious new nouns: crude heuristic - keep short modifiers
+            if len(pl.split()) > 4:
+                continue
+            # Only allow modifiers that map to our whitelist (substring match)
+            allowed = None
+            for mod in self.allowed_modifiers:
+                if mod in pl:
+                    allowed = mod
+                    break
+            if not allowed:
+                continue
+            candidates.append(allowed)
+        # Rank by semantic similarity to original text
+        try:
+            orig_emb = self.sentence_model.encode([original], normalize_embeddings=True)
+            cand_embs = self.sentence_model.encode(candidates, normalize_embeddings=True) if candidates else []
+        except Exception:
+            cand_embs = []
+        if not candidates or len(cand_embs) == 0:
+            # Fall back to minimal style + semantics only
+            blended = self._align_with_lora_style(original, lora_endpoint)
+            blended = self._enhance_semantically(blended, lora_endpoint)
+            return blended
+        import numpy as np
+        sims = (cand_embs @ orig_emb.T).reshape(-1)
+        # Select top-N above threshold
+        ranked = sorted([(float(sims[i]), candidates[i]) for i in range(len(candidates))], reverse=True)
+        selected = [c for s, c in ranked if s >= self.min_phrase_similarity][: self.max_new_terms]
+        blended = original
+        if selected:
+            blended = f"{blended}, {', '.join(selected)}"
+        blended = self._align_with_lora_style(blended, lora_endpoint)
+        # Minimal semantic boost
+        blended = self._enhance_semantically(blended, lora_endpoint)
+        # Length cap
+        new_tokens = re.findall(r"[\w-]+", blended)
+        if len(new_tokens) > len(orig_tokens) + self.max_added_tokens:
+            # truncate by removing last comma-separated segment(s)
+            parts = self._tokenize_phrases(blended)
+            while parts and len(re.findall(r"[\w-]+", ", ".join(parts))) > len(orig_tokens) + self.max_added_tokens:
+                parts.pop()
+            blended = ", ".join(parts) if parts else original
+        # Noun-lock heuristic: ensure all significant original tokens remain
+        lower_blended = blended.lower()
+        if not all(tok in lower_blended for tok in orig_token_set):
+            blended = original
+        return blended
+
+    def _grid_search_modifiers(self, original: str, lora_endpoint: str) -> list[str]:
+        """Generate a small set of candidate prompts from allowed modifiers (1-2 terms)."""
+        base = self._align_with_lora_style(original, lora_endpoint)
+        # Build unique candidates
+        candidates: list[str] = []
+        # Single-term
+        for mod in self.allowed_modifiers:
+            cand = f"{base}, {mod}"
+            candidates.append(cand)
+            if len(candidates) >= self.grid_search_max_candidates:
+                break
+        # Two-terms (first few pairs)
+        if len(candidates) < self.grid_search_max_candidates:
+            count_added = 0
+            for i in range(min(4, len(self.allowed_modifiers))):
+                for j in range(i + 1, min(6, len(self.allowed_modifiers))):
+                    cand = f"{base}, {self.allowed_modifiers[i]}, {self.allowed_modifiers[j]}"
+                    candidates.append(cand)
+                    count_added += 1
+                    if len(candidates) >= self.grid_search_max_candidates:
+                        break
+                if len(candidates) >= self.grid_search_max_candidates:
+                    break
+        # Ensure de-dup
+        seen = set()
+        uniq = []
+        for c in candidates:
+            if c not in seen:
+                seen.add(c)
+                uniq.append(c)
+        return uniq
+
+    def _rewrite_with_organic_suffix(self, original: str) -> str:
+        """Use an LLM to add an organic, natural suffix that keeps the object and adds clean white background/centering subtly."""
+        if not self.use_organic_suffix:
+            return original
+        prompt_inst = (
+            "Rewrite the following short object prompt to remain semantically identical, "
+            "but add a natural, concise photographic rendering note that implies a clean product shot: "
+            "plain white background, centered composition, front view. Do not add new nouns or styles. "
+            "Keep it under 20 extra words.\n\n"
+            f"Original: {original}\n"
+            "Rewrite:"
+        )
+        try:
+            # Try local Ollama chat API
+            payload = {
+                "model": self.organic_llm_model,
+                "messages": [{"role": "user", "content": prompt_inst}],
+                "stream": False,
+                "options": {"temperature": 0.3, "num_predict": 64, "top_p": 0.9},
+            }
+            resp = requests.post(self.organic_llm_url, json=payload, timeout=5)
+            if resp.ok:
+                data = resp.json()
+                rewritten = data.get("message", {}).get("content", "").strip()
+                # Basic sanity: ensure original head terms remain
+                if rewritten and len(rewritten) <= len(original) + 80:
+                    return rewritten
+        except Exception:
+            pass
+        # Fallback: static organic suffix
+        fallback = f"{original}, plain white background, centered composition, front view"
+        return fallback
+
     def generate_image(self, prompt: str, seed: int = 42, lora_endpoint: str = "isometric_3d") -> Optional[Image.Image]:
         """Generate image using specified LoRA endpoint"""
         try:
@@ -348,36 +527,56 @@ class CLIPAlignmentOptimizer:
         best_score = original_score
         best_image = original_image
         
-        # Try multiple optimization strategies
+        # Prefer conservative interrogator-based blending first (fast), then minimal style/semantics
         strategies = [
-            ("interrogator_detailed", "detailed"),
-            ("interrogator_3d", "3d_optimized"), 
-            ("interrogator_clip", "clip_optimized"),
-            ("semantic_enhancement", None),
-            ("style_alignment", None)
+            ("interrogator_conservative", self.interrogator_mode),
+            ("style_alignment", None),
+            ("organic_suffix", None),
         ]
+        
+        try:
+            # Preload interrogator once for all strategies
+            self.interrogator._load_interrogator()
+        except Exception:
+            pass
         
         for iteration, (strategy, interrogator_style) in enumerate(strategies, 1):
             try:
-                if strategy.startswith("interrogator"):
-                    # Use image interrogator
-                    interrogated_prompt = self.interrogator.interrogate_image(best_image, interrogator_style)
+                if strategy == "interrogator_conservative" and self.use_interrogator:
+                    interrogated_prompt = self.interrogator.interrogate_image(best_image, interrogator_style or "clip_optimized")
                     if not interrogated_prompt:
                         continue
-                    
-                    # Generate hybrid prompt (blend original intent with interrogated details)
-                    optimized_prompt = self._blend_prompts(prompt, interrogated_prompt, lora_endpoint)
-                    
+                    logger.info(f"   {strategy} → interrogated: '{interrogated_prompt}'")
+                    optimized_prompt = self._conservative_blend_interrogated(prompt, interrogated_prompt, lora_endpoint)
+                
                 elif strategy == "semantic_enhancement":
-                    # Enhance prompt with semantic keywords optimized for CLIP
                     optimized_prompt = self._enhance_semantically(best_prompt, lora_endpoint)
-                    
+                    if not self.use_semantic_enhancement:
+                        continue
+                
                 elif strategy == "style_alignment":
-                    # Align prompt style with LoRA characteristics
                     optimized_prompt = self._align_with_lora_style(best_prompt, lora_endpoint)
-                    
+
+                elif strategy == "organic_suffix":
+                    optimized_prompt = self._rewrite_with_organic_suffix(best_prompt)
+
                 else:
                     continue
+                
+                logger.info(f"   {strategy} → candidate: '{optimized_prompt}'")
+                
+                # Apply text-similarity guard only to interrogator-based candidates
+                if strategy == "interrogator_conservative":
+                    try:
+                        sim_text = float(self.sentence_model.similarity(
+                            self.sentence_model.encode([optimized_prompt], normalize_embeddings=True),
+                            self.sentence_model.encode([prompt], normalize_embeddings=True)
+                        ))
+                    except Exception:
+                        sim_text = 1.0
+                    if sim_text < self.min_sentence_similarity_final:
+                        logger.info(f"   Skipping candidate due to low text similarity ({sim_text:.3f} < {self.min_sentence_similarity_final:.2f})")
+                        continue
                 
                 # Test optimized prompt
                 optimized_image = self.generate_image(optimized_prompt, seed, lora_endpoint)
@@ -395,20 +594,42 @@ class CLIPAlignmentOptimizer:
                     best_score = optimized_score
                     best_image = optimized_image
                     
-                    # Check for convergence
+                    # Check for convergence only if we've reached sufficient relative improvement
                     if improvement < self.convergence_threshold:
-                        logger.info(f"   ✅ Converged after {iteration} iterations")
-                        break
-                    
+                        if original_score > 0 and (best_score - original_score) >= self.min_convergence_ratio * original_score:
+                            logger.info(f"   ✅ Converged after {iteration} iterations (≥{self.min_convergence_ratio*100:.0f}% relative improvement)")
+                            break
+                 
                     # Check if target reached
                     normalized_score = best_score / 0.35
                     if normalized_score >= self.target_score:
                         logger.info(f"   🎯 Target score reached: {normalized_score:.4f}")
                         break
-                
+                 
             except Exception as e:
                 logger.error(f"   Strategy {strategy} failed: {e}")
                 continue
+ 
+        # If improvement is below the 50% target, try a small modifier grid search
+        if self.enable_grid_search and ((original_score == 0 and best_score <= 0) or (original_score > 0 and (best_score - original_score) < self.min_improvement_ratio * original_score)):
+            logger.info("   🔎 Grid search over allowed modifiers...")
+            candidates = self._grid_search_modifiers(prompt, lora_endpoint)
+            for cand in candidates:
+                logger.info(f"   grid → candidate: '{cand}'")
+                cand_img = self.generate_image(cand, seed, lora_endpoint)
+                if cand_img is None:
+                    continue
+                cand_score = self.compute_clip_score(prompt, cand_img)
+                improvement = cand_score - best_score
+                logger.info(f"   grid result: {cand_score:.4f} (Δ{improvement:+.4f})")
+                if improvement > 0:
+                    best_prompt = cand
+                    best_score = cand_score
+                    best_image = cand_img
+                    # If we reached target ratio improvement, stop early
+                    if original_score > 0 and (best_score - original_score) >= self.min_improvement_ratio * original_score:
+                        logger.info(f"   🎯 Target improvement reached (≥{self.min_improvement_ratio*100:.0f}% of original)")
+                        break
         
         final_improvement = best_score - original_score
         return OptimizationResult(
@@ -471,7 +692,7 @@ class CLIPAlignmentOptimizer:
             "game_assets": "game asset style, clean topology",
             "patched_realism": "realistic textures, detailed surfaces",
             "tf2_style": "Team Fortress 2 style, cartoon aesthetic",
-            "baolei": "stylized design, artistic interpretation",
+            "baolei": "clean product render, isolated on white background, centered",
             "cartoon_3d": "cartoon style, vibrant colors",
             "cinema": "cinematic quality, professional rendering",
             "sd15_game_icon": "icon style, clear symbolism"

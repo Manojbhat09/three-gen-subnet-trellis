@@ -155,26 +155,41 @@ FLUX_LORAS = {
         'scale': 1.0,
         'description': 'Isometric 3D style LoRA for FLUX'
     },
+    # 'live_3d': {
+    #     'name': 'FLUX Live 3D',
+    #     'repo': 'Shakker-Labs/FLUX.1-dev-LoRA-live-3D',
+    #     'weight_name': 'FLUX-dev-lora-live_3D.safetensors',
+    #     'trigger_prefix': '',
+    #     'scale': 1.1,
+    #     'fuse': False,  # Disabled fusion due to tensor size mismatch
+    #     'description': 'Live 3D style LoRA for FLUX'
+    # },
     'live_3d': {
         'name': 'FLUX Live 3D',
-        'repo': 'Shakker-Labs/FLUX.1-dev-LoRA-live-3D',
-        'weight_name': 'FLUX-dev-lora-live_3D.safetensors',
-        'trigger_prefix': '',
+        'weight_name': '/home/mbhat/three-gen-subnet-trellis/LORAS/lowPolyStyle_Sora.safetensors',
+        'trigger_prefix': 'Low Poly Style',
         'scale': 1.1,
         'fuse': False,  # Disabled fusion due to tensor size mismatch
         'description': 'Live 3D style LoRA for FLUX'
     },
     'game_assets': {
         'name': '3D Game Assets',
-        'path': 'patched_realism_LoRA.safetensors',
+        'path': '/home/mbhat/three-gen-subnet-trellis/LORAS/game-assets.safetensors',
         'trigger_prefix': 'Create 3D game asset, isometric view version,',
         'scale': 1.0,
         'description': '3D game assets style LoRA for FLUX'
     },
+    # 'patched_realism': {
+    #     'name': 'Patched Realism',
+    #     'path': 'patched_realism_LoRA.safetensors',
+    #     'trigger_prefix': '',
+    #     'scale': 1.0,
+    #     'description': 'Realism enhancement LoRA for FLUX'
+    # },
     'patched_realism': {
         'name': 'Patched Realism',
-        'path': 'patched_realism_LoRA.safetensors',
-        'trigger_prefix': '',
+        'path': '/home/mbhat/three-gen-subnet-trellis/LORAS/ZKcZdffUM6qyMYiEE8ed0_adapter_model_comfy_converted.safetensors',
+        'trigger_prefix': 'Convert this image to low poly version,',
         'scale': 1.0,
         'description': 'Realism enhancement LoRA for FLUX'
     },
