@@ -1,0 +1,40 @@
+2025-08-08 17:29:39,016 - INFO - 📄 Starting fresh RL loop memory
+2025-08-08 17:29:39,017 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-08 17:29:39,017 - INFO -    Strategy tracking: 8 strategies
+2025-08-08 17:29:39,017 - INFO -    Past sessions: 0
+2025-08-08 17:29:39,017 - INFO -    Exploration rate: 0.60
+2025-08-08 17:29:39,017 - INFO -    Max rounds per optimization: 15
+2025-08-08 17:29:39,017 - INFO -    Min rounds before convergence: 5
+2025-08-08 17:29:39,017 - INFO -    Adaptive convergence: ENABLED
+2025-08-08 17:29:39,029 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-08 17:29:39,029 - INFO - Starting episodic optimization: 2 episodes, 71 prompts per episode
+2025-08-08 17:29:39,029 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-08 17:29:39,029 - INFO - 
+============================================================
+2025-08-08 17:29:39,029 - INFO - STARTING EPISODE 1/2
+2025-08-08 17:29:39,030 - INFO - ============================================================
+2025-08-08 17:29:39,030 - INFO - 🔍 Checking server health at episode start...
+2025-08-08 17:29:39,038 - INFO - ✅ Server health check passed
+2025-08-08 17:29:39,039 - INFO - 
+--- Episode 1, Prompt 1 (Total: 71) ---
+2025-08-08 17:29:39,039 - INFO - Optimizing: 'plastic straw of drink'
+2025-08-08 17:29:39,039 - INFO - 🔍 Checking server availability before optimization...
+2025-08-08 17:29:39,044 - INFO - ✅ Server is available (status: completed)
+2025-08-08 17:29:39,045 - INFO - 📝 Marked server as used at 1754674179.0450442
+2025-08-08 17:29:39,045 - INFO - ✅ Server is available and marked as used
+2025-08-08 17:29:39,045 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-08 17:29:39,045 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-08 17:29:39,045 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-08 17:29:39,048 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'plastic straw of drink'
+2025-08-08 17:29:39,048 - INFO -    Session: rl_session_1754674179_9284
+2025-08-08 17:29:39,048 - INFO -    Max rounds: 17
+2025-08-08 17:29:39,048 - INFO -    Min rounds before convergence: 5
+2025-08-08 17:29:39,048 - INFO -    Target score: 0.99
+2025-08-08 17:29:39,048 - INFO - 
+   🔄 RL Round 1/17
+2025-08-08 17:29:39,048 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-08 17:29:45,729 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.652752896}
+2025-08-08 17:29:45,730 - INFO -       🔍 Validating...
+2025-08-08 17:29:45,730 - INFO -       📝 Using optimized prompt for generation: 'a transparent plastic straw with a slight curvature, partially submerged in a refreshing glass of lemon-lime soda...'
+2025-08-08 17:29:45,730 - INFO -       🎯 Computing scores against original prompt: 'plastic straw of drink...'

@@ -1,0 +1,74 @@
+2025-08-08 00:38:19,801 - INFO - 📄 Starting fresh RL loop memory
+2025-08-08 00:38:19,801 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-08 00:38:19,801 - INFO -    Strategy tracking: 8 strategies
+2025-08-08 00:38:19,802 - INFO -    Past sessions: 0
+2025-08-08 00:38:19,802 - INFO -    Exploration rate: 0.60
+2025-08-08 00:38:19,802 - INFO -    Max rounds per optimization: 15
+2025-08-08 00:38:19,802 - INFO -    Min rounds before convergence: 5
+2025-08-08 00:38:19,802 - INFO -    Adaptive convergence: ENABLED
+2025-08-08 00:38:19,821 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-08 00:38:19,821 - INFO - Starting episodic optimization: 2 episodes, 71 prompts per episode
+2025-08-08 00:38:19,821 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-08 00:38:19,821 - INFO - 
+============================================================
+2025-08-08 00:38:19,821 - INFO - STARTING EPISODE 1/2
+2025-08-08 00:38:19,821 - INFO - ============================================================
+2025-08-08 00:38:19,821 - INFO - 🔍 Checking server health at episode start...
+2025-08-08 00:38:19,829 - INFO - ✅ Server health check passed
+2025-08-08 00:38:19,837 - INFO - [INFO] Reloaded test prompts: 106 total prompts
+2025-08-08 00:38:19,838 - INFO - [INFO] Added 35 new 0-fidelity prompts during episode
+2025-08-08 00:38:19,838 - INFO - 
+--- Episode 1, Prompt 1 (Total: 106) ---
+2025-08-08 00:38:19,838 - INFO - Optimizing: 'glossy blue clarinet straight body'
+2025-08-08 00:38:19,838 - INFO - 🔍 Checking server availability before optimization...
+2025-08-08 00:38:19,844 - INFO - ✅ Server is available (status: completed)
+2025-08-08 00:38:19,845 - INFO - 📝 Marked server as used at 1754613499.8450408
+2025-08-08 00:38:19,845 - INFO - ✅ Server is available and marked as used
+2025-08-08 00:38:19,845 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-08 00:38:19,845 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-08 00:38:19,845 - INFO -       🔧 Using endpoint: generate/baolei/
+2025-08-08 00:38:19,848 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'glossy blue clarinet straight body'
+2025-08-08 00:38:19,848 - INFO -    Session: rl_session_1754613499_7932
+2025-08-08 00:38:19,848 - INFO -    Max rounds: 17
+2025-08-08 00:38:19,848 - INFO -    Min rounds before convergence: 5
+2025-08-08 00:38:19,848 - INFO -    Target score: 0.99
+2025-08-08 00:38:19,848 - INFO - 
+   🔄 RL Round 1/17
+2025-08-08 00:38:19,848 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-08 00:38:30,853 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.654850048}
+2025-08-08 00:38:30,854 - INFO -       🔍 Validating...
+2025-08-08 00:38:30,854 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with a straight body and in...'
+2025-08-08 00:38:30,854 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 00:38:36,613 - WARNING -    ❌ Validation failed (return code 1)
+2025-08-08 00:38:36,613 - INFO -       📊 Validation score: 0.0000
+2025-08-08 00:38:36,614 - INFO - 
+   🔄 RL Round 2/17
+2025-08-08 00:38:36,614 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-08 00:38:40,722 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.652752896}
+2025-08-08 00:38:40,722 - INFO -       🔍 Validating...
+2025-08-08 00:38:40,723 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with a straight body and de...'
+2025-08-08 00:38:40,723 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 00:38:46,508 - WARNING -    ❌ Validation failed (return code 1)
+2025-08-08 00:38:46,509 - INFO -       📊 Validation score: 0.0000
+2025-08-08 00:38:46,509 - INFO - 
+   🔄 RL Round 3/17
+2025-08-08 00:38:46,509 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-08 00:38:51,448 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.650655744}
+2025-08-08 00:38:51,448 - INFO -       🔍 Validating...
+2025-08-08 00:38:51,449 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with a straight body, adorn...'
+2025-08-08 00:38:51,449 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 00:38:56,925 - WARNING -    ❌ Validation failed (return code 1)
+2025-08-08 00:38:56,926 - INFO -       📊 Validation score: 0.0000
+2025-08-08 00:38:56,926 - INFO - 
+   🔄 RL Round 4/17
+2025-08-08 00:38:56,926 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-08 00:39:01,659 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.648558592}
+2025-08-08 00:39:01,660 - INFO -       🔍 Validating...
+2025-08-08 00:39:01,660 - INFO -       📝 Using optimized prompt for generation: 'a glossy blue clarinet with a straight body, adorn...'
+2025-08-08 00:39:01,660 - INFO -       🎯 Computing scores against original prompt: 'glossy blue clarinet straight body...'
+2025-08-08 00:39:06,863 - WARNING -    ❌ Validation failed (return code 1)
+2025-08-08 00:39:06,864 - INFO -       📊 Validation score: 0.0000
+2025-08-08 00:39:06,864 - INFO - 
+   🔄 RL Round 5/17
+2025-08-08 00:39:06,864 - INFO -       🎯 Strategy: technical_precision (explore)
