@@ -120,11 +120,15 @@ GENERATION_CONFIG = {
     # Model selection
     'current_model': 'flux',  # 'flux', 'sdxl', or 'sd15'
     # TRELLIS specific settings - OPTIMIZED FOR MAXIMUM QUALITY
-    'guidance_scale': 4.0,  # Increased from 3.5 for better quality
+    # 'guidance_scale': 4.0,  # Increased from 3.5 for better quality
+    'guidance_scale': 3.5,  # Increased from 3.5 for better quality
     'ss_guidance_strength': 9.5,  # Increased from 8.5 for stronger structure guidance
-    'ss_sampling_steps': 30,  # Increased from 23 for more refinement
-    'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
-    'slat_sampling_steps': 30,  # Increased from 24 for more refinement
+    # 'ss_sampling_steps': 30,  # Increased from 23 for more refinement
+    'ss_sampling_steps': 21,  # Increased from 23 for more refinement
+    # 'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
+    'slat_guidance_strength': 4.0,  # Increased from 4.0 for better detail preservation
+    # 'slat_sampling_steps': 30,  # Increased from 24 for more refinement
+    'slat_sampling_steps': 24,  # Increased from 24 for more refinement
     # Memory management
     'enable_memory_efficient_attention': True,
     'enable_cpu_offload': True,
@@ -188,7 +192,7 @@ FLUX_LORAS = {
     # },
     'patched_realism': {
         'name': 'Patched Realism',
-        'path': '/home/mbhat/three-gen-subnet-trellis/LORAS/ZKcZdffUM6qyMYiEE8ed0_adapter_model_comfy_converted.safetensors',
+        'path': '/home/mbhat/three-gen-subnet-trellis/LORAS/patched_ZKcZdffUM6qyMYiEE8ed0_adapter_model_comfy_converted.safetensors',
         'trigger_prefix': 'Convert this image to low poly version,',
         'scale': 1.0,
         'description': 'Realism enhancement LoRA for FLUX'
@@ -496,7 +500,6 @@ class TrellisGenerator:
             dtype = torch.bfloat16
             
             file_url = GENERATION_CONFIG['flux_model_url']
-            file_url = file_url.replace("/resolve/main/", "/blob/main/").replace("?download=true", "")
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
             
             # Load text encoder with 8-bit quantization
@@ -515,15 +518,41 @@ class TrellisGenerator:
                 token=huggingface_token
             )
             
-            # Load transformer with GGUF configuration
-            print("Loading FLUX transformer with GGUF quantization...")
-            self.flux_transformer = FluxTransformer2DModel.from_single_file(
-                file_url, 
-                subfolder="transformer", 
-                quantization_config=GGUFQuantizationConfig(compute_dtype=dtype), 
-                torch_dtype=dtype, 
-                config=single_file_base_model
-            )
+            # Load transformer
+            # If a direct file is provided (e.g., .gguf/.safetensors/.ckpt or http URL), use from_single_file.
+            # Otherwise, load from the base repo via from_pretrained.
+            use_single_file = False
+            if 'gguf' in file_url:
+                use_single_file = True
+                file_url = file_url.replace("/resolve/main/", "/blob/main/").replace("?download=true", "")
+            else:
+                if isinstance(file_url, str):
+                    lower_url = file_url.lower()
+                    if lower_url.startswith("http://") or lower_url.startswith("https://"):
+                        use_single_file = True
+                        # Ensure we use the raw file endpoint for Hugging Face links
+                        if "huggingface.co" in lower_url and "/blob/" in lower_url:
+                            file_url = file_url.replace("/blob/", "/resolve/")
+                    elif lower_url.endswith((".gguf", ".safetensors", ".ckpt")):
+                        use_single_file = True
+
+            if use_single_file:
+                print("Loading FLUX transformer from single file (GGUF/ckpt)...")
+                self.flux_transformer = FluxTransformer2DModel.from_single_file(
+                    file_url,
+                    subfolder="transformer",
+                    quantization_config=GGUFQuantizationConfig(compute_dtype=dtype),
+                    torch_dtype=dtype,
+                    config=single_file_base_model
+                )
+            else:
+                print("Loading FLUX transformer from repo (no single file provided)...")
+                self.flux_transformer = FluxTransformer2DModel.from_pretrained(
+                    single_file_base_model,
+                    subfolder="transformer",
+                    torch_dtype=dtype,
+                    token=huggingface_token
+                )
             
             # Initialize pipeline
             print("Initializing FLUX pipeline...")
@@ -1086,7 +1115,7 @@ class TrellisGenerator:
             traceback.print_exc()
             return None
 
-    def generate_3d_model(self, prompt: str, seed: int = 42) -> Optional[Tuple[bytes, Optional[bytes]]]:
+    def generate_3d_model(self, prompt: str, seed: int = 42, num_inference_steps: Optional[int] = None, guidance_scale: Optional[float] = None, ss_sampling_steps: Optional[int] = None, slat_sampling_steps: Optional[int] = None, slat_guidance_strength: Optional[float] = None, ss_guidance_strength: Optional[float] = None) -> Optional[Tuple[bytes, Optional[bytes]]]:
         """Generate 3D model from text prompt using FLUX + TRELLIS pipeline"""
         
         job_id = f"gen_{int(time.time())}_{seed}"
@@ -1133,10 +1162,12 @@ class TrellisGenerator:
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else GENERATION_CONFIG['guidance_scale']
+                        effective_steps = num_inference_steps if num_inference_steps is not None else NUM_INFERENCE_STEPS
                         image = self.flux_pipeline(
                             prompt=enhanced_prompt,
-                            guidance_scale=GENERATION_CONFIG['guidance_scale'],
-                            num_inference_steps=NUM_INFERENCE_STEPS,
+                            guidance_scale=effective_guidance_scale,
+                            num_inference_steps=effective_steps,
                             width=1024,
                             height=1024,
                             generator=generator,
@@ -1155,10 +1186,12 @@ class TrellisGenerator:
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else 7.5
+                        effective_steps = num_inference_steps if num_inference_steps is not None else 25
                         image = self.sdxl_pipeline(
                             prompt=enhanced_prompt,
-                            guidance_scale=7.5,
-                            num_inference_steps=25,
+                            guidance_scale=effective_guidance_scale,
+                            num_inference_steps=effective_steps,
                             width=1024,
                             height=1024,
                             generator=generator,
@@ -1177,10 +1210,12 @@ class TrellisGenerator:
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else 7.5
+                        effective_steps = num_inference_steps if num_inference_steps is not None else 25
                         image = self.sd15_pipeline(
                             prompt=enhanced_prompt,
-                            guidance_scale=7.5,
-                            num_inference_steps=25,
+                            guidance_scale=effective_guidance_scale,
+                            num_inference_steps=effective_steps,
                             width=512,
                             height=512,
                             generator=generator,
@@ -1214,21 +1249,21 @@ class TrellisGenerator:
                     print("Step 1.3: Object centering disabled, skipping...")
                 
                 # Step 1.5: Remove background from image
-                # print("Step 1.5: Removing background from image...")
-                # self._load_background_remover()
+                print("Step 1.5: Removing background from image...")
+                self._load_background_remover()
                 
-                # try:
-                #     image_no_bg = self.background_remover(image)
-                #     print("✓ Background removed successfully")
-                #     # Save the background-removed image as well
-                #     generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
-                #     image = image_no_bg  # Use the cleaned image for TRELLIS
-                # except Exception as e:
-                #     print(f"⚠️ Background removal failed: {e}")
-                #     print("   Continuing with original image...")
+                try:
+                    image_no_bg = self.background_remover(image)
+                    print("✓ Background removed successfully")
+                    # Save the background-removed image as well
+                    generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
+                    image = image_no_bg  # Use the cleaned image for TRELLIS
+                except Exception as e:
+                    print(f"⚠️ Background removal failed: {e}")
+                    print("   Continuing with original image...")
                 
-                # # Unload background remover
-                # self._unload_background_remover()
+                # Unload background remover
+                self._unload_background_remover()
                 
                 # Step 2: Generate 3D model with TRELLIS
                 print("Step 2: Generating 3D model with TRELLIS...")
@@ -1236,20 +1271,26 @@ class TrellisGenerator:
                     self._load_trellis_pipeline()
                 
                 # Enhanced TRELLIS parameters for maximum quality
+                # Resolve TRELLIS quality parameters with overrides
+                effective_ss_steps = ss_sampling_steps if ss_sampling_steps is not None else GENERATION_CONFIG['ss_sampling_steps']
+                effective_slat_steps = slat_sampling_steps if slat_sampling_steps is not None else GENERATION_CONFIG['slat_sampling_steps']
+                effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
+                effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
+
                 outputs = self.trellis_pipeline.run(
                     image,
                     seed=seed,
                     formats=["gaussian", "mesh"],
                     preprocess_image=False,
                     sparse_structure_sampler_params={
-                        "steps": GENERATION_CONFIG['ss_sampling_steps'],
-                        "cfg_strength": GENERATION_CONFIG['ss_guidance_strength'],
+                        "steps": effective_ss_steps,
+                        "cfg_strength": effective_ss_guidance,
                         "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
                         "rescale_t": 3.0,  # Temperature rescaling for better quality
                     },
                     slat_sampler_params={
-                        "steps": GENERATION_CONFIG['slat_sampling_steps'],
-                        "cfg_strength": GENERATION_CONFIG['slat_guidance_strength'],
+                        "steps": effective_slat_steps,
+                        "cfg_strength": effective_slat_guidance,
                         "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
                         "rescale_t": 3.0,  # Temperature rescaling for better quality
                     },
@@ -1532,7 +1573,13 @@ async def reset_job_status():
 async def generate_3d_model_endpoint(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model from text prompt using FLUX + TRELLIS pipeline."""
     
@@ -1542,7 +1589,16 @@ async def generate_3d_model_endpoint(
         seed = 42
     
     # Generate model
-    result = generator.generate_3d_model(prompt, seed)
+    result = generator.generate_3d_model(
+        prompt,
+        seed,
+        num_inference_steps=num_inference_steps,
+        guidance_scale=guidance_scale,
+        ss_sampling_steps=ss_sampling_steps,
+        slat_sampling_steps=slat_sampling_steps,
+        slat_guidance_strength=slat_guidance_strength,
+        ss_guidance_strength=ss_guidance_strength
+    )
     
     if result is None:
         raise HTTPException(status_code=500, detail="Generation failed")
@@ -1897,7 +1953,13 @@ async def unload_lora():
 async def generate_with_isometric_3d_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Isometric 3D LoRA"""
     try:
@@ -1915,7 +1977,16 @@ async def generate_with_isometric_3d_lora(
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
         # Generate with the LoRA
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -1961,7 +2032,13 @@ async def generate_with_isometric_3d_lora(
 async def generate_with_live_3d_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Live 3D LoRA"""
     try:
@@ -1977,7 +2054,16 @@ async def generate_with_live_3d_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2021,7 +2107,13 @@ async def generate_with_live_3d_lora(
 async def generate_with_game_assets_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Game Assets LoRA"""
     try:
@@ -2037,7 +2129,16 @@ async def generate_with_game_assets_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2081,7 +2182,13 @@ async def generate_with_game_assets_lora(
 async def generate_with_patched_realism_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Patched Realism LoRA"""
     try:
@@ -2097,7 +2204,16 @@ async def generate_with_patched_realism_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2141,7 +2257,13 @@ async def generate_with_patched_realism_lora(
 async def generate_with_tf2_style_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using TF2 Style LoRA"""
     try:
@@ -2157,7 +2279,16 @@ async def generate_with_tf2_style_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2201,7 +2332,13 @@ async def generate_with_tf2_style_lora(
 async def generate_with_baolei_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Baolei Style LoRA"""
     try:
@@ -2217,7 +2354,16 @@ async def generate_with_baolei_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2261,7 +2407,13 @@ async def generate_with_baolei_lora(
 async def generate_with_cartoon_3d_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Cartoon 3D Render LoRA"""
     try:
@@ -2277,7 +2429,16 @@ async def generate_with_cartoon_3d_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2321,7 +2482,13 @@ async def generate_with_cartoon_3d_lora(
 async def generate_with_cinema_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using Cinema Style LoRA"""
     try:
@@ -2337,7 +2504,16 @@ async def generate_with_cinema_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2381,7 +2557,13 @@ async def generate_with_cinema_lora(
 async def generate_with_sd15_game_icon_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(7.5),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using SD1.5 Game Icon LoRA"""
     try:
@@ -2400,7 +2582,16 @@ async def generate_with_sd15_game_icon_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied SD15 LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -2444,7 +2635,13 @@ async def generate_with_sd15_game_icon_lora(
 async def generate_with_necklace_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
 ):
     """Generate 3D model using FLUX with Necklace LoRA"""
     try:
@@ -2463,7 +2660,16 @@ async def generate_with_necklace_lora(
             enhanced_prompt = f"{trigger_prefix} {prompt}"
             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed or 42,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
         if result is None:
             raise HTTPException(status_code=500, detail="Generation failed")
         
@@ -3391,7 +3597,9 @@ async def optimize_and_generate_endpoint(
     prompt: str = Form(...),
     seed: Optional[int] = Form(None),
     return_compressed: Optional[bool] = Form(True),
-    target_score: Optional[float] = Form(0.8)
+    target_score: Optional[float] = Form(0.8),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale'])
 ):
     """Optimize prompt then generate 3D model with optimal settings"""
     
@@ -3443,7 +3651,12 @@ async def optimize_and_generate_endpoint(
                     enhanced_prompt = f"{trigger_prefix} {optimized_prompt}"
                     print(f"🎨 Applied SD15 LoRA trigger prefix: '{trigger_prefix}'")
         
-        result = generator.generate_3d_model(enhanced_prompt, seed)
+        result = generator.generate_3d_model(
+            enhanced_prompt,
+            seed,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale
+        )
         
         if result is None:
             return JSONResponse(content={

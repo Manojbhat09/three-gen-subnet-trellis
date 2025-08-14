@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
-from engine.utils.statistics_computation_utils import compute_mean, filter_outliers
+from validation.engine.utils.statistics_computation_utils import compute_mean, filter_outliers
 
 
 class SimilarityMetrics:

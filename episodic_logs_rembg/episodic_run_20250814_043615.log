@@ -1,0 +1,1077 @@
+2025-08-14 04:36:32,559 - INFO - 📄 Starting fresh RL loop memory
+2025-08-14 04:36:32,560 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-14 04:36:32,560 - INFO -    Strategy tracking: 8 strategies
+2025-08-14 04:36:32,561 - INFO -    Past sessions: 0
+2025-08-14 04:36:32,561 - INFO -    Exploration rate: 0.60
+2025-08-14 04:36:32,562 - INFO -    Max rounds per optimization: 15
+2025-08-14 04:36:32,566 - INFO -    Min rounds before convergence: 5
+2025-08-14 04:36:32,566 - INFO -    Adaptive convergence: ENABLED
+2025-08-14 04:36:32,650 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-14 04:36:32,652 - INFO - Starting episodic optimization: 2 episodes, 454 prompts per episode
+2025-08-14 04:36:32,653 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-14 04:36:32,653 - INFO - 
+============================================================
+2025-08-14 04:36:32,657 - INFO - STARTING EPISODE 1/2
+2025-08-14 04:36:32,657 - INFO - ============================================================
+2025-08-14 04:36:32,657 - INFO - 🔍 Checking server health at episode start...
+2025-08-14 04:36:32,670 - INFO - ✅ Server health check passed
+2025-08-14 04:36:32,692 - INFO - 
+--- Episode 1, Prompt 1 (Total: 454) ---
+2025-08-14 04:36:32,692 - INFO - Optimizing: 'matte blue cricket bat stands ready'
+2025-08-14 04:36:32,692 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 04:36:32,712 - INFO - ✅ Server is available (status: completed)
+2025-08-14 04:36:32,713 - INFO - 📝 Marked server as used at 1755146192.7132857
+2025-08-14 04:36:32,713 - INFO - ✅ Server is available and marked as used
+2025-08-14 04:36:32,714 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 04:36:32,714 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-14 04:36:32,715 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 04:36:32,723 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'matte blue cricket bat stands ready'
+2025-08-14 04:36:32,724 - INFO -    Session: rl_session_1755146192_6469
+2025-08-14 04:36:32,724 - INFO -    Max rounds: 17
+2025-08-14 04:36:32,724 - INFO -    Min rounds before convergence: 5
+2025-08-14 04:36:32,727 - INFO -    Target score: 0.99
+2025-08-14 04:36:32,727 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 04:36:32,727 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-14 04:36:51,302 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.240334848}
+2025-08-14 04:36:51,303 - INFO -       🔍 Validating...
+2025-08-14 04:36:51,303 - INFO -       📝 Using optimized prompt for generation: 'matte azure-blue cricket bat with a subtle sheen, made from premium-quality English willow wood, and adorned with intricate white stitching, front view, accurate, complete, white background...'
+2025-08-14 04:36:51,303 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:38:17,805 - INFO -       📊 Validation score: 0.7398
+2025-08-14 04:38:17,805 - INFO -       🎯 New best score: 0.7398
+2025-08-14 04:38:17,805 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 04:38:17,805 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:38:23,788 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.89640192}
+2025-08-14 04:38:23,789 - INFO -       🔍 Validating...
+2025-08-14 04:38:23,789 - INFO -       📝 Using optimized prompt for generation: 'matte blue cricket bat with a subtle sheen, crafted from high-quality English willow wood, featuring intricate grain patterns and a precision-balanced swing profile...'
+2025-08-14 04:38:23,789 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:39:53,837 - INFO -       📊 Validation score: 0.6731
+2025-08-14 04:39:53,837 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:39:53,837 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 04:39:53,838 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:39:58,701 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:39:58,704 - INFO -       🔍 Validating...
+2025-08-14 04:39:58,707 - INFO -       📝 Using optimized prompt for generation: 'matte blue cricket bat with a soft sheen, made from premium-quality English willow wood, featuring a subtle grain pattern and a comfortable grip, front view, accurate, complete, white background...'
+2025-08-14 04:39:58,707 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:41:23,856 - INFO -       📊 Validation score: 0.6554
+2025-08-14 04:41:23,856 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:41:23,857 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 04:41:23,857 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:41:30,039 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:41:30,040 - INFO -       🔍 Validating...
+2025-08-14 04:41:30,040 - INFO -       📝 Using optimized prompt for generation: 'a premium-quality blue cricket bat with a subtle sheen, made from dense English willow wood...'
+2025-08-14 04:41:30,040 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:43:01,043 - INFO -       📊 Validation score: 0.7448
+2025-08-14 04:43:01,044 - INFO -       🎯 New best score: 0.7448
+2025-08-14 04:43:01,047 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-14 04:43:01,047 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 04:43:01,047 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 04:43:08,082 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:43:08,083 - INFO -       🔍 Validating...
+2025-08-14 04:43:08,083 - INFO -       📝 Using optimized prompt for generation: 'a high-quality matte blue cricket bat with a subtle sheen, crafted from premium-quality English willow wood and featuring a carefully sanded edge, front view, accurate, complete, white background...'
+2025-08-14 04:43:08,083 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:45:07,671 - INFO -       📊 Validation score: 0.5951
+2025-08-14 04:45:07,672 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:45:07,672 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 04:45:07,672 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 04:45:12,540 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:45:12,541 - INFO -       🔍 Validating...
+2025-08-14 04:45:12,541 - INFO -       📝 Using optimized prompt for generation: 'a premium-quality matte blue cricket bat with a subtle sheen, crafted from dense English willow wood featuring a unique grain pattern and precision-cut edges, front view, accurate, complete, white background...'
+2025-08-14 04:45:12,542 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:46:40,914 - INFO -       📊 Validation score: 0.5653
+2025-08-14 04:46:40,915 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:46:40,915 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 04:46:40,915 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:46:47,021 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:46:47,021 - INFO -       🔍 Validating...
+2025-08-14 04:46:47,021 - INFO -       📝 Using optimized prompt for generation: 'a premium-quality matte blue cricket bat with an intricate network of fine cracks on its surface, crafted from high-density English willow wood featuring a subtle sheen that hints at its exceptional craftsmanship...'
+2025-08-14 04:46:47,022 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:48:21,365 - INFO -       📊 Validation score: 0.6535
+2025-08-14 04:48:21,366 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-14 04:48:21,366 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 04:48:21,366 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:48:27,525 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:48:27,525 - INFO -       🔍 Validating...
+2025-08-14 04:48:27,526 - INFO -       📝 Using optimized prompt for generation: 'a premium-quality matte blue cricket bat made from expertly seasoned and carefully crafted English willow wood with a subtle sheen, front view, accurate, complete, white background...'
+2025-08-14 04:48:27,526 - INFO -       🎯 Computing scores against original prompt: 'matte blue cricket bat stands ready...'
+2025-08-14 04:49:51,317 - INFO -       📊 Validation score: 0.6497
+2025-08-14 04:49:51,318 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.004)
+2025-08-14 04:49:51,325 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 04:49:51,325 - INFO -    Best prompt: a premium-quality blue cricket bat with a subtle sheen, made from dense English willow wood
+2025-08-14 04:49:51,326 - INFO -    Best score: 0.7448
+2025-08-14 04:49:51,326 - INFO -    Rounds: 8
+2025-08-14 04:49:51,327 - INFO -    Convergence: True
+2025-08-14 04:49:51,327 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.004)
+2025-08-14 04:49:51,327 - INFO -    Exploration ratio: 37.5%
+2025-08-14 04:49:51,330 - INFO -    Insights learned: 2
+2025-08-14 04:49:51,330 - INFO -    Total time: 798.60s
+2025-08-14 04:49:51,330 - INFO - Prompt optimized in 8 rounds: 0.740 → 0.745 (+0.005)
+2025-08-14 04:49:51,330 - INFO - ✅ Target score achieved!
+2025-08-14 04:49:51,350 - INFO - 
+--- Episode 1, Prompt 2 (Total: 454) ---
+2025-08-14 04:49:51,354 - INFO - Optimizing: 'drill bit yellow slender pointed tip'
+2025-08-14 04:49:51,354 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 04:49:51,375 - INFO - ✅ Server is available (status: completed)
+2025-08-14 04:49:51,376 - INFO - 📝 Marked server as used at 1755146991.37639
+2025-08-14 04:49:51,376 - INFO - ✅ Server is available and marked as used
+2025-08-14 04:49:51,378 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 04:49:51,378 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 04:49:51,380 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 04:49:51,388 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'drill bit yellow slender pointed tip'
+2025-08-14 04:49:51,388 - INFO -    Session: rl_session_1755146991_1835
+2025-08-14 04:49:51,388 - INFO -    Max rounds: 17
+2025-08-14 04:49:51,388 - INFO -    Min rounds before convergence: 5
+2025-08-14 04:49:51,388 - INFO -    Target score: 0.99
+2025-08-14 04:49:51,389 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 04:49:51,389 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 04:49:55,673 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:49:55,682 - INFO -       🔍 Validating...
+2025-08-14 04:49:55,683 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip, precision-ground for optimal cutting performance, front view, accurate, complete, white background...'
+2025-08-14 04:49:55,683 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:51:18,204 - INFO -       📊 Validation score: 0.8793
+2025-08-14 04:51:18,205 - INFO -       🎯 New best score: 0.8793
+2025-08-14 04:51:18,205 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 04:51:18,205 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 04:51:23,395 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:51:23,397 - INFO -       🔍 Validating...
+2025-08-14 04:51:23,398 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip, precision-ground for optimal cutting and subtle wear on the handle, front view, accurate, complete, white background...'
+2025-08-14 04:51:23,399 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:52:44,950 - INFO -       📊 Validation score: 0.7951
+2025-08-14 04:52:44,951 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:52:44,951 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 04:52:44,951 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 04:52:50,797 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:52:50,797 - INFO -       🔍 Validating...
+2025-08-14 04:52:50,797 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip, expertly crafted for optimal cutting performance, front view, accurate, complete, white background...'
+2025-08-14 04:52:50,800 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:54:16,848 - INFO -       📊 Validation score: 0.8922
+2025-08-14 04:54:16,849 - INFO -       🎯 New best score: 0.8922
+2025-08-14 04:54:16,849 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 04:54:16,849 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 04:54:16,850 - INFO -       🔍 Explore performing better - increasing epsilon to 0.60
+2025-08-14 04:54:16,851 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 04:54:21,456 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.894304768}
+2025-08-14 04:54:21,458 - INFO -       🔍 Validating...
+2025-08-14 04:54:21,459 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip, designed for optimal cutting performance...'
+2025-08-14 04:54:21,459 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:55:47,425 - INFO -       📊 Validation score: 0.6102
+2025-08-14 04:55:47,426 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:55:47,426 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 04:55:47,426 - INFO -       🔍 Explore performing better - increasing epsilon to 0.65
+2025-08-14 04:55:47,426 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 04:55:51,881 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 04:55:51,881 - INFO -       🔍 Validating...
+2025-08-14 04:55:51,882 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 04:55:51,882 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:57:16,069 - INFO -       📊 Validation score: 0.8701
+2025-08-14 04:57:16,070 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-14 04:57:16,070 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 04:57:16,070 - INFO -       🔍 Explore performing better - increasing epsilon to 0.70
+2025-08-14 04:57:16,071 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 04:57:21,616 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 04:57:21,616 - INFO -       🔍 Validating...
+2025-08-14 04:57:21,616 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an expertly precision-ground pointed tip featuring microscopic ridges for enhanced cutting performance...'
+2025-08-14 04:57:21,616 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 04:58:48,045 - INFO -       📊 Validation score: 0.5827
+2025-08-14 04:58:48,045 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 04:58:48,045 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 04:58:48,045 - INFO -       🔍 Explore performing better - increasing epsilon to 0.75
+2025-08-14 04:58:48,045 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-14 04:58:53,409 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 04:58:53,410 - INFO -       🔍 Validating...
+2025-08-14 04:58:53,410 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 04:58:53,411 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:00:19,784 - INFO -       📊 Validation score: 0.8700
+2025-08-14 05:00:19,784 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-14 05:00:19,784 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 05:00:19,785 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:00:19,785 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 05:00:24,912 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 05:00:24,913 - INFO -       🔍 Validating...
+2025-08-14 05:00:24,914 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip featuring microscopic ridges for enhanced cutting performance, front view, accurate, complete, white background...'
+2025-08-14 05:00:24,914 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:01:47,097 - INFO -       📊 Validation score: 0.8987
+2025-08-14 05:01:47,098 - INFO -       🎯 New best score: 0.8987
+2025-08-14 05:01:47,098 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:01:47,098 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-14 05:01:47,098 - INFO - 
+   🔄 RL Round 9/17
+2025-08-14 05:01:47,098 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:01:47,099 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 05:01:52,015 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 05:01:52,015 - INFO -       🔍 Validating...
+2025-08-14 05:01:52,019 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 05:01:52,019 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:03:14,825 - INFO -       📊 Validation score: 0.8710
+2025-08-14 05:03:14,826 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:03:14,826 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:03:14,827 - INFO - 
+   🔄 RL Round 10/17
+2025-08-14 05:03:14,827 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:03:14,828 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 05:03:21,489 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.892207616}
+2025-08-14 05:03:21,493 - INFO -       🔍 Validating...
+2025-08-14 05:03:21,493 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting performance...'
+2025-08-14 05:03:21,494 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:04:43,121 - INFO -       📊 Validation score: 0.5959
+2025-08-14 05:04:43,122 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:04:43,123 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:04:43,123 - INFO - 
+   🔄 RL Round 11/17
+2025-08-14 05:04:43,124 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:04:43,125 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 05:04:50,036 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.890110464}
+2025-08-14 05:04:50,039 - INFO -       🔍 Validating...
+2025-08-14 05:04:50,040 - INFO -       📝 Using optimized prompt for generation: 'a precision-ground slender yellow drill bit with a sharply angled pointed tip featuring microscopic ridges for enhanced cutting efficiency...'
+2025-08-14 05:04:50,041 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:06:13,249 - INFO -       📊 Validation score: 0.5682
+2025-08-14 05:06:13,249 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:06:13,250 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:06:13,250 - INFO - 
+   🔄 RL Round 12/17
+2025-08-14 05:06:13,250 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:06:13,250 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:06:18,975 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.88591616}
+2025-08-14 05:06:18,977 - INFO -       🔍 Validating...
+2025-08-14 05:06:18,978 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip featuring microscopic ridges and a satin finish, front view, accurate, complete, white background...'
+2025-08-14 05:06:18,978 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:07:43,237 - INFO -       📊 Validation score: 0.8827
+2025-08-14 05:07:43,238 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:07:43,238 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 05:07:43,238 - INFO - 
+   🔄 RL Round 13/17
+2025-08-14 05:07:43,239 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:07:43,241 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 05:07:48,976 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.883819008}
+2025-08-14 05:07:48,980 - INFO -       🔍 Validating...
+2025-08-14 05:07:48,980 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 05:07:48,981 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:09:11,693 - INFO -       📊 Validation score: 0.8703
+2025-08-14 05:09:11,693 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:09:11,693 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:09:11,694 - INFO - 
+   🔄 RL Round 14/17
+2025-08-14 05:09:11,694 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:09:11,694 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:09:17,787 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:09:17,789 - INFO -       🔍 Validating...
+2025-08-14 05:09:17,790 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 05:09:17,792 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:10:40,392 - INFO -       📊 Validation score: 0.9075
+2025-08-14 05:10:40,393 - INFO -       🎯 New best score: 0.9075
+2025-08-14 05:10:40,393 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:10:40,393 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 05:10:40,393 - INFO - 
+   🔄 RL Round 15/17
+2025-08-14 05:10:40,394 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:10:40,394 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 05:10:47,438 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:10:47,442 - INFO -       🔍 Validating...
+2025-08-14 05:10:47,442 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 05:10:47,442 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:12:10,641 - INFO -       📊 Validation score: 0.8695
+2025-08-14 05:12:10,642 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:12:10,642 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:12:10,642 - INFO - 
+   🔄 RL Round 16/17
+2025-08-14 05:12:10,642 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:12:10,642 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 05:12:17,484 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:12:17,487 - INFO -       🔍 Validating...
+2025-08-14 05:12:17,488 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting performance, precision-ground for optimal results, front view, accurate, complete, white background...'
+2025-08-14 05:12:17,488 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:13:39,819 - INFO -       📊 Validation score: 0.8863
+2025-08-14 05:13:39,819 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:13:39,820 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 05:13:39,820 - INFO - 
+   🔄 RL Round 17/17
+2025-08-14 05:13:39,820 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:13:39,820 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 05:13:44,858 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:13:44,858 - INFO -       🔍 Validating...
+2025-08-14 05:13:44,859 - INFO -       📝 Using optimized prompt for generation: 'a slender yellow drill bit with a precisely angled pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background...'
+2025-08-14 05:13:44,859 - INFO -       🎯 Computing scores against original prompt: 'drill bit yellow slender pointed tip...'
+2025-08-14 05:15:08,966 - INFO -       📊 Validation score: 0.8705
+2025-08-14 05:15:08,967 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:15:08,973 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 05:15:08,973 - INFO -    Best prompt: a slender yellow drill bit with an exceptionally sharp, precision-ground pointed tip featuring microscopic ridges for enhanced cutting efficiency, front view, accurate, complete, white background
+2025-08-14 05:15:08,974 - INFO -    Best score: 0.9075
+2025-08-14 05:15:08,974 - INFO -    Rounds: 17
+2025-08-14 05:15:08,975 - INFO -    Convergence: False
+2025-08-14 05:15:08,977 - INFO -    Convergence reason: Not converged
+2025-08-14 05:15:08,977 - INFO -    Exploration ratio: 94.1%
+2025-08-14 05:15:08,977 - INFO -    Insights learned: 2
+2025-08-14 05:15:08,977 - INFO -    Total time: 1517.58s
+2025-08-14 05:15:08,977 - INFO - Prompt optimized in 17 rounds: 0.879 → 0.908 (+0.028)
+2025-08-14 05:15:08,978 - INFO - ⏰ Max rounds reached
+2025-08-14 05:15:08,989 - INFO - 
+--- Episode 1, Prompt 3 (Total: 454) ---
+2025-08-14 05:15:08,991 - INFO - Optimizing: 'onyx helmet crowned by sapphire crest'
+2025-08-14 05:15:08,991 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 05:15:09,006 - INFO - ✅ Server is available (status: completed)
+2025-08-14 05:15:09,006 - INFO - 📝 Marked server as used at 1755148509.0065038
+2025-08-14 05:15:09,006 - INFO - ✅ Server is available and marked as used
+2025-08-14 05:15:09,006 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 05:15:09,007 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 05:15:09,007 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 05:15:09,012 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'onyx helmet crowned by sapphire crest'
+2025-08-14 05:15:09,012 - INFO -    Session: rl_session_1755148509_2872
+2025-08-14 05:15:09,012 - INFO -    Max rounds: 17
+2025-08-14 05:15:09,012 - INFO -    Min rounds before convergence: 5
+2025-08-14 05:15:09,012 - INFO -    Target score: 0.99
+2025-08-14 05:15:09,013 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 05:15:09,013 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:15:09,013 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-14 05:15:14,570 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:15:14,571 - INFO -       🔍 Validating...
+2025-08-14 05:15:14,571 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with intricate sapphire crest adorned by delicate filigree patterns and subtle etchings, front view, accurate, complete, white background...'
+2025-08-14 05:15:14,572 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:16:51,301 - INFO -       📊 Validation score: 0.6308
+2025-08-14 05:16:51,301 - INFO -       🎯 New best score: 0.6308
+2025-08-14 05:16:51,301 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 05:16:51,302 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:16:51,302 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-14 05:16:59,525 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:16:59,529 - INFO -       🔍 Validating...
+2025-08-14 05:16:59,530 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with intricate sapphire crest adorned by delicate filigree patterns and subtle etchings along its curved edges, front view, accurate, complete, white background...'
+2025-08-14 05:16:59,531 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:18:38,831 - INFO -       📊 Validation score: 0.5846
+2025-08-14 05:18:38,831 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:18:38,831 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 05:18:38,832 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:18:38,832 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 05:18:45,715 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:18:45,716 - INFO -       🔍 Validating...
+2025-08-14 05:18:45,716 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with an intricately designed sapphire crest adorned by delicate filigree patterns and a subtle, polished finish...'
+2025-08-14 05:18:45,717 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:20:21,520 - INFO -       📊 Validation score: 0.6763
+2025-08-14 05:20:21,522 - INFO -       🎯 New best score: 0.6763
+2025-08-14 05:20:21,522 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-14 05:20:21,523 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 05:20:21,523 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:20:21,524 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 05:20:28,031 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:20:28,032 - INFO -       🔍 Validating...
+2025-08-14 05:20:28,032 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with intricate sapphire crest adorned by delicate filigree patterns, subtle etching, and a smooth, matte finish that catches the light, front view, accurate, complete, white background...'
+2025-08-14 05:20:28,032 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:22:07,374 - INFO -       📊 Validation score: 0.7105
+2025-08-14 05:22:07,375 - INFO -       🎯 New best score: 0.7105
+2025-08-14 05:22:07,375 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-14 05:22:07,375 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 05:22:07,375 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:22:07,375 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 05:22:13,597 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:22:13,598 - INFO -       🔍 Validating...
+2025-08-14 05:22:13,598 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with an intricately detailed sapphire crest adorned by delicate filigree patterns that catch the light with subtle blue undertones, front view, accurate, complete, white background...'
+2025-08-14 05:22:13,598 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:23:52,795 - INFO -       📊 Validation score: 0.7226
+2025-08-14 05:23:52,798 - INFO -       🎯 New best score: 0.7226
+2025-08-14 05:23:52,799 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:23:52,799 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-14 05:23:52,799 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 05:23:52,800 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:23:52,800 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 05:24:00,183 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:24:00,187 - INFO -       🔍 Validating...
+2025-08-14 05:24:00,188 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with an intricately detailed sapphire crest adorned by delicate filigree patterns and subtle etched textures that add a touch of luxury to its rugged design, front view, accurate, complete, white background...'
+2025-08-14 05:24:00,188 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:25:42,360 - INFO -       📊 Validation score: 0.6143
+2025-08-14 05:25:42,360 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:25:42,360 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:25:42,360 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 05:25:42,360 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:25:42,361 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 05:25:48,345 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:25:48,349 - INFO -       🔍 Validating...
+2025-08-14 05:25:48,349 - INFO -       📝 Using optimized prompt for generation: 'a sleek onyx helmet with an intricately detailed sapphire crest adorned by delicate filigree patterns and subtle etched engravings that hint at the wearer's storied history, front view, accurate, complete, white background...'
+2025-08-14 05:25:48,349 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:27:24,238 - INFO -       📊 Validation score: 0.6691
+2025-08-14 05:27:24,238 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:27:24,239 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-14 05:27:24,239 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 05:27:24,239 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:27:24,239 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:27:30,752 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:27:30,752 - INFO -       🔍 Validating...
+2025-08-14 05:27:30,753 - INFO -       📝 Using optimized prompt for generation: 'a sleek, darkened onyx helmet with an intricately detailed sapphire crest adorned by delicate filigree patterns and minute etching that hints at ancient craftsmanship, front view, accurate, complete, white background...'
+2025-08-14 05:27:30,753 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:29:07,939 - INFO -       📊 Validation score: 0.7500
+2025-08-14 05:29:07,939 - INFO -       🎯 New best score: 0.7500
+2025-08-14 05:29:07,940 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:29:07,940 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 05:29:07,941 - INFO - 
+   🔄 RL Round 9/17
+2025-08-14 05:29:07,941 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:29:07,942 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:29:15,942 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:29:15,943 - INFO -       🔍 Validating...
+2025-08-14 05:29:15,944 - INFO -       📝 Using optimized prompt for generation: 'a sleek, intricately designed onyx helmet with an ornate sapphire crest adorned by delicate filigree patterns and subtle etching details...'
+2025-08-14 05:29:15,944 - INFO -       🎯 Computing scores against original prompt: 'onyx helmet crowned by sapphire crest...'
+2025-08-14 05:30:48,116 - INFO -       📊 Validation score: 0.7520
+2025-08-14 05:30:48,117 - INFO -       🎯 New best score: 0.7520
+2025-08-14 05:30:48,117 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:30:48,117 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.002)
+2025-08-14 05:30:48,123 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 05:30:48,123 - INFO -    Best prompt: a sleek, intricately designed onyx helmet with an ornate sapphire crest adorned by delicate filigree patterns and subtle etching details
+2025-08-14 05:30:48,124 - INFO -    Best score: 0.7520
+2025-08-14 05:30:48,124 - INFO -    Rounds: 9
+2025-08-14 05:30:48,124 - INFO -    Convergence: True
+2025-08-14 05:30:48,124 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.002)
+2025-08-14 05:30:48,124 - INFO -    Exploration ratio: 77.8%
+2025-08-14 05:30:48,124 - INFO -    Insights learned: 3
+2025-08-14 05:30:48,124 - INFO -    Total time: 939.11s
+2025-08-14 05:30:48,124 - INFO - Prompt optimized in 9 rounds: 0.631 → 0.752 (+0.121)
+2025-08-14 05:30:48,124 - INFO - ✅ Target score achieved!
+2025-08-14 05:30:48,149 - INFO - 
+--- Episode 1, Prompt 4 (Total: 454) ---
+2025-08-14 05:30:48,150 - INFO - Optimizing: 'textured jasper mineral chunk'
+2025-08-14 05:30:48,150 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 05:30:48,172 - INFO - ✅ Server is available (status: completed)
+2025-08-14 05:30:48,172 - INFO - 📝 Marked server as used at 1755149448.172383
+2025-08-14 05:30:48,172 - INFO - ✅ Server is available and marked as used
+2025-08-14 05:30:48,172 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 05:30:48,172 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 05:30:48,172 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 05:30:48,177 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'textured jasper mineral chunk'
+2025-08-14 05:30:48,177 - INFO -    Session: rl_session_1755149448_6681
+2025-08-14 05:30:48,177 - INFO -    Max rounds: 17
+2025-08-14 05:30:48,177 - INFO -    Min rounds before convergence: 5
+2025-08-14 05:30:48,178 - INFO -    Target score: 0.99
+2025-08-14 05:30:48,178 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 05:30:48,178 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:30:48,178 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:30:53,641 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:30:53,642 - INFO -       🔍 Validating...
+2025-08-14 05:30:53,643 - INFO -       📝 Using optimized prompt for generation: 'a polished textured jasper mineral chunk resting at the edge of an ancient, weathered stone pedestal with subtle moss growth and a few strategically placed pebbles, front view, accurate, complete, white background...'
+2025-08-14 05:30:53,644 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:32:19,697 - INFO -       📊 Validation score: 0.5604
+2025-08-14 05:32:19,697 - INFO -       🎯 New best score: 0.5604
+2025-08-14 05:32:19,698 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 05:32:19,698 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:32:25,850 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:32:25,852 - INFO -       🔍 Validating...
+2025-08-14 05:32:25,855 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk nestled in a bed of soft, velvety moss with subtle, swirling patterns of its mineral structure visible to the naked eye, front view, accurate, complete, white background...'
+2025-08-14 05:32:25,855 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:33:55,213 - INFO -       📊 Validation score: 0.6777
+2025-08-14 05:33:55,213 - INFO -       🎯 New best score: 0.6777
+2025-08-14 05:33:55,215 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 05:33:55,217 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 05:33:55,217 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:33:55,217 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:34:02,103 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:34:02,103 - INFO -       🔍 Validating...
+2025-08-14 05:34:02,104 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk suspended in a clear glass sphere, surrounded by intricate carvings of ancient runes and subtle, shimmering iridescence, front view, accurate, complete, white background...'
+2025-08-14 05:34:02,105 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:35:38,559 - INFO -       📊 Validation score: 0.4326
+2025-08-14 05:35:38,560 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:35:38,560 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-14 05:35:38,560 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 05:35:38,560 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 05:35:45,406 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:35:45,407 - INFO -       🔍 Validating...
+2025-08-14 05:35:45,409 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk nestled in a bed of soft, velvety moss with intricate patterns and subtle, swirling veins, front view, accurate, complete, white background...'
+2025-08-14 05:35:45,410 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:37:18,813 - INFO -       📊 Validation score: 0.7749
+2025-08-14 05:37:18,814 - INFO -       🎯 New best score: 0.7749
+2025-08-14 05:37:18,815 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 05:37:18,815 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 05:37:18,816 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 05:37:24,850 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:37:24,851 - INFO -       🔍 Validating...
+2025-08-14 05:37:24,851 - INFO -       📝 Using optimized prompt for generation: 'a smooth, rough-textured jasper mineral chunk gleaming with subtle, iridescent hues in the soft light of an indoor setting, front view, accurate, complete, white background...'
+2025-08-14 05:37:24,852 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:38:56,321 - INFO -       📊 Validation score: 0.7975
+2025-08-14 05:38:56,321 - INFO -       🎯 New best score: 0.7975
+2025-08-14 05:38:56,322 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:38:56,322 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-14 05:38:56,322 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 05:38:56,322 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-14 05:39:03,386 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:39:03,386 - INFO -       🔍 Validating...
+2025-08-14 05:39:03,390 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk with a subtle, iridescent sheen and delicate, swirling patterns on its surface, front view, accurate, complete, white background...'
+2025-08-14 05:39:03,390 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:40:36,189 - INFO -       📊 Validation score: 0.8785
+2025-08-14 05:40:36,190 - INFO -       🎯 New best score: 0.8785
+2025-08-14 05:40:36,190 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:40:36,190 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-14 05:40:36,191 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 05:40:36,191 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 05:40:42,739 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:40:42,739 - INFO -       🔍 Validating...
+2025-08-14 05:40:42,740 - INFO -       📝 Using optimized prompt for generation: 'a smooth, richly textured jasper mineral chunk with subtle striations and a soft, luminous sheen, front view, accurate, complete, white background...'
+2025-08-14 05:40:42,740 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:42:13,133 - INFO -       📊 Validation score: 0.8380
+2025-08-14 05:42:13,133 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:42:13,133 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:42:13,133 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 05:42:13,134 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 05:42:19,950 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:42:19,952 - INFO -       🔍 Validating...
+2025-08-14 05:42:19,955 - INFO -       📝 Using optimized prompt for generation: 'a smooth, richly textured jasper mineral chunk with subtle striations and a soft, luminous sheen, reflecting warm, golden light, front view, accurate, complete, white background...'
+2025-08-14 05:42:19,955 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:43:46,248 - INFO -       📊 Validation score: 0.8235
+2025-08-14 05:43:46,249 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:43:46,249 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:43:46,249 - INFO - 
+   🔄 RL Round 9/17
+2025-08-14 05:43:46,249 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:43:46,249 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:43:52,119 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:43:52,120 - INFO -       🔍 Validating...
+2025-08-14 05:43:52,120 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk with a subtle, mossy patina and intricate, swirling patterns etched into its surface, front view, accurate, complete, white background...'
+2025-08-14 05:43:52,121 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:45:19,737 - INFO -       📊 Validation score: 0.8741
+2025-08-14 05:45:19,737 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:45:19,738 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 05:45:19,738 - INFO - 
+   🔄 RL Round 10/17
+2025-08-14 05:45:19,738 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:45:19,739 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 05:45:25,604 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:45:25,605 - INFO -       🔍 Validating...
+2025-08-14 05:45:25,605 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk with a subtle iridescence and delicate striations, showcasing its rich, earthy tones and varied patterns, front view, accurate, complete, white background...'
+2025-08-14 05:45:25,606 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:46:48,016 - INFO -       📊 Validation score: 0.7670
+2025-08-14 05:46:48,017 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:46:48,020 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:46:48,020 - INFO - 
+   🔄 RL Round 11/17
+2025-08-14 05:46:48,020 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:46:48,021 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 05:46:53,589 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:46:53,590 - INFO -       🔍 Validating...
+2025-08-14 05:46:53,590 - INFO -       📝 Using optimized prompt for generation: 'a weathered, rough-textured jasper mineral chunk with subtle striations and a soft, luminous sheen, front view, accurate, complete, white background...'
+2025-08-14 05:46:53,591 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:48:19,533 - INFO -       📊 Validation score: 0.7913
+2025-08-14 05:48:19,534 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:48:19,534 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 05:48:19,534 - INFO - 
+   🔄 RL Round 12/17
+2025-08-14 05:48:19,534 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:48:19,534 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 05:48:25,328 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:48:25,329 - INFO -       🔍 Validating...
+2025-08-14 05:48:25,332 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk exuding a soft, luminous glow from within its intricate, swirling patterns, front view, accurate, complete, white background...'
+2025-08-14 05:48:25,334 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:49:47,970 - INFO -       📊 Validation score: 0.8097
+2025-08-14 05:49:47,970 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:49:47,971 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 05:49:47,971 - INFO - 
+   🔄 RL Round 13/17
+2025-08-14 05:49:47,971 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:49:47,971 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:49:54,341 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:49:54,342 - INFO -       🔍 Validating...
+2025-08-14 05:49:54,345 - INFO -       📝 Using optimized prompt for generation: 'a smooth, richly textured jasper mineral chunk with subtle striations and a soft, luminous sheen, delicately carved at its edges, front view, accurate, complete, white background...'
+2025-08-14 05:49:54,345 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:51:17,140 - INFO -       📊 Validation score: 0.8223
+2025-08-14 05:51:17,140 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:51:17,141 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 05:51:17,141 - INFO - 
+   🔄 RL Round 14/17
+2025-08-14 05:51:17,141 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:51:17,141 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:51:22,649 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:51:22,652 - INFO -       🔍 Validating...
+2025-08-14 05:51:22,652 - INFO -       📝 Using optimized prompt for generation: 'a richly textured jasper mineral chunk with subtle striations and a soft, luminous sheen, emitting a gentle warm glow from within its intricate patterns, front view, accurate, complete, white background...'
+2025-08-14 05:51:22,653 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:52:49,591 - INFO -       📊 Validation score: 0.8091
+2025-08-14 05:52:49,592 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:52:49,592 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:52:49,592 - INFO - 
+   🔄 RL Round 15/17
+2025-08-14 05:52:49,593 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:52:49,593 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:52:57,044 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:52:57,047 - INFO -       🔍 Validating...
+2025-08-14 05:52:57,050 - INFO -       📝 Using optimized prompt for generation: 'a richly textured jasper mineral chunk with a subtle, mossy patina and delicate striations, front view, accurate, complete, white background...'
+2025-08-14 05:52:57,050 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:54:31,710 - INFO -       📊 Validation score: 0.8430
+2025-08-14 05:54:31,710 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:54:31,710 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 05:54:31,710 - INFO - 
+   🔄 RL Round 16/17
+2025-08-14 05:54:31,710 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:54:31,711 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-14 05:54:37,554 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:54:37,555 - INFO -       🔍 Validating...
+2025-08-14 05:54:37,555 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk with subtle striations and a soft, luminous sheen, emitting a gentle glow...'
+2025-08-14 05:54:37,556 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:56:00,791 - INFO -       📊 Validation score: 0.7603
+2025-08-14 05:56:00,792 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:56:00,792 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 05:56:00,792 - INFO - 
+   🔄 RL Round 17/17
+2025-08-14 05:56:00,792 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:56:00,792 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-14 05:56:06,524 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:56:06,524 - INFO -       🔍 Validating...
+2025-08-14 05:56:06,525 - INFO -       📝 Using optimized prompt for generation: 'a textured jasper mineral chunk with a subtle, mossy patina and delicate striations, showcasing its intricate patterns...'
+2025-08-14 05:56:06,525 - INFO -       🎯 Computing scores against original prompt: 'textured jasper mineral chunk...'
+2025-08-14 05:57:33,551 - INFO -       📊 Validation score: 0.8033
+2025-08-14 05:57:33,552 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-14 05:57:33,561 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 05:57:33,561 - INFO -    Best prompt: a textured jasper mineral chunk with a subtle, iridescent sheen and delicate, swirling patterns on its surface, front view, accurate, complete, white background
+2025-08-14 05:57:33,561 - INFO -    Best score: 0.8785
+2025-08-14 05:57:33,561 - INFO -    Rounds: 17
+2025-08-14 05:57:33,561 - INFO -    Convergence: False
+2025-08-14 05:57:33,561 - INFO -    Convergence reason: Not converged
+2025-08-14 05:57:33,562 - INFO -    Exploration ratio: 82.4%
+2025-08-14 05:57:33,562 - INFO -    Insights learned: 3
+2025-08-14 05:57:33,562 - INFO -    Total time: 1605.37s
+2025-08-14 05:57:33,564 - INFO - Prompt optimized in 17 rounds: 0.560 → 0.879 (+0.318)
+2025-08-14 05:57:33,564 - INFO - ⏰ Max rounds reached
+2025-08-14 05:57:33,573 - INFO - 
+--- Episode 1, Prompt 5 (Total: 454) ---
+2025-08-14 05:57:33,579 - INFO - Optimizing: 'polished silver clarinet with elegant'
+2025-08-14 05:57:33,579 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 05:57:33,590 - INFO - ✅ Server is available (status: completed)
+2025-08-14 05:57:33,590 - INFO - 📝 Marked server as used at 1755151053.5902455
+2025-08-14 05:57:33,590 - INFO - ✅ Server is available and marked as used
+2025-08-14 05:57:33,590 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 05:57:33,590 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 05:57:33,591 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 05:57:33,595 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'polished silver clarinet with elegant'
+2025-08-14 05:57:33,597 - INFO -    Session: rl_session_1755151053_4574
+2025-08-14 05:57:33,597 - INFO -    Max rounds: 17
+2025-08-14 05:57:33,597 - INFO -    Min rounds before convergence: 5
+2025-08-14 05:57:33,597 - INFO -    Target score: 0.99
+2025-08-14 05:57:33,598 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 05:57:33,598 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:57:33,598 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:57:40,019 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:57:40,023 - INFO -       🔍 Validating...
+2025-08-14 05:57:40,023 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet adorned with intricate engravings of musical notes in a delicate filigree pattern, its surface reflecting soft, warm light, front view, accurate, complete, white background...'
+2025-08-14 05:57:40,023 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 05:58:59,901 - INFO -       📊 Validation score: 0.7374
+2025-08-14 05:58:59,901 - INFO -       🎯 New best score: 0.7374
+2025-08-14 05:58:59,901 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 05:58:59,901 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-14 05:58:59,901 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 05:59:07,318 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 05:59:07,319 - INFO -       🔍 Validating...
+2025-08-14 05:59:07,319 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet adorned with enameled inlays of fleur-de-lis motifs and a delicate golden keycap...'
+2025-08-14 05:59:07,319 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 06:00:26,882 - INFO -       📊 Validation score: 0.5253
+2025-08-14 06:00:26,883 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:00:26,883 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 06:00:26,883 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 06:00:31,830 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:00:31,831 - INFO -       🔍 Validating...
+2025-08-14 06:00:31,831 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet with elegant, high-gloss finishes and subtle, ornate filigree details, front view, accurate, complete, white background...'
+2025-08-14 06:00:31,832 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 06:01:56,988 - INFO -       📊 Validation score: 0.5592
+2025-08-14 06:01:56,988 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 06:01:56,988 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 06:01:56,989 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-14 06:02:02,946 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:02:02,947 - INFO -       🔍 Validating...
+2025-08-14 06:02:02,949 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet with elegant, high-gloss finishes and subtle, ornate details, accented by delicate etchings of musical motifs on the instrument's body, front view, accurate, complete, white background...'
+2025-08-14 06:02:02,950 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 06:03:22,647 - INFO -       📊 Validation score: 0.6098
+2025-08-14 06:03:22,648 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-14 06:03:22,648 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 06:03:22,648 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 06:03:27,580 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:03:27,580 - INFO -       🔍 Validating...
+2025-08-14 06:03:27,580 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet with a rich, satin finish and subtle, embossed patterns that evoke the warmth of aged sterling, front view, accurate, complete, white background...'
+2025-08-14 06:03:27,580 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 06:04:44,849 - INFO -       📊 Validation score: 0.6962
+2025-08-14 06:04:44,852 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-14 06:04:44,852 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 06:04:44,854 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-14 06:04:51,604 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:04:51,605 - INFO -       🔍 Validating...
+2025-08-14 06:04:51,609 - INFO -       📝 Using optimized prompt for generation: 'a polished silver clarinet with intricate, hand-engraved scrollwork and subtle, mirror-like reflections that accentuate its elegant curves...'
+2025-08-14 06:04:51,609 - INFO -       🎯 Computing scores against original prompt: 'polished silver clarinet with elegant...'
+2025-08-14 06:06:22,398 - INFO -       📊 Validation score: 0.6967
+2025-08-14 06:06:22,399 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.000)
+2025-08-14 06:06:22,407 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 06:06:22,407 - INFO -    Best prompt: a polished silver clarinet adorned with intricate engravings of musical notes in a delicate filigree pattern, its surface reflecting soft, warm light, front view, accurate, complete, white background
+2025-08-14 06:06:22,407 - INFO -    Best score: 0.7374
+2025-08-14 06:06:22,407 - INFO -    Rounds: 6
+2025-08-14 06:06:22,407 - INFO -    Convergence: True
+2025-08-14 06:06:22,407 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.000)
+2025-08-14 06:06:22,408 - INFO -    Exploration ratio: 83.3%
+2025-08-14 06:06:22,409 - INFO -    Insights learned: 2
+2025-08-14 06:06:22,411 - INFO -    Total time: 528.80s
+2025-08-14 06:06:22,411 - INFO - Prompt optimized in 6 rounds: 0.737 → 0.737 (+0.000)
+2025-08-14 06:06:22,412 - INFO - ✅ Target score achieved!
+2025-08-14 06:06:22,426 - INFO - 
+--- Episode 1, Prompt 6 (Total: 454) ---
+2025-08-14 06:06:22,429 - INFO - Optimizing: 'golden intricate long crossbow'
+2025-08-14 06:06:22,430 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 06:06:22,444 - INFO - ✅ Server is available (status: completed)
+2025-08-14 06:06:22,446 - INFO - 📝 Marked server as used at 1755151582.4462023
+2025-08-14 06:06:22,446 - INFO - ✅ Server is available and marked as used
+2025-08-14 06:06:22,447 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 06:06:22,448 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 06:06:22,452 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 06:06:22,458 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'golden intricate long crossbow'
+2025-08-14 06:06:22,458 - INFO -    Session: rl_session_1755151582_8046
+2025-08-14 06:06:22,459 - INFO -    Max rounds: 17
+2025-08-14 06:06:22,459 - INFO -    Min rounds before convergence: 5
+2025-08-14 06:06:22,460 - INFO -    Target score: 0.99
+2025-08-14 06:06:22,460 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 06:06:22,461 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 06:06:28,913 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:06:28,915 - INFO -       🔍 Validating...
+2025-08-14 06:06:28,916 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with ornate engravings and a delicate wooden grip, front view, accurate, complete, white background...'
+2025-08-14 06:06:28,916 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:07:52,873 - INFO -       📊 Validation score: 0.6756
+2025-08-14 06:07:52,874 - INFO -       🎯 New best score: 0.6756
+2025-08-14 06:07:52,874 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 06:07:52,874 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 06:07:59,486 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:07:59,487 - INFO -       🔍 Validating...
+2025-08-14 06:07:59,488 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with ornate engravings of interlocking vines and a delicate, hand-carved wooden grip, front view, accurate scale, front view, accurate, complete, white background...'
+2025-08-14 06:07:59,488 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:09:27,195 - INFO -       📊 Validation score: 0.6477
+2025-08-14 06:09:27,195 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:09:27,195 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 06:09:27,196 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 06:09:33,059 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:09:33,060 - INFO -       🔍 Validating...
+2025-08-14 06:09:33,063 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks and ornate metalwork on the hilt...'
+2025-08-14 06:09:33,063 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:10:58,317 - INFO -       📊 Validation score: 0.6456
+2025-08-14 06:10:58,317 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:10:58,317 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 06:10:58,317 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 06:11:04,211 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:11:04,212 - INFO -       🔍 Validating...
+2025-08-14 06:11:04,213 - INFO -       📝 Using optimized prompt for generation: 'a golden, intricately crafted long crossbow with precision-cut wooden stocks and ornate metalwork on the hilt, set against a subtle, warm background to enhance its textures and depth...'
+2025-08-14 06:11:04,213 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:12:26,805 - INFO -       📊 Validation score: 0.6919
+2025-08-14 06:12:26,805 - INFO -       🎯 New best score: 0.6919
+2025-08-14 06:12:26,806 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-14 06:12:26,806 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 06:12:26,806 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 06:12:32,857 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:12:32,861 - INFO -       🔍 Validating...
+2025-08-14 06:12:32,861 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks and ornate metalwork on the hilt, adorned with delicate scrollwork patterns and subtle inlays of mother-of-pearl, front view, accurate, complete, white background...'
+2025-08-14 06:12:32,862 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:13:57,543 - INFO -       📊 Validation score: 0.7714
+2025-08-14 06:13:57,544 - INFO -       🎯 New best score: 0.7714
+2025-08-14 06:13:57,544 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-14 06:13:57,544 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 06:13:57,544 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 06:14:04,886 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:14:04,891 - INFO -       🔍 Validating...
+2025-08-14 06:14:04,891 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks and intricately etched metalwork on the hilt, front view, accurate, complete, white background...'
+2025-08-14 06:14:04,891 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:15:28,068 - INFO -       📊 Validation score: 0.6851
+2025-08-14 06:15:28,068 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:15:28,068 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 06:15:28,069 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:15:34,803 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:15:34,806 - INFO -       🔍 Validating...
+2025-08-14 06:15:34,806 - INFO -       📝 Using optimized prompt for generation: 'a delicate, intricately crafted long crossbow with precision-crafted wooden stocks and ornate metalwork on the hilt, front view, accurate, complete, white background...'
+2025-08-14 06:15:34,807 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:16:59,598 - INFO -       📊 Validation score: 0.6578
+2025-08-14 06:16:59,599 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:16:59,599 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 06:16:59,599 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-14 06:17:06,263 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:17:06,266 - INFO -       🔍 Validating...
+2025-08-14 06:17:06,266 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks and ornate metalwork on the hilt, front view, accurate, complete, white background...'
+2025-08-14 06:17:06,266 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:18:26,909 - INFO -       📊 Validation score: 0.6800
+2025-08-14 06:18:26,909 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-14 06:18:26,910 - INFO - 
+   🔄 RL Round 9/17
+2025-08-14 06:18:26,910 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 06:18:32,505 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:18:32,506 - INFO -       🔍 Validating...
+2025-08-14 06:18:32,507 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks featuring ornate metalwork on the hilt, adorned with subtle engravings of interlocking vines and delicate scrollwork, front view, accurate, complete, white background...'
+2025-08-14 06:18:32,508 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:19:58,674 - INFO -       📊 Validation score: 0.8256
+2025-08-14 06:19:58,675 - INFO -       🎯 New best score: 0.8256
+2025-08-14 06:19:58,675 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 06:19:58,676 - INFO - 
+   🔄 RL Round 10/17
+2025-08-14 06:19:58,676 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 06:20:05,997 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:20:05,998 - INFO -       🔍 Validating...
+2025-08-14 06:20:05,999 - INFO -       📝 Using optimized prompt for generation: 'a slender golden crossbow with intricately etched metalwork on the hilt, precision-crafted wooden stocks, and ornate engravings of interlocking vines along its length...'
+2025-08-14 06:20:05,999 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:21:31,345 - INFO -       📊 Validation score: 0.7029
+2025-08-14 06:21:31,345 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:21:31,345 - INFO - 
+   🔄 RL Round 11/17
+2025-08-14 06:21:31,346 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:21:37,921 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:21:37,921 - INFO -       🔍 Validating...
+2025-08-14 06:21:37,922 - INFO -       📝 Using optimized prompt for generation: 'a majestic golden crossbow with intricately etched vines and delicate wooden grip details, featuring ornate metalwork on the hilt and precision-crafted wooden stocks...'
+2025-08-14 06:21:37,922 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:23:01,409 - INFO -       📊 Validation score: 0.6435
+2025-08-14 06:23:01,409 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:23:01,409 - INFO - 
+   🔄 RL Round 12/17
+2025-08-14 06:23:01,410 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 06:23:08,740 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:23:08,743 - INFO -       🔍 Validating...
+2025-08-14 06:23:08,743 - INFO -       📝 Using optimized prompt for generation: 'golden intricate long crossbow with precision-crafted wooden stocks featuring ornate metalwork on the hilt, adorned with delicate engravings of Celtic knot patterns, and a slender grip with a subtle texture, front view, accurate, complete, white background...'
+2025-08-14 06:23:08,744 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:24:31,771 - INFO -       📊 Validation score: 0.7500
+2025-08-14 06:24:31,772 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 06:24:31,773 - INFO - 
+   🔄 RL Round 13/17
+2025-08-14 06:24:31,773 - INFO -       🔍 Explore performing better - increasing epsilon to 0.63
+2025-08-14 06:24:31,773 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-14 06:24:38,297 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:24:38,299 - INFO -       🔍 Validating...
+2025-08-14 06:24:38,301 - INFO -       📝 Using optimized prompt for generation: 'a slender golden crossbow with precision-crafted wooden stocks featuring ornate metalwork on the hilt, front view, accurate, complete, white background...'
+2025-08-14 06:24:38,302 - INFO -       🎯 Computing scores against original prompt: 'golden intricate long crossbow...'
+2025-08-14 06:26:03,728 - INFO -       📊 Validation score: 0.7481
+2025-08-14 06:26:03,729 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.002)
+2025-08-14 06:26:03,741 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 06:26:03,741 - INFO -    Best prompt: golden intricate long crossbow with precision-crafted wooden stocks featuring ornate metalwork on the hilt, adorned with subtle engravings of interlocking vines and delicate scrollwork, front view, accurate, complete, white background
+2025-08-14 06:26:03,744 - INFO -    Best score: 0.8256
+2025-08-14 06:26:03,744 - INFO -    Rounds: 13
+2025-08-14 06:26:03,744 - INFO -    Convergence: True
+2025-08-14 06:26:03,744 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.002)
+2025-08-14 06:26:03,744 - INFO -    Exploration ratio: 69.2%
+2025-08-14 06:26:03,744 - INFO -    Insights learned: 3
+2025-08-14 06:26:03,744 - INFO -    Total time: 1181.27s
+2025-08-14 06:26:03,745 - INFO - Prompt optimized in 13 rounds: 0.676 → 0.826 (+0.150)
+2025-08-14 06:26:03,745 - INFO - ✅ Target score achieved!
+2025-08-14 06:26:03,760 - INFO - 
+--- Episode 1, Prompt 7 (Total: 454) ---
+2025-08-14 06:26:03,760 - INFO - Optimizing: 'dark green van reversing now'
+2025-08-14 06:26:03,760 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 06:26:03,776 - INFO - ✅ Server is available (status: completed)
+2025-08-14 06:26:03,779 - INFO - 📝 Marked server as used at 1755152763.7792423
+2025-08-14 06:26:03,779 - INFO - ✅ Server is available and marked as used
+2025-08-14 06:26:03,780 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 06:26:03,780 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 06:26:03,780 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 06:26:03,790 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'dark green van reversing now'
+2025-08-14 06:26:03,791 - INFO -    Session: rl_session_1755152763_9253
+2025-08-14 06:26:03,791 - INFO -    Max rounds: 17
+2025-08-14 06:26:03,791 - INFO -    Min rounds before convergence: 5
+2025-08-14 06:26:03,791 - INFO -    Target score: 0.99
+2025-08-14 06:26:03,791 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 06:26:03,791 - INFO -       🔍 Explore performing better - increasing epsilon to 0.67
+2025-08-14 06:26:03,791 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:26:11,264 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:26:11,268 - INFO -       🔍 Validating...
+2025-08-14 06:26:11,268 - INFO -       📝 Using optimized prompt for generation: 'dark green van with tinted windows reversing now, front view, accurate, complete, white background...'
+2025-08-14 06:26:11,268 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:27:52,965 - INFO -       📊 Validation score: 0.7333
+2025-08-14 06:27:52,969 - INFO -       🎯 New best score: 0.7333
+2025-08-14 06:27:52,970 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 06:27:52,974 - INFO -       🔍 Explore performing better - increasing epsilon to 0.72
+2025-08-14 06:27:52,974 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 06:28:01,082 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:28:01,084 - INFO -       🔍 Validating...
+2025-08-14 06:28:01,085 - INFO -       📝 Using optimized prompt for generation: 'dark green van with tinted windows, front view, reversing slowly through a narrow alleyway at dusk, front view, accurate, complete, white background...'
+2025-08-14 06:28:01,085 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:29:34,239 - INFO -       📊 Validation score: 0.5934
+2025-08-14 06:29:34,240 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:29:34,240 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 06:29:34,240 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 06:29:40,376 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:29:40,377 - INFO -       🔍 Validating...
+2025-08-14 06:29:40,377 - INFO -       📝 Using optimized prompt for generation: 'a sleek and shiny dark green van with tinted windows reversing now, in a well-lit parking lot, front view, accurate, complete, white background...'
+2025-08-14 06:29:40,378 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:31:19,218 - INFO -       📊 Validation score: 0.6702
+2025-08-14 06:31:19,220 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-14 06:31:19,220 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 06:31:19,221 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-14 06:31:27,048 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:31:27,049 - INFO -       🔍 Validating...
+2025-08-14 06:31:27,049 - INFO -       📝 Using optimized prompt for generation: 'a dark green van with tinted windows, reversing slowly through a narrow alleyway at dusk, front view, accurate, complete, front view, accurate, complete, white background...'
+2025-08-14 06:31:27,050 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:33:02,045 - INFO -       📊 Validation score: 0.7022
+2025-08-14 06:33:02,046 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-14 06:33:02,046 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 06:33:02,046 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 06:33:08,571 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:33:08,572 - INFO -       🔍 Validating...
+2025-08-14 06:33:08,572 - INFO -       📝 Using optimized prompt for generation: 'a sleek and matte dark green van with tinted windows, reversing slowly through a narrow alleyway at dusk, front view, front view, accurate, complete, white background...'
+2025-08-14 06:33:08,573 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:34:45,834 - INFO -       📊 Validation score: 0.6470
+2025-08-14 06:34:45,834 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:34:45,834 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 06:34:45,834 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 06:34:52,874 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:34:52,875 - INFO -       🔍 Validating...
+2025-08-14 06:34:52,875 - INFO -       📝 Using optimized prompt for generation: 'a sleek dark green van with tinted windows and a glossy finish reversing slowly through a narrow alleyway at dusk, front view, accurate, complete, white background...'
+2025-08-14 06:34:52,876 - INFO -       🎯 Computing scores against original prompt: 'dark green van reversing now...'
+2025-08-14 06:36:23,473 - INFO -       📊 Validation score: 0.6484
+2025-08-14 06:36:23,474 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.001)
+2025-08-14 06:36:23,485 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-14 06:36:23,485 - INFO -    Best prompt: dark green van with tinted windows reversing now, front view, accurate, complete, white background
+2025-08-14 06:36:23,488 - INFO -    Best score: 0.7333
+2025-08-14 06:36:23,488 - INFO -    Rounds: 6
+2025-08-14 06:36:23,488 - INFO -    Convergence: True
+2025-08-14 06:36:23,488 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.001)
+2025-08-14 06:36:23,488 - INFO -    Exploration ratio: 83.3%
+2025-08-14 06:36:23,488 - INFO -    Insights learned: 2
+2025-08-14 06:36:23,488 - INFO -    Total time: 619.68s
+2025-08-14 06:36:23,489 - INFO - Prompt optimized in 6 rounds: 0.733 → 0.733 (+0.000)
+2025-08-14 06:36:23,489 - INFO - ✅ Target score achieved!
+2025-08-14 06:36:23,507 - INFO - 
+--- Episode 1, Prompt 8 (Total: 454) ---
+2025-08-14 06:36:23,510 - INFO - Optimizing: 'silver serpent coiled around glowing crystal staff'
+2025-08-14 06:36:23,510 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 06:36:23,525 - INFO - ✅ Server is available (status: completed)
+2025-08-14 06:36:23,526 - INFO - 📝 Marked server as used at 1755153383.5260115
+2025-08-14 06:36:23,526 - INFO - ✅ Server is available and marked as used
+2025-08-14 06:36:23,529 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 06:36:23,529 - INFO -       🔧 Overriding endpoint: generate/cinema/
+2025-08-14 06:36:23,529 - INFO -       🔧 Using endpoint: generate/cinema/
+2025-08-14 06:36:23,531 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'silver serpent coiled around glowing crystal staff'
+2025-08-14 06:36:23,532 - INFO -    Session: rl_session_1755153383_8389
+2025-08-14 06:36:23,532 - INFO -    Max rounds: 17
+2025-08-14 06:36:23,535 - INFO -    Min rounds before convergence: 5
+2025-08-14 06:36:23,535 - INFO -    Target score: 0.99
+2025-08-14 06:36:23,535 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 06:36:23,535 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:36:30,596 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:36:30,599 - INFO -       🔍 Validating...
+2025-08-14 06:36:30,599 - INFO -       📝 Using optimized prompt for generation: 'a majestic silver serpent coiled around a radiant crystal staff with intricate etchings and a soft, ethereal glow, front view, accurate, complete, white background...'
+2025-08-14 06:36:30,600 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:38:00,895 - INFO -       📊 Validation score: 0.7461
+2025-08-14 06:38:00,896 - INFO -       🎯 New best score: 0.7461
+2025-08-14 06:38:00,896 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 06:38:00,896 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-14 06:38:09,342 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:38:09,343 - INFO -       🔍 Validating...
+2025-08-14 06:38:09,343 - INFO -       📝 Using optimized prompt for generation: 'a majestic silver serpent coiled around a radiant crystal staff with intricate etchings and a soft, ethereal glow, front view, accurate, complete, white background...'
+2025-08-14 06:38:09,343 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:39:44,267 - INFO -       📊 Validation score: 0.7454
+2025-08-14 06:39:44,268 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:39:44,268 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 06:39:44,269 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 06:39:51,249 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:39:51,250 - INFO -       🔍 Validating...
+2025-08-14 06:39:51,250 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a glowing crystal staff with intricate etchings that resemble the patterns found in ancient runes, its surface adorned with delicate, swirling textures and subtle ridges, front view, accurate, complete, white background...'
+2025-08-14 06:39:51,250 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:41:17,570 - INFO -       📊 Validation score: 0.8123
+2025-08-14 06:41:17,570 - INFO -       🎯 New best score: 0.8123
+2025-08-14 06:41:17,571 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 06:41:17,571 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 06:41:17,571 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:41:23,497 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:41:23,497 - INFO -       🔍 Validating...
+2025-08-14 06:41:23,500 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a radiant crystal staff with intricate etchings that resemble delicate filigree and a subtle sheen to its scales, front view, accurate, complete, white background...'
+2025-08-14 06:41:23,500 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:42:51,750 - INFO -       📊 Validation score: 0.7486
+2025-08-14 06:42:51,751 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:42:51,751 - INFO - 
+   🔄 RL Round 5/17
+2025-08-14 06:42:51,751 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:42:58,603 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:42:58,604 - INFO -       🔍 Validating...
+2025-08-14 06:42:58,608 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a radiant crystal staff with intricate etchings that resemble polished obsidian, front view, accurate, complete, white background...'
+2025-08-14 06:42:58,608 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:44:35,307 - INFO -       📊 Validation score: 0.8903
+2025-08-14 06:44:35,308 - INFO -       🎯 New best score: 0.8903
+2025-08-14 06:44:35,308 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-14 06:44:35,308 - INFO - 
+   🔄 RL Round 6/17
+2025-08-14 06:44:35,308 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-14 06:44:41,195 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:44:41,196 - INFO -       🔍 Validating...
+2025-08-14 06:44:41,199 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a glowing crystal staff with delicate filigree and intricate knotwork...'
+2025-08-14 06:44:41,199 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:46:18,049 - INFO -       📊 Validation score: 0.6960
+2025-08-14 06:46:18,051 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:46:18,051 - INFO - 
+   🔄 RL Round 7/17
+2025-08-14 06:46:18,052 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 06:46:23,435 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:46:23,435 - INFO -       🔍 Validating...
+2025-08-14 06:46:23,436 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a radiant, crystalline staff with intricate etchings that resemble worn, metallic hieroglyphs...'
+2025-08-14 06:46:23,436 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:47:48,724 - INFO -       📊 Validation score: 0.8085
+2025-08-14 06:47:48,725 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-14 06:47:48,725 - INFO - 
+   🔄 RL Round 8/17
+2025-08-14 06:47:48,725 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-14 06:47:54,825 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:47:54,825 - INFO -       🔍 Validating...
+2025-08-14 06:47:54,826 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a radiant crystal staff with delicate filigree that resembles a subtle, ethereal pattern, front view, accurate, complete, white background...'
+2025-08-14 06:47:54,827 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'
+2025-08-14 06:49:25,170 - INFO -       📊 Validation score: 0.4622
+2025-08-14 06:49:25,171 - INFO -       📉 Score declined: Consider different approach
+2025-08-14 06:49:25,171 - INFO -       🔍 Increasing exploration to 0.75
+2025-08-14 06:49:25,171 - INFO - 
+   🔄 RL Round 9/17
+2025-08-14 06:49:25,172 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-14 06:49:32,510 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 19.877527552}
+2025-08-14 06:49:32,513 - INFO -       🔍 Validating...
+2025-08-14 06:49:32,513 - INFO -       📝 Using optimized prompt for generation: 'a slender silver serpent coiled around a glowing crystal staff with intricate etchings that resemble the delicate patterns found in ancient, weathered metalwork, front view, accurate, complete, white background...'
+2025-08-14 06:49:32,515 - INFO -       🎯 Computing scores against original prompt: 'silver serpent coiled around glowing crystal staff...'

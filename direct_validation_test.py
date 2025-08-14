@@ -49,9 +49,9 @@ def test_direct_validation():
         import sys
         from pathlib import Path
         
-        # Add validation directory to path
+        # Add validation directory to path (append so project root takes precedence)
         validation_path = Path(__file__).parent / "validation"
-        sys.path.insert(0, str(validation_path))
+        sys.path.append(str(validation_path))
         
         try:
             import pyspz

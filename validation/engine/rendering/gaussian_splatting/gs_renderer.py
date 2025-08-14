@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from gsplat.rendering import rasterization
 
-from engine.data_structures import GaussianSplattingData
-from engine.rendering.gaussian_splatting.gs_camera import OrbitCamera
+from validation.engine.data_structures import GaussianSplattingData
+from validation.engine.rendering.gaussian_splatting.gs_camera import OrbitCamera
 
 
 class GaussianSplattingRenderer:
@@ -98,8 +98,9 @@ class GaussianSplattingRenderer:
             self._camera.image_height,
             self._camera.z_near,
             self._camera.z_far,
-            # backgrounds=backgrounds,
+            backgrounds=backgrounds,
             render_mode="RGB",
+            packed=False,
         )
 
         if rendered_colors.shape != (num_cameras, self._camera.image_width, self._camera.image_height, 3):

@@ -374,7 +374,7 @@ class RLLoopAgent:
                 prompt_with_context=prompt_with_context
             )
             if use_validation:
-                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = "generate/")
+                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = endpoint)
                 self.logger.info(f"      📊 Validation score: {attempt.validation_score:.4f}")
             else:
                 attempt.validation_score = attempt.predicted_confidence
@@ -786,13 +786,13 @@ OPTIMIZATION: {{
                 self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
-                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" \"{endpoint}\""
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" --endpoint \"{endpoint}\""
                 ]
             else:
                 self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
-                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\""
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" --endpoint \"{endpoint}\""
                 ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:

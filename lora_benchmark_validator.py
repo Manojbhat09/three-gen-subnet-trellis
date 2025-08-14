@@ -95,7 +95,7 @@ class LoRABenchmarker:
             # "ornate bronze cannon with curved barrel",
             # "red and blue monkey with long tail",
             # "silver glowing mermaid",
-
+            "wooden desk with two chairs and laptop", 
             "luxurious cream sedan elegant",
             "stone statue ancient warrior in battle pose"
         ]

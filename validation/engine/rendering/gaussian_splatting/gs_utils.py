@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 import torch
 
-from engine.data_structures import GaussianSplattingData
+from validation.engine.data_structures import GaussianSplattingData
 
 
 def recenter_gs_points(points: np.ndarray) -> Any:
