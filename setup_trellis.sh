@@ -112,7 +112,7 @@ apt-get install tmux --yes
 tmux new-session -d -s trellis_session
 tmux new-session -d -s trellis_session2
 tmux new-session -d -s trellis_session3
-tmux send-keys -t trellis_session2 'ollama serve' C-m
+tmux send-keys -t trellis_session2 'curl -fsSL https://ollama.com/install.sh | sh && ollama --version && ollama serve' C-m
 tmux send-keys -t trellis_session3 'ollama pull llama3.2:3b && ollama run llama3.2:3b' C-m
 
 # Pane 0: Run the server
