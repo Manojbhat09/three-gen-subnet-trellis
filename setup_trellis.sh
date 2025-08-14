@@ -100,6 +100,12 @@ mkdir ~/.bittensor
 mkdir ~/.bittensor/wallets
 mv home/mbhat/.bittensor/wallets/* ~/.bittensor/wallets/
 
+# Append conda init to bashrc (if not already done)
+echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+
+# Activate the conda environment automatically on shell start
+echo "conda activate trellis_new" >> ~/.bashrc
+
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
 apt-get install tmux --yes
@@ -126,5 +132,6 @@ tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activat
 
 echo "Attaching to tmux session..."
 tmux attach-session -t trellis_session
+
 
 echo "=== Setup Complete ==="
