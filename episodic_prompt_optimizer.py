@@ -253,7 +253,8 @@ class EpisodicPromptOptimizer:
                  log_path: str = "continuous_trellis.log",
                  server_url: str = "http://localhost:8096",
                  server_buffer_time: int = 30,
-                 endpoint: str = "generate/"):
+                 endpoint: str = "generate/", 
+                 ):
         """
         Initialize the episodic optimizer.
         
@@ -881,7 +882,7 @@ def main():
     SERVER_URL = "http://localhost:8096"
     SERVER_BUFFER_TIME = 30  # 30 seconds buffer between server uses
     # ENDPOINT = "generate/"
-    ENDPOINT = "generate/baolei/"
+    ENDPOINT = "generate/cinema/"
     print(f"🚀 Starting Episodic Prompt Optimization")
     print(f"Episodes: {NUM_EPISODES}")
     print(f"Target Score: {TARGET_SCORE}")

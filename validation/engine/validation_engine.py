@@ -1,11 +1,11 @@
 import torch
 from loguru import logger
 
-from engine.data_structures import ValidationResult
-from engine.metrics.alignment_scorer import ImageVSImageMetric, TextVSImageMetric
-from engine.metrics.quality_scorer import ImageQualityMetric
-from engine.metrics.similarity_scorer import SimilarityMetrics
-from engine.utils.gs_data_checker_utils import sigmoid
+from validation.engine.data_structures import ValidationResult
+from validation.engine.metrics.alignment_scorer import ImageVSImageMetric, TextVSImageMetric
+from validation.engine.metrics.quality_scorer import ImageQualityMetric
+from validation.engine.metrics.similarity_scorer import SimilarityMetrics
+from validation.engine.utils.gs_data_checker_utils import sigmoid
 
 
 class ValidationEngine:

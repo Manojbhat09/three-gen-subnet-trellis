@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from io import BytesIO
 
-from engine.data_structures import GaussianSplattingData
+from validation.engine.data_structures import GaussianSplattingData
 
 
 class BaseLoader(ABC):

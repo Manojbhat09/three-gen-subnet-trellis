@@ -5,8 +5,8 @@ import meshio
 import numpy as np
 import torch
 
-from engine.data_structures import GaussianSplattingData
-from engine.utils.gs_data_checker_utils import sigmoid
+from validation.engine.data_structures import GaussianSplattingData
+from validation.engine.utils.gs_data_checker_utils import sigmoid
 
 
 class PlyLoader:

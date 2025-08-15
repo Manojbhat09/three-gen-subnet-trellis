@@ -1,3 +1,3 @@
 __all__ = ["PlyLoader"]
 
-from engine.io.ply.loader import PlyLoader
+from validation.engine.io.ply.loader import PlyLoader

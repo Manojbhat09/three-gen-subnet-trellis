@@ -22,7 +22,12 @@ def main():
                        help='Maximum rounds per prompt (default: 5)')
     parser.add_argument('--log-dir', type=str, default='episodic_logs',
                        help='Directory for logs (default: episodic_logs)')
+<<<<<<< HEAD
     
+=======
+    parser.add_argument('--endpoint', type=str, default='generate/',
+                       help='Endpoint path, e.g. generate/ or generate/isometric_3d/')
+>>>>>>> origin/multi
     args = parser.parse_args()
     
     print(f"🎯 Episodic Prompt Optimization Configuration:")
@@ -31,6 +36,10 @@ def main():
     print(f"   Max Rounds per Prompt: {args.max_rounds}")
     print(f"   Log Directory: {args.log_dir}")
     print(f"   Total Optimizations: {args.episodes * 13}")
+<<<<<<< HEAD
+=======
+    print(f"   Endpoint: {args.endpoint}")
+>>>>>>> origin/multi
     print()
     
     # Confirm if running many episodes
@@ -46,7 +55,11 @@ def main():
         target_score=args.target,
         max_rounds_per_prompt=args.max_rounds,
         log_dir=args.log_dir, 
+<<<<<<< HEAD
         endpoint="generate/baolei/"
+=======
+        endpoint=args.endpoint
+>>>>>>> origin/multi
     )
     
     try:

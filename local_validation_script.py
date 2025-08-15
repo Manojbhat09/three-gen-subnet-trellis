@@ -4,9 +4,9 @@ import torch
 import sys
 import os
 
-# Add validation directory to Python path
+# Add validation directory to Python path (append so project root takes precedence)
 validation_path = os.path.join(os.path.dirname(__file__), 'validation')
-sys.path.insert(0, validation_path)
+sys.path.append(validation_path)
 
 from validation.engine.validation_engine import ValidationEngine
 from validation.engine.data_structures import RequestData, ResponseData

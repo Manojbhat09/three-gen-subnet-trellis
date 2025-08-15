@@ -133,5 +133,4 @@ tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activat
 echo "Attaching to tmux session..."
 tmux attach-session -t trellis_session
 
-
 echo "=== Setup Complete ==="

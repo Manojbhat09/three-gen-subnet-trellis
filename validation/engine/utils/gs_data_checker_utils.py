@@ -4,7 +4,7 @@ from typing import Any
 import torch
 from loguru import logger
 
-from engine.data_structures import GaussianSplattingData
+from validation.engine.data_structures import GaussianSplattingData
 
 
 def sigmoid(x: torch.Tensor, slope: float = 1.0, x_shift: float = 0.0) -> Any:

@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from PIL import Image
 
-from engine.data_structures import GaussianSplattingData
-from engine.rendering.gaussian_splatting.gs_renderer import GaussianSplattingRenderer
-from engine.rendering.gaussian_splatting.gs_utils import transform_gs_data
+from validation.engine.data_structures import GaussianSplattingData
+from validation.engine.rendering.gaussian_splatting.gs_renderer import GaussianSplattingRenderer
+from validation.engine.rendering.gaussian_splatting.gs_utils import transform_gs_data
 
 
 class Renderer:
