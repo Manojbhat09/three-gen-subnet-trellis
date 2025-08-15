@@ -73,7 +73,7 @@ conda activate trellis_new
 echo "Cloning and setting up TRELLIS..."
 git clone --recurse-submodules https://github.com/microsoft/TRELLIS.git
 cd "$WORKSPACE_DIR/three-gen-subnet-trellis/TRELLIS"
-./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast
+./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast --vox2seq
 cd ..
 
 echo "Installing requirements for TRELLIS-TextoImagen3D..."
