@@ -51,6 +51,8 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import Response, JSONResponse
 import uvicorn
 import torch
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 seed = 42
 torch.manual_seed(seed)
 # torch.use_deterministic_algorithms(True)
@@ -62,10 +64,12 @@ random.seed(seed)
 
 torch.backends.cudnn.deterministic = True    # For reproducibility with cuDNN
 torch.backends.cudnn.benchmark = False       # Disable for reproducibility
-
+torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
 # os.environ['ATTN_BACKEND'] = 'xformers'
+# export ATTN_BACKEND=xformers
+# export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 # Add TRELLIS to Python path
@@ -84,6 +88,7 @@ from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
 
 # Import background removal
+from rembg import new_session, remove
 from hy3dgen.rembg import BackgroundRemover
 
 # Import HunyuanDiT
@@ -148,6 +153,18 @@ GENERATION_CONFIG = {
     'hunyuan_pag_scale': 1.3,
     'hunyuan_width': 1024,
     'hunyuan_height': 1024,
+    # TRELLIS precision (use half-precision to reduce memory and speed up)
+    'trellis_use_fp16': True,
+    # TRELLIS torch.compile acceleration
+    'trellis_compile': True,
+    'trellis_compile_mode': 'reduce-overhead',  # options: 'reduce-overhead', 'max-autotune' (if supported)
+    # 'trellis_compile_mode': 'max-autotune',
+    'trellis_compile_dynamic': True,
+    'trellis_compile_flow_models': False,
+    # FLUX schnell mode (4-step fast inference)
+    'flux_use_schnell': False,
+    'flux_schnell_steps': 4,
+    'flux_schnell_guidance': 0.0,
 }
 
 # LoRA definitions
@@ -436,7 +453,7 @@ class TrellisGenerator:
         self.hunyuan_pipeline = None
         self.trellis_pipeline = None
         self.background_remover = None
-        
+        self.load_rembg = True
         self.metrics = GenerationMetrics()
         self.generation_lock = threading.Lock()
         
@@ -501,6 +518,13 @@ class TrellisGenerator:
             
             file_url = GENERATION_CONFIG['flux_model_url']
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
+            # If schnell mode is enabled, prefer the schnell checkpoint for the base repo
+            if GENERATION_CONFIG.get('flux_use_schnell', False):
+                try:
+                    single_file_base_model = "black-forest-labs/FLUX.1-schnell"
+                    print("⚡ Using FLUX.1-schnell base model (schnell mode enabled)")
+                except Exception:
+                    pass
             
             # Load text encoder with 8-bit quantization
             print("Loading FLUX text encoder with 8-bit quantization...")
@@ -509,9 +533,9 @@ class TrellisGenerator:
                 bnb_8bit_compute_dtype=torch.bfloat16
             )
             self.flux_text_encoder_2 = T5EncoderModel.from_pretrained(
-                single_file_base_model,
-                # "manbeast3b/flux.1-schnell-full1",
-                # revision = "cb1b599b0d712b9aab2c4df3ad27b050a27ec146",  
+                # single_file_base_model,
+                "manbeast3b/flux.1-schnell-full1",
+                revision = "cb1b599b0d712b9aab2c4df3ad27b050a27ec146",  
                 subfolder="text_encoder_2", 
                 torch_dtype=dtype, 
                 quantization_config=quantization_config_tf, 
@@ -568,12 +592,30 @@ class TrellisGenerator:
             # from flux_caching import apply_cache_on_pipe
             # apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
-            self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
+            # self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
 
             # from torchao.quantization import quantize_, float8_dynamic_activation_float8_weight
             # quantize_(self.flux_pipeline.vae, float8_dynamic_activation_float8_weight())
             
             print("✅ FLUX models loaded successfully")
+
+            # Optional warmup for schnell mode (2 quick passes)
+            if GENERATION_CONFIG.get('flux_use_schnell', False):
+                try:
+                    print("🧪 Warming up FLUX.1-schnell (2x empty prompt, 4 steps)...")
+                    for _ in range(2):
+                        gc.collect()
+                        with torch.no_grad():
+                            _ = self.flux_pipeline(
+                                prompt="",
+                                width=1024,
+                                height=1024,
+                                guidance_scale=GENERATION_CONFIG.get('flux_schnell_guidance', 0.0),
+                                num_inference_steps=GENERATION_CONFIG.get('flux_schnell_steps', 4)
+                            )
+                    print("✓ FLUX schnell warmup complete")
+                except Exception as we:
+                    print(f"⚠️ FLUX schnell warmup skipped: {we}")
             
         except Exception as e:
             print(f"❌ FLUX model loading failed: {e}")
@@ -747,10 +789,81 @@ class TrellisGenerator:
         print("🔧 Loading TRELLIS pipeline...")
         
         try:
-            self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
-                GENERATION_CONFIG['trellis_model_path']
-            )
-            self.trellis_pipeline.cuda()
+            # Always load the pipeline first
+            use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True)
+            # Try to load directly in fp16 when supported; fall back gracefully
+            try:
+                self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
+                    GENERATION_CONFIG['trellis_model_path'],
+                    torch_dtype=torch.float16 if use_fp16 else None
+                )
+            except TypeError:
+                # Some implementations may not accept torch_dtype
+                self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
+                    GENERATION_CONFIG['trellis_model_path']
+                )
+
+            # Move to device / dtype
+            if torch.cuda.is_available():
+                if use_fp16:
+                    try:
+                        # Preferred path if pipeline supports dtype argument on to()
+                        self.trellis_pipeline.to("cuda", dtype=torch.float16)
+                    except Exception:
+                        # Fallback: move then cast if supported
+                        self.trellis_pipeline.cuda()
+                        if hasattr(self.trellis_pipeline, 'half'):
+                            try:
+                                self.trellis_pipeline.half()
+                            except Exception:
+                                pass
+                else:
+                    self.trellis_pipeline.cuda()
+            else:
+                # CPU fallback; cast to fp16 if requested and supported (has limited effect on CPU)
+                if use_fp16 and hasattr(self.trellis_pipeline, 'to'):
+                    try:
+                        self.trellis_pipeline.to(dtype=torch.float16)
+                    except Exception:
+                        pass
+
+            # Optionally compile modules after the pipeline is loaded
+            if GENERATION_CONFIG.get('trellis_compile', False) and hasattr(torch, 'compile'):
+                try:
+                    mode = GENERATION_CONFIG.get('trellis_compile_mode', 'reduce-overhead')
+                    dynamic = GENERATION_CONFIG.get('trellis_compile_dynamic', False)
+
+                    # Only compile modules that don't use dynamic sparse operations
+                    compile_keys = [
+                        'slat_decoder_gs',  # Gaussian splatting decoder - typically safer
+                        'slat_decoder_rf',  # Radiance field decoder - typically safer  
+                    ]
+                    # Skip sparse_structure_decoder and slat_decoder_mesh due to dynamic sparse ops
+                    if GENERATION_CONFIG.get('trellis_compile_flow_models', False):
+                        compile_keys.extend(['sparse_structure_flow_model', 'slat_flow_model'])
+
+                    compiled_ok = []
+                    compiled_fail = []
+                    models_dict = getattr(self.trellis_pipeline, 'models', {}) or {}
+                    for key in compile_keys:
+                        module = models_dict.get(key)
+                        if module is None:
+                            continue
+                        try:
+                            compiled = torch.compile(module, mode=mode, dynamic=dynamic)
+                            self.trellis_pipeline.models[key] = compiled
+                            compiled_ok.append(key)
+                        except Exception as ce:
+                            compiled_fail.append((key, str(ce)))
+
+                    if compiled_ok:
+                        print(f"✅ TRELLIS compiled modules: {', '.join(compiled_ok)} (mode={mode}, dynamic={dynamic})")
+                    if compiled_fail:
+                        print("⚠️ TRELLIS compile failures:")
+                        for key, err in compiled_fail:
+                            print(f"   {key}: {err}")
+                except Exception as e:
+                    print(f"⚠️ TRELLIS compile setup failed: {e}")
             
             # Warm up the pipeline
             try:
@@ -785,6 +898,7 @@ class TrellisGenerator:
         print("🔧 Loading background remover...")
         
         try:
+            # self.background_remover = BackgroundRemover(session=new_session("u2netp"), putalpha=True)
             self.background_remover = BackgroundRemover()
             print("✅ Background remover loaded successfully")
             
@@ -965,6 +1079,19 @@ class TrellisGenerator:
             }
             for key, config in lora_configs.items()
         }
+
+    def _resolve_flux_inference_params(self, guidance_scale: float, steps: int) -> Tuple[float, int, Dict[str, Any]]:
+        """Apply schnell overrides for FLUX if enabled.
+
+        Returns:
+            (effective_guidance_scale, effective_steps, extra_kwargs)
+        """
+        extra_kwargs: Dict[str, Any] = {}
+        if GENERATION_CONFIG.get('flux_use_schnell', False):
+            guidance_scale = GENERATION_CONFIG.get('flux_schnell_guidance', 0.0)
+            # steps = GENERATION_CONFIG.get('flux_schnell_steps', 4)
+            extra_kwargs['max_sequence_length'] = 256
+        return guidance_scale, steps, extra_kwargs
 
     def center_object_in_image(self, image: Image.Image, white_threshold: int = 240, padding: int = 20) -> Image.Image:
         """
@@ -1164,6 +1291,10 @@ class TrellisGenerator:
                     with torch.no_grad():
                         effective_guidance_scale = guidance_scale if guidance_scale is not None else GENERATION_CONFIG['guidance_scale']
                         effective_steps = num_inference_steps if num_inference_steps is not None else NUM_INFERENCE_STEPS
+                        effective_guidance_scale, effective_steps, extra_kwargs = self._resolve_flux_inference_params(
+                            effective_guidance_scale,
+                            effective_steps
+                        )
                         image = self.flux_pipeline(
                             prompt=enhanced_prompt,
                             guidance_scale=effective_guidance_scale,
@@ -1171,6 +1302,7 @@ class TrellisGenerator:
                             width=1024,
                             height=1024,
                             generator=generator,
+                            **extra_kwargs,
                         ).images[0]
                 
                 elif current_model == 'sdxl':
@@ -1230,27 +1362,28 @@ class TrellisGenerator:
                 # Unload FLUX models
                 # self._unload_flux_models()
                 
-                # Step 1.3: Center object in image before background removal
-                if GENERATION_CONFIG.get('enable_object_centering', True):
-                    print("Step 1.3: Centering object in image...")
-                    try:
-                        centered_image = self.center_object_in_image(
-                            image, 
-                            white_threshold=GENERATION_CONFIG.get('centering_white_threshold', 240),
-                            padding=GENERATION_CONFIG.get('centering_padding', 40)
-                        )
-                        print("✓ Object centered successfully")
-                        image = centered_image  # Use the centered image for next steps
-                        generation_asset.add_asset(AssetType.FLUX_IMAGE, centered_image)  # Update asset with centered version
-                    except Exception as e:
-                        print(f"⚠️ Object centering failed: {e}")
-                        print("   Continuing with original image...")
-                else:
-                    print("Step 1.3: Object centering disabled, skipping...")
+                # # Step 1.3: Center object in image before background removal
+                # if GENERATION_CONFIG.get('enable_object_centering', True):
+                #     print("Step 1.3: Centering object in image...")
+                #     try:
+                #         centered_image = self.center_object_in_image(
+                #             image, 
+                #             white_threshold=GENERATION_CONFIG.get('centering_white_threshold', 240),
+                #             padding=GENERATION_CONFIG.get('centering_padding', 40)
+                #         )
+                #         print("✓ Object centered successfully")
+                #         image = centered_image  # Use the centered image for next steps
+                #         generation_asset.add_asset(AssetType.FLUX_IMAGE, centered_image)  # Update asset with centered version
+                #     except Exception as e:
+                #         print(f"⚠️ Object centering failed: {e}")
+                #         print("   Continuing with original image...")
+                # else:
+                #     print("Step 1.3: Object centering disabled, skipping...")
                 
                 # Step 1.5: Remove background from image
                 print("Step 1.5: Removing background from image...")
-                self._load_background_remover()
+                if self.background_remover is None:
+                    self._load_background_remover()
                 
                 try:
                     image_no_bg = self.background_remover(image)
@@ -1263,12 +1396,14 @@ class TrellisGenerator:
                     print("   Continuing with original image...")
                 
                 # Unload background remover
-                self._unload_background_remover()
+                # self._unload_background_remover()
                 
                 # Step 2: Generate 3D model with TRELLIS
                 print("Step 2: Generating 3D model with TRELLIS...")
                 if self.trellis_pipeline is None:   
                     self._load_trellis_pipeline()
+                    if self.trellis_pipeline is None:
+                        raise RuntimeError("TRELLIS pipeline failed to load; cannot generate 3D model.")
                 
                 # Enhanced TRELLIS parameters for maximum quality
                 # Resolve TRELLIS quality parameters with overrides
@@ -1277,24 +1412,73 @@ class TrellisGenerator:
                 effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
                 effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
 
-                outputs = self.trellis_pipeline.run(
-                    image,
-                    seed=seed,
-                    formats=["gaussian", "mesh"],
-                    preprocess_image=False,
-                    sparse_structure_sampler_params={
-                        "steps": effective_ss_steps,
-                        "cfg_strength": effective_ss_guidance,
-                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                    slat_sampler_params={
-                        "steps": effective_slat_steps,
-                        "cfg_strength": effective_slat_guidance,
-                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                )
+                # Use autocast to reduce activation memory and speed up compute on CUDA
+                use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+                if use_fp16:
+                    try:
+                        with torch.autocast(device_type="cuda", dtype=torch.float16):
+                            outputs = self.trellis_pipeline.run(
+                                image,
+                                seed=seed,
+                                formats=["gaussian"],
+                                preprocess_image=False,
+                                sparse_structure_sampler_params={
+                                    "steps": effective_ss_steps,
+                                    "cfg_strength": effective_ss_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                                slat_sampler_params={
+                                    "steps": effective_slat_steps,
+                                    "cfg_strength": effective_slat_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                            )
+                    except RuntimeError as e:
+                        # Some mesh decoding ops may not support fp16 (scatter/scatter_reduce dtype issues)
+                        if "scatter()" in str(e) or "scatter_reduce" in str(e):
+                            print("⚠️ FP16 mesh decode failed (scatter dtype mismatch). Retrying gaussian-only without autocast...")
+                            with torch.autocast(device_type="cuda", enabled=False):
+                                outputs = self.trellis_pipeline.run(
+                                    image,
+                                    seed=seed,
+                                    formats=["gaussian"],  # Avoid mesh path in fp16
+                                    preprocess_image=False,
+                                    sparse_structure_sampler_params={
+                                        "steps": effective_ss_steps,
+                                        "cfg_strength": effective_ss_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                    slat_sampler_params={
+                                        "steps": effective_slat_steps,
+                                        "cfg_strength": effective_slat_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                )
+                        else:
+                            raise
+                else:
+                    outputs = self.trellis_pipeline.run(
+                        image,
+                        seed=seed,
+                        formats=["gaussian", "mesh"],
+                        preprocess_image=False,
+                        sparse_structure_sampler_params={
+                            "steps": effective_ss_steps,
+                            "cfg_strength": effective_ss_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                        slat_sampler_params={
+                            "steps": effective_slat_steps,
+                            "cfg_strength": effective_slat_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                    )
                 
                 print("✓ 3D model generated successfully")
                 
@@ -2748,11 +2932,15 @@ async def generate_image_with_isometric_3d_lora(
         print(f"🎨 Generating image with Isometric 3D LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -2817,11 +3005,15 @@ async def generate_image_with_live_3d_lora(
         print(f"🎨 Generating image with Live 3D LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -2886,11 +3078,15 @@ async def generate_image_with_game_assets_lora(
         print(f"🎨 Generating image with Game Assets LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -2955,11 +3151,15 @@ async def generate_image_with_patched_realism_lora(
         print(f"🎨 Generating image with Patched Realism LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -3024,11 +3224,15 @@ async def generate_image_with_tf2_style_lora(
         print(f"🎨 Generating image with TF2 Style LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -3093,11 +3297,15 @@ async def generate_image_with_baolei_lora(
         print(f"🎨 Generating image with Baolei LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -3162,11 +3370,15 @@ async def generate_image_with_cartoon_3d_lora(
         print(f"🎨 Generating image with Cartoon 3D LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -3231,11 +3443,15 @@ async def generate_image_with_cinema_lora(
         print(f"🎨 Generating image with Cinema LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             flux_output = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             )
             image = flux_output.images[0]  # Extract the first image from the output
         
@@ -3368,11 +3584,15 @@ async def generate_image_with_necklace_lora(
         print(f"🎨 Generating image with FLUX Necklace LoRA for: '{enhanced_prompt}' (seed: {seed})")
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         with torch.no_grad():
+            eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                guidance_scale, num_inference_steps
+            )
             image = generator.flux_pipeline(
                 prompt=enhanced_prompt,
                 generator=seed_generator,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale
+                num_inference_steps=eff_steps,
+                guidance_scale=eff_guidance,
+                **extra_kwargs
             ).images[0]
         
         # Convert PIL Image to bytes
@@ -3457,6 +3677,8 @@ async def generate_image_endpoint(
     
     try:
         current_model = GENERATION_CONFIG.get('current_model', 'flux')
+        # Create seeded generator for reproducibility across pipelines
+        seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         
         if current_model == 'flux':
             # Load FLUX if not loaded
@@ -3467,11 +3689,18 @@ async def generate_image_endpoint(
             print(f"🎨 Generating image with FLUX for: '{prompt}' (seed: {seed})")
             
             with torch.no_grad():
+                # Apply schnell overrides if enabled
+                eff_guidance = guidance_scale
+                eff_steps = num_inference_steps
+                eff_guidance, eff_steps, extra_kwargs = generator._resolve_flux_inference_params(
+                    eff_guidance, eff_steps
+                )
                 flux_output = generator.flux_pipeline(
                     prompt=prompt,
-                    seed=seed,
-                    num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale
+                    generator=seed_generator,
+                    num_inference_steps=eff_steps,
+                    guidance_scale=eff_guidance,
+                    **extra_kwargs
                 )
                 image = flux_output.images[0]  # Extract the first image from the output
                 
@@ -3486,7 +3715,7 @@ async def generate_image_endpoint(
             with torch.no_grad():
                 image = generator.sdxl_pipeline(
                     prompt=prompt,
-                    seed=seed,
+                    generator=seed_generator,
                     num_inference_steps=num_inference_steps,
                     guidance_scale=guidance_scale
                 ).images[0]
@@ -3502,7 +3731,7 @@ async def generate_image_endpoint(
             with torch.no_grad():
                 image = generator.sd15_pipeline(
                     prompt=prompt,
-                    seed=seed,
+                    generator=seed_generator,
                     num_inference_steps=num_inference_steps,
                     guidance_scale=guidance_scale
                 ).images[0]

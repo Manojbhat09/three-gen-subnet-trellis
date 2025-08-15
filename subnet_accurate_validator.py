@@ -391,7 +391,7 @@ def main():
     parser.add_argument("--slat_steps", dest="slat_sampling_steps", type=int, default=SLAT_SAMPLING_STEPS, help=f"SLAT sampler steps (default from server: {SLAT_SAMPLING_STEPS})")
     parser.add_argument("--slat_guidance", dest="slat_guidance_strength", type=float, default=SLAT_GUIDANCE_STRENGTH, help=f"SLAT guidance strength (default from server: {SLAT_GUIDANCE_STRENGTH})")
     parser.add_argument("--ss_guidance", dest="ss_guidance_strength", type=float, default=SS_GUIDANCE_STRENGTH, help=f"Sparse-structure guidance strength (default from server: {SS_GUIDANCE_STRENGTH})")
-
+    parser.add_argument("--port", type=int, nargs="?", default=8096, help="Port to use for generation (default from server: 8096)")
     args = parser.parse_args()
 
     original_prompt = args.original_prompt
@@ -460,7 +460,7 @@ def main():
             print("=" * 60)
 
             # Save minimal results JSON
-            output_file = f"subnet_validation_results.json"
+            output_file = f"subnet_validation_results_image_{port}.json"
             results_with_prompts = {
                 'original_prompt': original_prompt,
                 'optimized_prompt': optimized_prompt,
@@ -495,6 +495,7 @@ def main():
             if optimized_prompt != original_prompt:
                 print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
             print(f"📊 PLY Size: {len(ply_data):,} bytes")
+            results['ply_size'] = len(ply_data)
             print(f"🏆 Validation Engine Score: {results['validation_engine_score']:.4f}")
             print(f"🤝 Alignment Score: {results['alignment_score']:.4f}")
             print(f"💎 Quality Score: {results['quality_score']:.4f}")
@@ -519,7 +520,8 @@ def main():
                 print(f"🔵 SUBNET RESULT: PARTIAL FIDELITY ({results['demo_fidelity_score']:.4f})")
 
             # Save results with prompt information
-            output_file = f"subnet_validation_results.json"
+            output_file = f"subnet_validation_results_{port}.json"
+            results['port'] = port
             results_with_prompts = {
                 'original_prompt': original_prompt,
                 'optimized_prompt': optimized_prompt,
