@@ -16,12 +16,33 @@ import base64
 import time
 import gc
 from io import StringIO
+import io
 from pathlib import Path
 import json
 
-# Add validation directory to path
-validation_path = Path(__file__).parent / "validation"
-sys.path.insert(0, str(validation_path))
+# Fetch defaults from running server via HTTP (no heavy imports)
+def _fetch_generation_defaults():
+    try:
+        import requests
+        server_url = os.environ.get('GEN_SERVER_URL', 'http://127.0.0.1:8096')
+        r = requests.get(f"{server_url}/config/", timeout=3)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+_SERVER_DEFAULTS = _fetch_generation_defaults()
+
+# Unified defaults (prefer server responses; fall back to constants)
+NUM_INFERENCE_STEPS = int(_SERVER_DEFAULTS.get('num_inference_steps_t2i', 7))
+GUIDANCE_SCALE = float(_SERVER_DEFAULTS.get('guidance_scale', 3.5))
+# Defaults for TRELLIS quality params
+SS_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('ss_sampling_steps', 30))
+SLAT_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('slat_sampling_steps', 30))
+SLAT_GUIDANCE_STRENGTH = float(_SERVER_DEFAULTS.get('slat_guidance_strength', 5.0))
+SS_GUIDANCE_STRENGTH = float(_SERVER_DEFAULTS.get('ss_guidance_strength', 9.5))
+# Use package imports directly; no sys.path modifications needed
 
 # Test pyspz availability
 try:
@@ -31,12 +52,12 @@ except ImportError:
     print("❌ pyspz library not available")
     sys.exit(1)
 
-# Import production validation components  
+# Import production validation components
 try:
-    from engine.data_structures import RequestData, ValidationResultData
-    from engine.io.ply.loader import PlyLoader
-    from engine.rendering.renderer import Renderer
-    from engine.validation_engine import ValidationEngine
+    from validation.engine.data_structures import RequestData, ValidationResultData
+    from validation.engine.io.ply import PlyLoader
+    from validation.engine.rendering.renderer import Renderer
+    from validation.engine.validation_engine import ValidationEngine
     from serve import decode_and_validate_txt
     import zstandard
     import torch
@@ -44,6 +65,56 @@ try:
 except ImportError as e:
     print(f"❌ Production validation components not available: {e}")
     sys.exit(1)
+
+# CLIP utilities for image-endpoint validation
+import open_clip
+import numpy as np
+from PIL import Image
+from torchvision import transforms
+import torch.nn.functional as F
+
+def load_validator_clip(device):
+    """Load the validator CLIP model (convnext_large_d/laion2b_s26b_b102k_augreg)."""
+    model, _, _ = open_clip.create_model_and_transforms(
+        "convnext_large_d", pretrained="laion2b_s26b_b102k_augreg", device=device
+    )
+    tokenizer = open_clip.get_tokenizer("convnext_large_d")
+    model.eval()
+    mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).view(1, 3, 1, 1) * 3
+    std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).view(1, 3, 1, 1) * 3
+    normalize = transforms.Normalize(mean, std)
+    return model, tokenizer, normalize
+
+def encode_text(model, tokenizer, device, text: str):
+    tokens = tokenizer(text).to(device)
+    with torch.no_grad(), torch.amp.autocast(device.type):
+        feats = model.encode_text(tokens)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
+    return feats
+
+def encode_image(model, normalize, device, img: Image.Image, res: int = 224):
+    t = torch.tensor(np.array(img)).float() / 255.0
+    if t.ndim == 3:
+        t = t.permute(2, 0, 1)
+    t = t.unsqueeze(0).to(device)
+    t = F.interpolate(t, size=(res, res), mode="bicubic", align_corners=False)
+    t = normalize(t)
+    with torch.no_grad(), torch.amp.autocast(device.type):
+        feats = model.encode_image(t)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
+    return feats
+
+def clip_text_text(model, tokenizer, device, a: str, b: str) -> float:
+    fa = encode_text(model, tokenizer, device, a)
+    fb = encode_text(model, tokenizer, device, b)
+    sim = (fa @ fb.T).float().item()
+    return float(np.clip(sim, 0, 1))
+
+def clip_text_image(model, tokenizer, normalize, device, text: str, img: Image.Image) -> float:
+    tf = encode_text(model, tokenizer, device, text)
+    vf = encode_image(model, normalize, device, img)
+    sim = (vf @ tf.T).float().cpu().numpy()[0][0]
+    return float(np.clip(sim, 0, 1))
 
 @contextlib.contextmanager
 def suppress_stdout():
@@ -58,7 +129,16 @@ def suppress_stdout():
         sys.stdout = original_stdout
         sys.stderr = original_stderr
 
-def generate_and_get_ply_data(prompt: str, endpoint: str) -> bytes:
+def generate_and_get_ply_data(
+    prompt: str,
+    endpoint: str,
+    num_inference_steps: int = NUM_INFERENCE_STEPS,
+    guidance_scale: float = GUIDANCE_SCALE,
+    ss_sampling_steps: int = SS_SAMPLING_STEPS,
+    slat_sampling_steps: int = SLAT_SAMPLING_STEPS,
+    slat_guidance_strength: float = SLAT_GUIDANCE_STRENGTH,
+    ss_guidance_strength: float = SS_GUIDANCE_STRENGTH,
+) -> bytes:
     """Generate 3D model using TRELLIS and return compressed PLY data"""
     url = f"http://127.0.0.1:8096/{endpoint}"
     
@@ -66,7 +146,17 @@ def generate_and_get_ply_data(prompt: str, endpoint: str) -> bytes:
     print(f"🎨 Generating 3D model for: '{prompt}'")
     
     try:
-        with requests.post(url, data={'prompt': prompt}, timeout=300, stream=False) as response:
+        # Always include tuning params for both image and 3D generation endpoints
+        payload = {
+            "prompt": prompt,
+            "num_inference_steps": num_inference_steps,
+            "guidance_scale": guidance_scale,
+            "ss_sampling_steps": ss_sampling_steps,
+            "slat_sampling_steps": slat_sampling_steps,
+            "slat_guidance_strength": slat_guidance_strength,
+            "ss_guidance_strength": ss_guidance_strength,
+        }
+        with requests.post(url, data=payload, timeout=300, stream=False) as response:
             response.raise_for_status()
             
             compression = response.headers.get('x-compression', 'none')
@@ -289,16 +379,30 @@ def calculate_demo_fidelity_score(validation_score: float) -> float:
         return 0.0
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python subnet_accurate_validator.py \"<original_prompt>\" [\"<optimized_prompt>\"]")
-        print("  - original_prompt: The prompt to compute validation scores against")
-        print("  - optimized_prompt (optional): The prompt to use for generation")
-        print("    If not provided, original_prompt will be used for both generation and validation")
-        sys.exit(1)
-    
-    original_prompt = sys.argv[1]
-    optimized_prompt = sys.argv[2] if len(sys.argv) > 2 else original_prompt
-    endpoint = sys.argv[3] if len(sys.argv) > 3 else "generate/"
+    import argparse
+    parser = argparse.ArgumentParser(description="Subnet-Accurate Local Validator v2.0", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("original_prompt", type=str, help="Prompt to compute validation against")
+    parser.add_argument("optimized_prompt", type=str, nargs="?", default=None, help="Prompt to use for generation (defaults to original)")
+    parser.add_argument("--endpoint", type=str, nargs="?", default="generate/", help="Endpoint path, e.g. generate/ or generate/isometric_3d/")
+    parser.add_argument("--num_inference_steps", type=int, nargs="?", default=NUM_INFERENCE_STEPS, help=f"Sampler steps for image model (default from server: {NUM_INFERENCE_STEPS})")
+    parser.add_argument("--guidance_scale", type=float, nargs="?", default=GUIDANCE_SCALE, help=f"Guidance scale for image model (default from server: {GUIDANCE_SCALE})")
+    # Optional named overrides
+    parser.add_argument("--ss_steps", dest="ss_sampling_steps", type=int, default=SS_SAMPLING_STEPS, help=f"Sparse-structure sampler steps (default from server: {SS_SAMPLING_STEPS})")
+    parser.add_argument("--slat_steps", dest="slat_sampling_steps", type=int, default=SLAT_SAMPLING_STEPS, help=f"SLAT sampler steps (default from server: {SLAT_SAMPLING_STEPS})")
+    parser.add_argument("--slat_guidance", dest="slat_guidance_strength", type=float, default=SLAT_GUIDANCE_STRENGTH, help=f"SLAT guidance strength (default from server: {SLAT_GUIDANCE_STRENGTH})")
+    parser.add_argument("--ss_guidance", dest="ss_guidance_strength", type=float, default=SS_GUIDANCE_STRENGTH, help=f"Sparse-structure guidance strength (default from server: {SS_GUIDANCE_STRENGTH})")
+    parser.add_argument("--port", type=int, nargs="?", default=8096, help="Port to use for generation (default from server: 8096)")
+    args = parser.parse_args()
+
+    original_prompt = args.original_prompt
+    optimized_prompt = args.optimized_prompt if args.optimized_prompt is not None else args.original_prompt
+    endpoint = args.endpoint
+    num_inference_steps = args.num_inference_steps
+    guidance_scale = args.guidance_scale
+    ss_sampling_steps = args.ss_sampling_steps
+    slat_sampling_steps = args.slat_sampling_steps
+    slat_guidance_strength = args.slat_guidance_strength
+    ss_guidance_strength = args.ss_guidance_strength
     print(f"🚀 PRODUCTION-ACCURATE VALIDATION v2.0")
     print(f"=" * 60)
     print(f"📝 Original Prompt: '{original_prompt}'")
@@ -314,57 +418,119 @@ def main():
     print(f"=" * 60)
     
     try:
-        # Step 1: Generate and get PLY data using optimized prompt (or original if no optimization)
-        print(f"🎨 Phase 1: Generating model with TRELLIS")
+        # Step 1: Generation
+        print(f"🎨 Phase 1: Generating with TRELLIS")
         print(f"   Using prompt for generation: '{optimized_prompt}'")
-        ply_data = generate_and_get_ply_data(optimized_prompt, endpoint)
-        
-        # Step 2: Validate using production logic against original prompt
-        print(f"🔍 Phase 2: Running production-accurate validation")
-        print(f"   Computing scores against original prompt: '{original_prompt}'")
-        results = validate_with_production_logic(ply_data, original_prompt)
-        
-        # Step 3: Final results
-        print(f"🎯 FINAL PRODUCTION-ACCURATE RESULTS")
-        print(f"=" * 60)
-        print(f"📝 Original Prompt: '{original_prompt}'")
-        if optimized_prompt != original_prompt:
-            print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
-        print(f"📊 PLY Size: {len(ply_data):,} bytes") 
-        print(f"🏆 Validation Engine Score: {results['validation_engine_score']:.4f}")
-        print(f"🤝 Alignment Score: {results['alignment_score']:.4f}")
-        print(f"💎 Quality Score: {results['quality_score']:.4f}")
-        print(f"🎭 Demo Fidelity Score: {results['demo_fidelity_score']:.4f}")
-        print(f"🎯 Task Fidelity Score: {results['task_fidelity_score']:.4f}")
-        print(f"✅ Validation Passed: {results['validation_passed']}")
-        print(f"🚧 Quality Threshold: {results['quality_threshold']}")
-        print(f"📊 Alignment Threshold (0.3): {'✅' if results['alignment_threshold_passed'] else '❌'}")
-        print(f"=" * 60)
-        
-        # Interpretation
-        if results['demo_fidelity_score'] == 0.0:
-            print("❌ SUBNET RESULT: ZERO TASK FIDELITY")
-            print(f"   Reason: Validation score {results['validation_engine_score']:.4f} < 0.6")
-        elif results['demo_fidelity_score'] == 0.75:
-            print("🟡 SUBNET RESULT: MEDIUM FIDELITY (0.75)")
-            print(f"   Validation score in range [0.6, 0.8): {results['validation_engine_score']:.4f}")
-        elif results['demo_fidelity_score'] == 1.0:
-            print("🟢 SUBNET RESULT: PERFECT FIDELITY (1.0)")
-            print(f"   Validation score ≥ 0.8: {results['validation_engine_score']:.4f}")
+        if 'image' in endpoint:
+            resp_bytes = generate_and_get_ply_data(
+                optimized_prompt,
+                endpoint,
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                ss_sampling_steps=ss_sampling_steps,
+                slat_sampling_steps=slat_sampling_steps,
+                slat_guidance_strength=slat_guidance_strength,
+                ss_guidance_strength=ss_guidance_strength,
+            )
+            # Step 2: CLIP scoring for image endpoint
+            print(f"🔍 Phase 2: Computing CLIP alignment (text–text and text–image)")
+            try:
+                payload = json.loads(resp_bytes.decode('utf-8'))
+            except Exception:
+                print("❌ Could not parse image-generation response as JSON")
+                raise
+            b64img = payload.get('image') or payload.get('image_base64')
+            if not b64img:
+                print("❌ No 'image' field found in response JSON")
+                raise RuntimeError("image field missing")
+            img = Image.open(io.BytesIO(base64.b64decode(b64img))).convert('RGB')
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            model, tokenizer, normalize = load_validator_clip(device)
+            tt_clip = clip_text_text(model, tokenizer, device, original_prompt, optimized_prompt)
+            ti_clip = clip_text_image(model, tokenizer, normalize, device, original_prompt, img)
+            # Step 3: Report results
+            print(f"🎯 FINAL IMAGE-ENDPOINT RESULTS")
+            print("=" * 60)
+            print(f"📝 Original Prompt: '{original_prompt}'")
+            if optimized_prompt != original_prompt:
+                print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
+            print(f"🖼️ Image Size: {img.width}x{img.height}")
+            print(f"🧮 tt_clip (text–text): {tt_clip:.4f}")
+            print(f"🧮 ti_clip (text–image): {ti_clip:.4f}")
+            print("=" * 60)
+
+            # Save minimal results JSON
+            output_file = f"subnet_validation_results_image_{args.port}.json"
+            results_with_prompts = {
+                'original_prompt': original_prompt,
+                'optimized_prompt': optimized_prompt,
+                'prompt_optimized': optimized_prompt != original_prompt,
+                'tt_clip': tt_clip,
+                'ti_clip': ti_clip,
+                'endpoint_type': 'image'
+            }
+            with open(output_file, "w") as f:
+                json.dump(results_with_prompts, f, indent=2)
+            print(f"💾 Results saved to {output_file}")
         else:
-            print(f"🔵 SUBNET RESULT: PARTIAL FIDELITY ({results['demo_fidelity_score']:.4f})")
-        
-        # Save results with prompt information
-        output_file = f"subnet_validation_results.json"
-        results_with_prompts = {
-            'original_prompt': original_prompt,
-            'optimized_prompt': optimized_prompt,
-            'prompt_optimized': optimized_prompt != original_prompt,
-            **results
-        }
-        with open(output_file, "w") as f:
-            json.dump(results_with_prompts, f, indent=2)
-        print(f"💾 Results saved to {output_file}")
+            ply_data = generate_and_get_ply_data(
+                optimized_prompt,
+                endpoint,
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                ss_sampling_steps=ss_sampling_steps,
+                slat_sampling_steps=slat_sampling_steps,
+                slat_guidance_strength=slat_guidance_strength,
+                ss_guidance_strength=ss_guidance_strength,
+            )
+            # Step 2: Validate using production logic against original prompt
+            print(f"🔍 Phase 2: Running production-accurate validation")
+            print(f"   Computing scores against original prompt: '{original_prompt}'")
+            results = validate_with_production_logic(ply_data, original_prompt)
+
+            # Step 3: Final results
+            print(f"🎯 FINAL PRODUCTION-ACCURATE RESULTS")
+            print(f"=" * 60)
+            print(f"📝 Original Prompt: '{original_prompt}'")
+            if optimized_prompt != original_prompt:
+                print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
+            print(f"📊 PLY Size: {len(ply_data):,} bytes")
+            results['ply_size'] = len(ply_data)
+            print(f"🏆 Validation Engine Score: {results['validation_engine_score']:.4f}")
+            print(f"🤝 Alignment Score: {results['alignment_score']:.4f}")
+            print(f"💎 Quality Score: {results['quality_score']:.4f}")
+            print(f"🎭 Demo Fidelity Score: {results['demo_fidelity_score']:.4f}")
+            print(f"🎯 Task Fidelity Score: {results['task_fidelity_score']:.4f}")
+            print(f"✅ Validation Passed: {results['validation_passed']}")
+            print(f"🚧 Quality Threshold: {results['quality_threshold']}")
+            print(f"📊 Alignment Threshold (0.3): {'✅' if results['alignment_threshold_passed'] else '❌'}")
+            print(f"=" * 60)
+
+            # Interpretation
+            if results['demo_fidelity_score'] == 0.0:
+                print("❌ SUBNET RESULT: ZERO TASK FIDELITY")
+                print(f"   Reason: Validation score {results['validation_engine_score']:.4f} < 0.6")
+            elif results['demo_fidelity_score'] == 0.75:
+                print("🟡 SUBNET RESULT: MEDIUM FIDELITY (0.75)")
+                print(f"   Validation score in range [0.6, 0.8): {results['validation_engine_score']:.4f}")
+            elif results['demo_fidelity_score'] == 1.0:
+                print("🟢 SUBNET RESULT: PERFECT FIDELITY (1.0)")
+                print(f"   Validation score ≥ 0.8: {results['validation_engine_score']:.4f}")
+            else:
+                print(f"🔵 SUBNET RESULT: PARTIAL FIDELITY ({results['demo_fidelity_score']:.4f})")
+
+            # Save results with prompt information
+            output_file = f"subnet_validation_results_{args.port}.json"
+            results['port'] = args.port
+            results_with_prompts = {
+                'original_prompt': original_prompt,
+                'optimized_prompt': optimized_prompt,
+                'prompt_optimized': optimized_prompt != original_prompt,
+                **results
+            }
+            with open(output_file, "w") as f:
+                json.dump(results_with_prompts, f, indent=2)
+            print(f"💾 Results saved to {output_file}")
         
     except Exception as e:
         print(f"❌ Production-accurate validation workflow failed: {e}")

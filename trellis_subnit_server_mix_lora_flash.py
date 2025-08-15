@@ -65,7 +65,7 @@ torch.backends.cudnn.benchmark = False       # Disable for reproducibility
 
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
-# os.environ['ATTN_BACKEND'] = 'xformers'
+os.environ['ATTN_BACKEND'] = 'xformers'
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 # Add TRELLIS to Python path
