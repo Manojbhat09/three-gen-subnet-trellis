@@ -10,10 +10,10 @@ from typing import Any
 import pandas as pd
 import pybase64
 import torch
-from engine.data_structures import TimeStat, ValidationRequest, ValidationResponse
-from engine.io.ply.loader import PlyLoader
-from engine.rendering.renderer import Renderer
-from engine.validation_engine import ValidationEngine
+from validation.engine.data_structures import TimeStat, ValidationRequest, ValidationResponse
+from validation.engine.io.ply.loader import PlyLoader
+from validation.engine.rendering.renderer import Renderer
+from validation.engine.validation_engine import ValidationEngine
 from execution_tree import ExecutionTree
 from pydantic import BaseModel
 from pyinstrument import Profiler

@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-Subnet 17 (404-GEN) - FLUX + TRELLIS Generation Server
-Purpose: HTTP server for high-quality 3D model generation using Flux and TRELLIS
+Subnet 17 (404-GEN) - FLUX + TRELLIS Generation Server with 8-GPU Parallel Processing
+Purpose: HTTP server for high-quality 3D model generation using Flux and TRELLIS on 8 GPUs
 Produces validation-compatible Gaussian Splatting PLY files with SPZ compression
 
 Text Prompt → FLUX Image → TRELLIS 3D → Gaussian Splatting PLY + SPZ Compression
 
-# Generate 3D model
+# Generate 3D model on specific GPU
 curl -X POST "http://localhost:8096/generate/" \
   -F "prompt=a blue ceramic vase with red trim" \
-  -F "seed=42"
+  -F "seed=42" \
+  -F "gpu_id=0"
 
-# Get asset information
-curl "http://localhost:8096/assets/"
+# Generate 8 models in parallel
+curl -X POST "http://localhost:8096/generate_parallel/" \
+  -F "prompt=a blue ceramic vase with red trim" \
+  -F "seeds=42,43,44,45,46,47,48,49"
+
+# Get GPU status
+curl "http://localhost:8096/gpu_status/"
 
 # Download compressed PLY file
 curl "http://localhost:8096/assets/gaussian_splatting_ply" -o model.ply.spz
@@ -26,7 +32,7 @@ import threading
 import gc
 import numpy as np
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from dataclasses import dataclass
 import trimesh
 from PIL import Image
@@ -46,11 +52,173 @@ import subprocess
 import queue
 import multiprocessing
 import imageio
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import psutil
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import Response, JSONResponse
 import uvicorn
 import torch
+
+# Multi-GPU Configuration
+MULTI_GPU_CONFIG = {
+    'num_gpus': 8,
+    'gpu_memory_limit_gb': 20,  # Per GPU memory limit
+    'parallel_generation_limit': 8,  # Max parallel generations
+    'gpu_affinity': True,  # Bind processes to specific GPUs
+    'load_balancing': 'round_robin',  # 'round_robin', 'least_loaded', 'random'
+}
+
+# Set environment variables for multi-GPU
+os.environ['SPCONV_ALGO'] = 'native'
+# os.environ['ATTN_BACKEND'] = 'xformers'
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
+# Multi-GPU management
+class MultiGPUManager:
+    """Manages 8 GPUs for parallel processing"""
+    
+    def __init__(self):
+        self.num_gpus = min(MULTI_GPU_CONFIG['num_gpus'], torch.cuda.device_count())
+        self.gpu_states = {}
+        self.gpu_locks = {}
+        self.gpu_loads = {}
+        self.gpu_memory_usage = {}
+        
+        # Initialize GPU states
+        for gpu_id in range(self.num_gpus):
+            self.gpu_states[gpu_id] = {
+                'status': 'idle',  # 'idle', 'busy', 'error'
+                'current_job': None,
+                'memory_used_gb': 0.0,
+                'memory_total_gb': 0.0,
+                'temperature': 0.0,
+                'utilization': 0.0,
+                'last_update': time.time()
+            }
+            self.gpu_locks[gpu_id] = threading.Lock()
+            self.gpu_loads[gpu_id] = 0
+            self.gpu_memory_usage[gpu_id] = 0.0
+        
+        print(f"🚀 Multi-GPU Manager initialized with {self.num_gpus} GPUs")
+        self._update_gpu_info()
+    
+    def _update_gpu_info(self):
+        """Update GPU information and status"""
+        try:
+            for gpu_id in range(self.num_gpus):
+                if torch.cuda.is_available():
+                    torch.cuda.set_device(gpu_id)
+                    
+                    # Get memory info
+                    memory_allocated = torch.cuda.memory_allocated(gpu_id)
+                    memory_reserved = torch.cuda.memory_reserved(gpu_id)
+                    memory_total = torch.cuda.get_device_properties(gpu_id).total_memory
+                    
+                    self.gpu_states[gpu_id]['memory_used_gb'] = memory_allocated / 1e9
+                    self.gpu_states[gpu_id]['memory_total_gb'] = memory_total / 1e9
+                    
+                    # Get GPU utilization (if available)
+                    try:
+                        # Use nvidia-smi for detailed GPU info
+                        result = subprocess.run(
+                            ['nvidia-smi', '--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total', 
+                             '--format=csv,noheader,nounits', '-i', str(gpu_id)],
+                            capture_output=True, text=True
+                        )
+                        if result.returncode == 0:
+                            lines = result.stdout.strip().split('\n')
+                            if lines and len(lines) > 0:
+                                parts = lines[0].split(', ')
+                                if len(parts) >= 4:
+                                    self.gpu_states[gpu_id]['utilization'] = float(parts[0])
+                                    self.gpu_states[gpu_id]['temperature'] = float(parts[1])
+                    except:
+                        pass
+                    
+                    self.gpu_states[gpu_id]['last_update'] = time.time()
+                    
+        except Exception as e:
+            print(f"⚠️ Error updating GPU info: {e}")
+    
+    def get_available_gpu(self, strategy: str = None) -> Optional[int]:
+        """Get available GPU based on strategy"""
+        if strategy is None:
+            strategy = MULTI_GPU_CONFIG['load_balancing']
+        
+        self._update_gpu_info()
+        
+        if strategy == 'round_robin':
+            # Simple round-robin assignment
+            for gpu_id in range(self.num_gpus):
+                if self.gpu_states[gpu_id]['status'] == 'idle':
+                    return gpu_id
+            return None
+            
+        elif strategy == 'least_loaded':
+            # Find GPU with least memory usage
+            best_gpu = None
+            best_memory = float('inf')
+            
+            for gpu_id in range(self.num_gpus):
+                if self.gpu_states[gpu_id]['status'] == 'idle':
+                    memory_used = self.gpu_states[gpu_id]['memory_used_gb']
+                    if memory_used < best_memory:
+                        best_memory = memory_used
+                        best_gpu = gpu_id
+            
+            return best_gpu
+            
+        elif strategy == 'random':
+            # Random assignment from available GPUs
+            available_gpus = [gpu_id for gpu_id in range(self.num_gpus) 
+                            if self.gpu_states[gpu_id]['status'] == 'idle']
+            return random.choice(available_gpus) if available_gpus else None
+        
+        return None
+    
+    def reserve_gpu(self, gpu_id: int, job_id: str) -> bool:
+        """Reserve a GPU for a specific job"""
+        if gpu_id not in self.gpu_states:
+            return False
+        
+        with self.gpu_locks[gpu_id]:
+            if self.gpu_states[gpu_id]['status'] == 'idle':
+                self.gpu_states[gpu_id]['status'] = 'busy'
+                self.gpu_states[gpu_id]['current_job'] = job_id
+                self.gpu_loads[gpu_id] += 1
+                return True
+            return False
+    
+    def release_gpu(self, gpu_id: int):
+        """Release a GPU after job completion"""
+        if gpu_id in self.gpu_states:
+            with self.gpu_locks[gpu_id]:
+                self.gpu_states[gpu_id]['status'] = 'idle'
+                self.gpu_states[gpu_id]['current_job'] = None
+                self.gpu_loads[gpu_id] = max(0, self.gpu_loads[gpu_id] - 1)
+    
+    def get_gpu_status(self) -> Dict[str, Any]:
+        """Get comprehensive GPU status"""
+        self._update_gpu_info()
+        return {
+            'num_gpus': self.num_gpus,
+            'gpu_states': self.gpu_states,
+            'gpu_loads': self.gpu_loads,
+            'total_jobs': sum(self.gpu_loads.values()),
+            'available_gpus': sum(1 for state in self.gpu_states.values() if state['status'] == 'idle'),
+            'busy_gpus': sum(1 for state in self.gpu_states.values() if state['status'] == 'busy'),
+            'error_gpus': sum(1 for state in self.gpu_states.values() if state['status'] == 'error')
+        }
+    
+    def get_parallel_generation_capacity(self) -> int:
+        """Get how many parallel generations can be handled"""
+        available = sum(1 for state in self.gpu_states.values() if state['status'] == 'idle')
+        return min(available, MULTI_GPU_CONFIG['parallel_generation_limit'])
+
+# Global multi-GPU manager
+gpu_manager = MultiGPUManager()
+
 seed = 42
 torch.manual_seed(seed)
 # torch.use_deterministic_algorithms(True)
@@ -62,11 +230,6 @@ random.seed(seed)
 
 torch.backends.cudnn.deterministic = True    # For reproducibility with cuDNN
 torch.backends.cudnn.benchmark = False       # Disable for reproducibility
-
-# Set environment variables
-os.environ['SPCONV_ALGO'] = 'native'
-# os.environ['ATTN_BACKEND'] = 'xformers'
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 # Add TRELLIS to Python path
 import sys
@@ -144,6 +307,10 @@ GENERATION_CONFIG = {
     'hunyuan_pag_scale': 1.3,
     'hunyuan_width': 1024,
     'hunyuan_height': 1024,
+    # Multi-GPU settings
+    'multi_gpu_enabled': True,
+    'gpu_id': 0,  # Default GPU ID
+    'parallel_generation': False,
 }
 
 # LoRA definitions
@@ -422,7 +589,32 @@ generation_job_status = {
 }
 
 class TrellisGenerator:
-    def __init__(self):
+    def __init__(self, gpu_id: int = 0):
+        # GPU assignment
+        self.gpu_id = gpu_id
+        self.device = f"cuda:{gpu_id}" if torch.cuda.is_available() else "cpu"
+        
+        # Set CUDA device for this instance
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.set_device(gpu_id)
+                torch.cuda.empty_cache()
+                
+                # Pre-allocate some GPU memory to avoid fragmentation
+                try:
+                    dummy_tensor = torch.zeros(1, device=f"cuda:{gpu_id}")
+                    del dummy_tensor
+                    torch.cuda.empty_cache()
+                except Exception as e:
+                    print(f"⚠️ GPU memory pre-allocation failed on GPU {gpu_id}: {e}")
+                
+                print(f"🔧 TRELLIS Generator initialized on GPU {gpu_id}")
+            except Exception as e:
+                print(f"❌ Failed to initialize GPU {gpu_id}: {e}")
+                raise e
+        else:
+            print(f"🔧 TRELLIS Generator initialized on CPU")
+        
         # Initialize model instance variables
         self.flux_pipeline = None
         self.flux_transformer = None
@@ -445,14 +637,13 @@ class TrellisGenerator:
             token = HfFolder.get_token()
             if token:
                 os.environ["HUGGINGFACE_TOKEN"] = token
-                print("✓ HuggingFace token loaded from cache")
+                print(f"✓ HuggingFace token loaded from cache (GPU {gpu_id})")
             else:
-                print("⚠️ No HuggingFace token found in cache")
+                print(f"⚠️ No HuggingFace token found in cache (GPU {gpu_id})")
         except Exception as e:
-            print(f"⚠️ Error getting token from cache: {e}")
+            print(f"⚠️ Error getting token from cache (GPU {gpu_id}): {e}")
         
         Path(GENERATION_CONFIG['output_dir']).mkdir(exist_ok=True)
-        print("🔧 TRELLIS Generator initialized")
         self.ready = True
 
     def _clear_gpu_memory(self):
@@ -460,38 +651,50 @@ class TrellisGenerator:
         gc.collect()
         
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
-            torch.cuda.synchronize()
-            
             try:
-                torch.cuda.ipc_collect()
-            except:
-                pass
-            
-            if hasattr(torch.cuda, 'reset_accumulated_memory_stats'):
-                torch.cuda.reset_accumulated_memory_stats()
-        
-        gc.collect()
-        
-        if torch.cuda.is_available():
-            gpu_memory_free, gpu_memory_total = torch.cuda.mem_get_info()
-            memory_used = gpu_memory_total - gpu_memory_free
-            print(f"🧠 GPU Memory: {memory_used / 1e9:.1f}GB used, {gpu_memory_free / 1e9:.1f}GB free")
-            return gpu_memory_free / 1e9
+                # Set device to this GPU's device
+                torch.cuda.set_device(self.gpu_id)
+                
+                torch.cuda.empty_cache()
+                torch.cuda.reset_peak_memory_stats()
+                torch.cuda.synchronize()
+                
+                try:
+                    torch.cuda.ipc_collect()
+                except:
+                    pass
+                
+                if hasattr(torch.cuda, 'reset_accumulated_memory_stats'):
+                    torch.cuda.reset_accumulated_memory_stats()
+                
+                # Get memory info for this specific GPU
+                gpu_memory_free, gpu_memory_total = torch.cuda.mem_get_info(self.gpu_id)
+                memory_used = gpu_memory_total - gpu_memory_free
+                print(f"🧠 GPU {self.gpu_id} Memory: {memory_used / 1e9:.1f}GB used, {gpu_memory_free / 1e9:.1f}GB free")
+                return gpu_memory_free / 1e9
+                
+            except Exception as e:
+                print(f"⚠️ Error clearing GPU {self.gpu_id} memory: {e}")
+                return 0
         
         return 0
 
     def _load_flux_models(self):
         """Load FLUX models"""
         if self.flux_pipeline is not None:
-            print("✓ FLUX models already loaded")
+            print(f"✓ FLUX models already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading FLUX models...")
+        print(f"🔧 Loading FLUX models on GPU {self.gpu_id}...")
         
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+                print(f"   Set CUDA device to GPU {self.gpu_id}")
+            
+            device = f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
             dtype = torch.bfloat16
             
@@ -500,33 +703,34 @@ class TrellisGenerator:
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
             
             # Load text encoder with 8-bit quantization
-            print("Loading FLUX text encoder with 8-bit quantization...")
+            print(f"   Loading FLUX text encoder with 8-bit quantization on GPU {self.gpu_id}...")
             quantization_config_tf = BitsAndBytesConfigTF(
-                load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.bfloat16
+                load_in_8bit=True
             )
+            
+            # Load text encoder directly to GPU (8-bit models handle device placement automatically)
             self.flux_text_encoder_2 = T5EncoderModel.from_pretrained(
                 single_file_base_model,
-                # "manbeast3b/flux.1-schnell-full1",
-                # revision = "cb1b599b0d712b9aab2c4df3ad27b050a27ec146",  
                 subfolder="text_encoder_2", 
                 torch_dtype=dtype, 
                 quantization_config=quantization_config_tf, 
-                token=huggingface_token
+                token=huggingface_token,
+                device_map=f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             )
             
             # Load transformer with GGUF configuration
-            print("Loading FLUX transformer with GGUF quantization...")
+            print(f"   Loading FLUX transformer with GGUF quantization on GPU {self.gpu_id}...")
             self.flux_transformer = FluxTransformer2DModel.from_single_file(
                 file_url, 
                 subfolder="transformer", 
                 quantization_config=GGUFQuantizationConfig(compute_dtype=dtype), 
                 torch_dtype=dtype, 
-                config=single_file_base_model
+                config=single_file_base_model,
+                device_map=f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             )
             
             # Initialize pipeline
-            print("Initializing FLUX pipeline...")
+            print(f"   Initializing FLUX pipeline on GPU {self.gpu_id}...")
             self.flux_pipeline = FluxPipeline.from_pretrained(
                 single_file_base_model, 
                 transformer=self.flux_transformer, 
@@ -534,26 +738,48 @@ class TrellisGenerator:
                 torch_dtype=dtype, 
                 token=huggingface_token
             )
-            self.flux_pipeline.to("cuda")
-
-            # from flux_caching import apply_cache_on_pipe
-            # apply_cache_on_pipe(self.flux_pipeline)
-            self.flux_pipeline.to(memory_format=torch.channels_last)
-            self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
-
-            # from torchao.quantization import quantize_, float8_dynamic_activation_float8_weight
-            # quantize_(self.flux_pipeline.vae, float8_dynamic_activation_float8_weight())
             
-            print("✅ FLUX models loaded successfully")
+            # Move to specific GPU after initialization
+            if torch.cuda.is_available():
+                try:
+                    # Set device first
+                    torch.cuda.set_device(self.gpu_id)
+                    
+                    # Move pipeline to GPU
+                    self.flux_pipeline = self.flux_pipeline.to(f"cuda:{self.gpu_id}")
+                    
+                    # Apply optimizations
+                    try:
+                        self.flux_pipeline.to(memory_format=torch.channels_last)
+                        
+                        # Compile VAE for better performance
+                        try:
+                            self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
+                            print(f"   ✓ VAE compiled successfully on GPU {self.gpu_id}")
+                        except Exception as compile_error:
+                            print(f"   ⚠️ VAE compilation failed on GPU {self.gpu_id}: {compile_error}")
+                            print(f"   Continuing without compilation...")
+                    except Exception as opt_error:
+                        print(f"   ⚠️ Pipeline optimization failed on GPU {self.gpu_id}: {opt_error}")
+                        print(f"   Continuing without optimization...")
+                        
+                except Exception as gpu_error:
+                    print(f"   ❌ Failed to move pipeline to GPU {self.gpu_id}: {gpu_error}")
+                    raise gpu_error
+            
+            print(f"✅ FLUX models loaded successfully on GPU {self.gpu_id}")
+            
+            # Small delay to ensure GPU stability
+            time.sleep(1)
             
         except Exception as e:
-            print(f"❌ FLUX model loading failed: {e}")
+            print(f"❌ FLUX model loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self._unload_flux_models()
     
     def _unload_flux_models(self):
         """Unload FLUX models to free GPU memory"""
-        print("🧹 Unloading FLUX models...")
+        print(f"🧹 Unloading FLUX models from GPU {self.gpu_id}...")
         
         models_unloaded = []
         
@@ -574,18 +800,23 @@ class TrellisGenerator:
         
         if models_unloaded:
             self._clear_gpu_memory()
-            print(f"✅ FLUX models unloaded: {', '.join(models_unloaded)}")
+            print(f"✅ FLUX models unloaded from GPU {self.gpu_id}: {', '.join(models_unloaded)}")
 
     def _load_sdxl_pipeline(self):
         """Load SDXL pipeline"""
         if self.sdxl_pipeline is not None:
-            print("✓ SDXL pipeline already loaded")
+            print(f"✓ SDXL pipeline already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading SDXL pipeline...")
+        print(f"🔧 Loading SDXL pipeline on GPU {self.gpu_id}...")
         
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+            
+            device = f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
             
             # Load SDXL with optimizations
@@ -597,41 +828,65 @@ class TrellisGenerator:
                 token=huggingface_token
             )
             
-            # Move to GPU and optimize
-            self.sdxl_pipeline.to(device)
-            self.sdxl_pipeline.enable_attention_slicing()
-            self.sdxl_pipeline.enable_vae_slicing()
+            # Move to specific GPU after initialization
+            if torch.cuda.is_available():
+                try:
+                    # Set device first
+                    torch.cuda.set_device(self.gpu_id)
+                    
+                    # Move pipeline to GPU
+                    self.sdxl_pipeline = self.sdxl_pipeline.to(f"cuda:{self.gpu_id}")
+                    
+                    # Apply optimizations
+                    self.sdxl_pipeline.enable_attention_slicing()
+                    self.sdxl_pipeline.enable_vae_slicing()
+                    
+                    # Enable memory efficient attention if available
+                    if hasattr(self.sdxl_pipeline, 'enable_xformers_memory_efficient_attention'):
+                        self.sdxl_pipeline.enable_xformers_memory_efficient_attention()
+                        
+                except Exception as gpu_error:
+                    print(f"   ❌ Failed to move SDXL pipeline to GPU {self.gpu_id}: {gpu_error}")
+                    raise gpu_error
+            else:
+                # Apply optimizations for CPU
+                self.sdxl_pipeline.enable_attention_slicing()
+                self.sdxl_pipeline.enable_vae_slicing()
             
-            # Enable memory efficient attention if available
-            if hasattr(self.sdxl_pipeline, 'enable_xformers_memory_efficient_attention'):
-                self.sdxl_pipeline.enable_xformers_memory_efficient_attention()
+            print(f"✅ SDXL pipeline loaded successfully on GPU {self.gpu_id}")
             
-            print("✅ SDXL pipeline loaded successfully")
+            # Small delay to ensure GPU stability
+            time.sleep(1)
             
         except Exception as e:
-            print(f"❌ SDXL pipeline loading failed: {e}")
+            print(f"❌ SDXL pipeline loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self._unload_sdxl_pipeline()
 
     def _unload_sdxl_pipeline(self):
         """Unload SDXL pipeline to free GPU memory"""
         if self.sdxl_pipeline is not None:
-            print("🧹 Unloading SDXL pipeline...")
+            print(f"🧹 Unloading SDXL pipeline from GPU {self.gpu_id}...")
             del self.sdxl_pipeline
             self.sdxl_pipeline = None
             self._clear_gpu_memory()
-            print("✅ SDXL pipeline unloaded")
+            print(f"✅ SDXL pipeline unloaded from GPU {self.gpu_id}")
 
     def _load_sd15_pipeline(self):
         """Load SD1.5 pipeline"""
         if self.sd15_pipeline is not None:
-            print("✓ SD1.5 pipeline already loaded")
+            print(f"✓ SD1.5 pipeline already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading SD1.5 pipeline...")
+        print(f"🔧 Loading SD1.5 pipeline on GPU {self.gpu_id}...")
         
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+            
+            device = f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
             
             # Load SD1.5 with optimizations
@@ -642,41 +897,65 @@ class TrellisGenerator:
                 token=huggingface_token
             )
             
-            # Move to GPU and optimize
-            self.sd15_pipeline.to(device)
-            self.sd15_pipeline.enable_attention_slicing()
-            self.sd15_pipeline.enable_vae_slicing()
+            # Move to specific GPU after initialization
+            if torch.cuda.is_available():
+                try:
+                    # Set device first
+                    torch.cuda.set_device(self.gpu_id)
+                    
+                    # Move pipeline to GPU
+                    self.sd15_pipeline = self.sd15_pipeline.to(f"cuda:{self.gpu_id}")
+                    
+                    # Apply optimizations
+                    self.sd15_pipeline.enable_attention_slicing()
+                    self.sd15_pipeline.enable_vae_slicing()
+                    
+                    # Enable memory efficient attention if available
+                    if hasattr(self.sd15_pipeline, 'enable_xformers_memory_efficient_attention'):
+                        self.sd15_pipeline.enable_xformers_memory_efficient_attention()
+                        
+                except Exception as gpu_error:
+                    print(f"   ❌ Failed to move SD15 pipeline to GPU {self.gpu_id}: {gpu_error}")
+                    raise gpu_error
+            else:
+                # Apply optimizations for CPU
+                self.sd15_pipeline.enable_attention_slicing()
+                self.sd15_pipeline.enable_vae_slicing()
             
-            # Enable memory efficient attention if available
-            if hasattr(self.sd15_pipeline, 'enable_xformers_memory_efficient_attention'):
-                self.sd15_pipeline.enable_xformers_memory_efficient_attention()
+            print(f"✅ SD1.5 pipeline loaded successfully on GPU {self.gpu_id}")
             
-            print("✅ SD1.5 pipeline loaded successfully")
+            # Small delay to ensure GPU stability
+            time.sleep(1)
             
         except Exception as e:
-            print(f"❌ SD1.5 pipeline loading failed: {e}")
+            print(f"❌ SD1.5 pipeline loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self._unload_sd15_pipeline()
 
     def _unload_sd15_pipeline(self):
         """Unload SD1.5 pipeline to free GPU memory"""
         if self.sd15_pipeline is not None:
-            print("🧹 Unloading SD1.5 pipeline...")
+            print(f"🧹 Unloading SD1.5 pipeline from GPU {self.gpu_id}...")
             del self.sd15_pipeline
             self.sd15_pipeline = None
             self._clear_gpu_memory()
-            print("✅ SD1.5 pipeline unloaded")
+            print(f"✅ SD1.5 pipeline unloaded from GPU {self.gpu_id}")
 
     def _load_hunyuan_pipeline(self):
         """Load HunyuanDiT pipeline"""
         if self.hunyuan_pipeline is not None:
-            print("✓ HunyuanDiT pipeline already loaded")
+            print(f"✓ HunyuanDiT pipeline already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading HunyuanDiT pipeline...")
+        print(f"🔧 Loading HunyuanDiT pipeline on GPU {self.gpu_id}...")
         
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+            
+            device = f"cuda:{self.gpu_id}" if torch.cuda.is_available() else "cpu"
             
             # Initialize HunyuanDiT pipeline
             self.hunyuan_pipeline = HunyuanDiTPipeline(
@@ -686,42 +965,55 @@ class TrellisGenerator:
             
             # Compile for better performance (only once)
             try:
-                print("   Compiling HunyuanDiT for better performance...")
+                print(f"   Compiling HunyuanDiT for better performance on GPU {self.gpu_id}...")
                 self.hunyuan_pipeline.compile()
-                print("   ✓ HunyuanDiT compiled successfully")
+                print(f"   ✓ HunyuanDiT compiled successfully on GPU {self.gpu_id}")
             except Exception as e:
-                print(f"   ⚠️ HunyuanDiT compilation failed: {e}")
+                print(f"   ⚠️ HunyuanDiT compilation failed on GPU {self.gpu_id}: {e}")
                 print("   Continuing without compilation...")
             
-            print("✅ HunyuanDiT pipeline loaded successfully")
+            print(f"✅ HunyuanDiT pipeline loaded successfully on GPU {self.gpu_id}")
+            
+            # Small delay to ensure GPU stability
+            time.sleep(1)
             
         except Exception as e:
-            print(f"❌ HunyuanDiT pipeline loading failed: {e}")
+            print(f"❌ HunyuanDiT pipeline loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self._unload_hunyuan_pipeline()
     
     def _unload_hunyuan_pipeline(self):
         """Unload HunyuanDiT pipeline to free GPU memory"""
         if self.hunyuan_pipeline is not None:
-            print("🧹 Unloading HunyuanDiT pipeline...")
+            print(f"🧹 Unloading HunyuanDiT pipeline from GPU {self.gpu_id}...")
             del self.hunyuan_pipeline
             self.hunyuan_pipeline = None
             self._clear_gpu_memory()
-            print("✅ HunyuanDiT pipeline unloaded")
+            print(f"✅ HunyuanDiT pipeline unloaded from GPU {self.gpu_id}")
 
     def _load_trellis_pipeline(self):
         """Load TRELLIS pipeline"""
         if self.trellis_pipeline is not None:
-            print("✓ TRELLIS pipeline already loaded")
+            print(f"✓ TRELLIS pipeline already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading TRELLIS pipeline...")
+        print(f"🔧 Loading TRELLIS pipeline on GPU {self.gpu_id}...")
         
         try:
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+            
             self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
                 GENERATION_CONFIG['trellis_model_path']
             )
-            self.trellis_pipeline.cuda()
+            
+            # Move to specific GPU
+            if torch.cuda.is_available():
+                # Set device first, then move pipeline to GPU
+                torch.cuda.set_device(self.gpu_id)
+                self.trellis_pipeline = self.trellis_pipeline.cuda()
             
             # Warm up the pipeline
             try:
@@ -731,47 +1023,61 @@ class TrellisGenerator:
             except:
                 pass
             
-            print("✅ TRELLIS pipeline loaded successfully")
+            print(f"✅ TRELLIS pipeline loaded successfully on GPU {self.gpu_id}")
+            print(f"   Debug: Pipeline object type: {type(self.trellis_pipeline)}")
+            print(f"   Debug: Pipeline object: {self.trellis_pipeline}")
+            
+            # Small delay to ensure GPU stability
+            time.sleep(1)
+            
+            # Final verification that pipeline is set
+            print(f"   Debug: After delay, pipeline is: {self.trellis_pipeline}")
+            print(f"   Debug: Pipeline object ID: {id(self.trellis_pipeline)}")
             
         except Exception as e:
-            print(f"❌ TRELLIS pipeline loading failed: {e}")
+            print(f"❌ TRELLIS pipeline loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self.trellis_pipeline = None
 
     def _unload_trellis_pipeline(self):
         """Unload TRELLIS pipeline to free GPU memory"""
         if self.trellis_pipeline is not None:
-            print("🧹 Unloading TRELLIS pipeline...")
+            print(f"🧹 Unloading TRELLIS pipeline from GPU {self.gpu_id}...")
             del self.trellis_pipeline
             self.trellis_pipeline = None
             self._clear_gpu_memory()
-            print("✅ TRELLIS pipeline unloaded")
+            print(f"✅ TRELLIS pipeline unloaded from GPU {self.gpu_id}")
 
     def _load_background_remover(self):
         """Load background removal model"""
         if self.background_remover is not None:
-            print("✓ Background remover already loaded")
+            print(f"✓ Background remover already loaded on GPU {self.gpu_id}")
             return
             
-        print("🔧 Loading background remover...")
+        print(f"🔧 Loading background remover on GPU {self.gpu_id}...")
         
         try:
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
+                torch.cuda.empty_cache()
+            
             self.background_remover = BackgroundRemover()
-            print("✅ Background remover loaded successfully")
+            print(f"✅ Background remover loaded successfully on GPU {self.gpu_id}")
             
         except Exception as e:
-            print(f"❌ Background remover loading failed: {e}")
+            print(f"❌ Background remover loading failed on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             self.background_remover = None
 
     def _unload_background_remover(self):
         """Unload background remover to free GPU memory"""
         if self.background_remover is not None:
-            print("🧹 Unloading background remover...")
+            print(f"🧹 Unloading background remover from GPU {self.gpu_id}...")
             del self.background_remover
             self.background_remover = None
             self._clear_gpu_memory()
-            print("✅ Background remover unloaded")
+            print(f"✅ Background remover unloaded from GPU {self.gpu_id}")
 
     def _load_lora(self, lora_key: str):
         """Load a specific LoRA onto the current pipeline"""
@@ -779,22 +1085,19 @@ class TrellisGenerator:
         
         # Ensure the correct pipeline is loaded
         if current_model == 'flux' and self.flux_pipeline is None:
-            print("🔧 Loading FLUX pipeline for LoRA...")
+            print(f"🔧 Loading FLUX pipeline for LoRA on GPU {self.gpu_id}...")
             self._load_flux_models()
         elif current_model == 'sdxl' and self.sdxl_pipeline is None:
-            print("🔧 Loading SDXL pipeline for LoRA...")
+            print(f"🔧 Loading SDXL pipeline for LoRA on GPU {self.gpu_id}...")
             self._load_sdxl_pipeline()
         elif current_model == 'sd15' and self.sd15_pipeline is None:
-            print("🔧 Loading SD1.5 pipeline for LoRA...")
+            print(f"🔧 Loading SD1.5 pipeline for LoRA on GPU {self.gpu_id}...")
             self._load_sd15_pipeline()
         
         # Select pipeline and LoRA configs based on current model
         if current_model == 'flux':
             pipeline = self.flux_pipeline
             lora_configs = FLUX_LORAS
-        elif current_model == 'sdxl':
-            pipeline = self.sdxl_pipeline
-            lora_configs = SDXL_LORAS
         elif current_model == 'sd15':
             pipeline = self.sd15_pipeline
             lora_configs = SD15_LORAS
@@ -803,7 +1106,7 @@ class TrellisGenerator:
             return False
         
         if pipeline is None:
-            print(f"❌ {current_model.upper()} pipeline not loaded. Load {current_model.upper()} models first.")
+            print(f"❌ {current_model.upper()} pipeline not loaded on GPU {self.gpu_id}. Load {current_model.upper()} models first.")
             return False
             
         if lora_key not in lora_configs:
@@ -811,7 +1114,7 @@ class TrellisGenerator:
             return False
             
         lora_config = lora_configs[lora_key]
-        print(f"🔧 Loading {current_model.upper()} LoRA: {lora_config['name']}")
+        print(f"🔧 Loading {current_model.upper()} LoRA on GPU {self.gpu_id}: {lora_config['name']}")
         
         try:
             # Unload any existing LoRA first
@@ -839,7 +1142,7 @@ class TrellisGenerator:
                     pipeline.load_lora_weights(lora_path)
                 except Exception as e:
                     if current_model == 'flux' and ("final_layer" in str(e) or "adaLN" in str(e)):
-                        print(f"⚠️ LoRA needs patching, applying adaLN fix...")
+                        print(f"⚠️ LoRA needs patching, applying adaLN fix on GPU {self.gpu_id}...")
                         # Apply patcher fix
                         import safetensors.torch
                         from safetensors import safe_open
@@ -859,7 +1162,7 @@ class TrellisGenerator:
                         
                         # Load patched version
                         pipeline.load_lora_weights(patched_path)
-                        print(f"✅ LoRA patched and loaded successfully")
+                        print(f"✅ LoRA patched and loaded successfully on GPU {self.gpu_id}")
                     else:
                         raise e
             
@@ -867,20 +1170,20 @@ class TrellisGenerator:
             if lora_config.get('fuse', False):
                 try:
                     pipeline.fuse_lora(lora_scale=lora_config.get('scale', 1.0))
-                    print(f"   🔗 LoRA fused with scale {lora_config.get('scale', 1.0)}")
+                    print(f"   🔗 LoRA fused with scale {lora_config.get('scale', 1.0)} on GPU {self.gpu_id}")
                 except Exception as fusion_error:
-                    print(f"   ⚠️ LoRA fusion failed: {fusion_error}")
+                    print(f"   ⚠️ LoRA fusion failed on GPU {self.gpu_id}: {fusion_error}")
                     print(f"   📝 Continuing without fusion...")
             
             # Update current LoRA configuration
             GENERATION_CONFIG['current_lora'] = lora_key
             GENERATION_CONFIG['lora_scale'] = lora_config.get('scale', 1.0)
             
-            print(f"✅ {current_model.upper()} LoRA '{lora_config['name']}' loaded successfully")
+            print(f"✅ {current_model.upper()} LoRA '{lora_config['name']}' loaded successfully on GPU {self.gpu_id}")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to load {current_model.upper()} LoRA '{lora_key}': {e}")
+            print(f"❌ Failed to load {current_model.upper()} LoRA '{lora_key}' on GPU {self.gpu_id}: {e}")
             traceback.print_exc()
             return False
 
@@ -891,8 +1194,6 @@ class TrellisGenerator:
         # Determine which pipeline to use
         if current_model == 'flux':
             pipeline = self.flux_pipeline
-        elif current_model == 'sdxl':
-            pipeline = self.sdxl_pipeline
         elif current_model == 'sd15':
             pipeline = self.sd15_pipeline
         else:
@@ -905,13 +1206,13 @@ class TrellisGenerator:
         try:
             if hasattr(pipeline, 'unload_lora_weights'):
                 pipeline.unload_lora_weights()
-                print(f"✅ {current_model.upper()} LoRA unloaded successfully")
+                print(f"✅ {current_model.upper()} LoRA unloaded successfully from GPU {self.gpu_id}")
             
             GENERATION_CONFIG['current_lora'] = None
             GENERATION_CONFIG['lora_scale'] = 1.0
             
         except Exception as e:
-            print(f"⚠️ Error unloading {current_model.upper()} LoRA: {e}")
+            print(f"⚠️ Error unloading {current_model.upper()} LoRA from GPU {self.gpu_id}: {e}")
 
     def get_available_loras(self) -> Dict[str, Any]:
         """Get list of available LoRAs for current model"""
@@ -919,8 +1220,6 @@ class TrellisGenerator:
         
         if current_model == 'flux':
             lora_configs = FLUX_LORAS
-        elif current_model == 'sdxl':
-            lora_configs = SDXL_LORAS
         elif current_model == 'sd15':
             lora_configs = SD15_LORAS
         else:
@@ -932,7 +1231,7 @@ class TrellisGenerator:
                 'description': config['description'],
                 'trigger_prefix': config['trigger_prefix'],
                 'scale': config.get('scale', 1.0),
-                'loaded': GENERATION_CONFIG['current_lora'] == key
+                'loaded': GENERATION_CONFIG['current_model'] == current_model and GENERATION_CONFIG['current_lora'] == key
             }
             for key, config in lora_configs.items()
         }
@@ -1054,7 +1353,16 @@ class TrellisGenerator:
             
             # Load HunyuanDiT if not loaded
             if self.hunyuan_pipeline is None:
+                print("🔧 HunyuanDiT pipeline not loaded, loading now...")
                 self._load_hunyuan_pipeline()
+            
+            # Verify pipeline is loaded
+            if self.hunyuan_pipeline is None:
+                raise RuntimeError("Failed to load HunyuanDiT pipeline")
+            
+            # Ensure we're on the correct GPU
+            if torch.cuda.is_available():
+                torch.cuda.set_device(self.gpu_id)
             
             # Apply LoRA trigger prefix if specified
             enhanced_prompt = prompt
@@ -1105,7 +1413,12 @@ class TrellisGenerator:
             start_time = time.time()
             
             try:
-                print(f"🎯 Starting TRELLIS generation for: '{prompt}' (seed: {seed})")
+                print(f"🎯 Starting TRELLIS generation for: '{prompt}' (seed: {seed}) on GPU {self.gpu_id}")
+                
+                # Ensure we're on the correct GPU
+                if torch.cuda.is_available():
+                    torch.cuda.set_device(self.gpu_id)
+                    print(f"   Set CUDA device to GPU {self.gpu_id}")
                 
                 # Initialize asset manager for this generation
                 generation_asset = self.asset_manager.create_asset(prompt, seed)
@@ -1122,7 +1435,12 @@ class TrellisGenerator:
                 
                 if current_model == 'flux':
                     if self.flux_pipeline is None:
+                        print("🔧 FLUX pipeline not loaded, loading now...")
                         self._load_flux_models()
+                    
+                    # Verify pipeline is loaded
+                    if self.flux_pipeline is None:
+                        raise RuntimeError("Failed to load FLUX pipeline")
                     
                     if current_lora and current_lora in FLUX_LORAS:
                         lora_config = FLUX_LORAS[current_lora]
@@ -1130,6 +1448,10 @@ class TrellisGenerator:
                         if trigger_prefix:
                             enhanced_prompt = f"{trigger_prefix} {prompt}"
                             print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    # Ensure we're on the correct GPU
+                    if torch.cuda.is_available():
+                        torch.cuda.set_device(self.gpu_id)
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
@@ -1144,7 +1466,12 @@ class TrellisGenerator:
                 
                 elif current_model == 'sdxl':
                     if self.sdxl_pipeline is None:
+                        print("🔧 SDXL pipeline not loaded, loading now...")
                         self._load_sdxl_pipeline()
+                    
+                    # Verify pipeline is loaded
+                    if self.sdxl_pipeline is None:
+                        raise RuntimeError("Failed to load SDXL pipeline")
                     
                     if current_lora and current_lora in SDXL_LORAS:
                         lora_config = SDXL_LORAS[current_lora]
@@ -1152,6 +1479,10 @@ class TrellisGenerator:
                         if trigger_prefix:
                             enhanced_prompt = f"{trigger_prefix} {prompt}"
                             print(f"🎨 Applied SDXL LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    # Ensure we're on the correct GPU
+                    if torch.cuda.is_available():
+                        torch.cuda.set_device(self.gpu_id)
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
@@ -1166,7 +1497,12 @@ class TrellisGenerator:
                 
                 elif current_model == 'sd15':
                     if self.sd15_pipeline is None:
+                        print("🔧 SD15 pipeline not loaded, loading now...")
                         self._load_sd15_pipeline()
+                    
+                    # Verify pipeline is loaded
+                    if self.sd15_pipeline is None:
+                        raise RuntimeError("Failed to load SD15 pipeline")
                     
                     if current_lora and current_lora in SD15_LORAS:
                         lora_config = SD15_LORAS[current_lora]
@@ -1174,6 +1510,10 @@ class TrellisGenerator:
                         if trigger_prefix:
                             enhanced_prompt = f"{trigger_prefix} {prompt}"
                             print(f"🎨 Applied SD1.5 LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    # Ensure we're on the correct GPU
+                    if torch.cuda.is_available():
+                        torch.cuda.set_device(self.gpu_id)
                     
                     generator = torch.Generator(device=device).manual_seed(seed)
                     with torch.no_grad():
@@ -1232,10 +1572,56 @@ class TrellisGenerator:
                 
                 # Step 2: Generate 3D model with TRELLIS
                 print("Step 2: Generating 3D model with TRELLIS...")
+                print(f"   Debug: Before loading, self.trellis_pipeline = {self.trellis_pipeline}")
+                print(f"   Debug: Thread ID: {threading.current_thread().ident}")
+                
+                # Check memory without clearing it
+                if torch.cuda.is_available():
+                    gpu_memory_free, gpu_memory_total = torch.cuda.mem_get_info(self.gpu_id)
+                    memory_used = gpu_memory_total - gpu_memory_free
+                    print(f"   Debug: Memory before loading: {memory_used / 1e9:.1f}GB used, {gpu_memory_free / 1e9:.1f}GB free")
+                
                 if self.trellis_pipeline is None:   
-                    self._load_trellis_pipeline()
+                    print("🔧 TRELLIS pipeline not loaded, loading now...")
+                    with self.generation_lock:  # Ensure thread safety during loading
+                        if self.trellis_pipeline is None:  # Double-check after acquiring lock
+                            self._load_trellis_pipeline()
+                            print(f"   Debug: After loading, self.trellis_pipeline = {self.trellis_pipeline}")
+                
+                # Verify TRELLIS pipeline is loaded with debugging
+                print(f"   Debug: Final check - self.trellis_pipeline = {self.trellis_pipeline}")
+                print(f"   Debug: Pipeline type = {type(self.trellis_pipeline)}")
+                
+                # Check memory after loading without clearing it
+                if torch.cuda.is_available():
+                    gpu_memory_free, gpu_memory_total = torch.cuda.mem_get_info(self.gpu_id)
+                    memory_used = gpu_memory_total - gpu_memory_free
+                    print(f"   Debug: Memory after loading: {memory_used / 1e9:.1f}GB used, {gpu_memory_free / 1e9:.1f}GB free")
+                
+                if self.trellis_pipeline is None:
+                    print(f"   ❌ TRELLIS pipeline is still None after loading attempt")
+                    print(f"   Debug: This suggests the pipeline was loaded but then set to None")
+                    raise RuntimeError("Failed to load TRELLIS pipeline")
+                
+                print(f"   ✅ TRELLIS pipeline verified and ready on GPU {self.gpu_id}")
+                
+                # Ensure we're on the correct GPU
+                if torch.cuda.is_available():
+                    torch.cuda.set_device(self.gpu_id)
+                    print(f"   Set CUDA device to GPU {self.gpu_id}")
                 
                 # Enhanced TRELLIS parameters for maximum quality
+                print(f"   Starting TRELLIS generation with image size: {image.size}")
+                print(f"   Debug: About to call trellis_pipeline.run()")
+                print(f"   Debug: Pipeline object before run: {self.trellis_pipeline}")
+                
+                # Double-check pipeline is still valid
+                if self.trellis_pipeline is None:
+                    print(f"   ❌ TRELLIS pipeline became None before run() call!")
+                    print(f"   Debug: This suggests the pipeline was unloaded between loading and run()")
+                    raise RuntimeError("TRELLIS pipeline was unloaded before generation")
+                
+                print(f"   Debug: Pipeline object ID before run: {id(self.trellis_pipeline)}")
                 outputs = self.trellis_pipeline.run(
                     image,
                     seed=seed,
@@ -1256,6 +1642,13 @@ class TrellisGenerator:
                 )
                 
                 print("✓ 3D model generated successfully")
+                print(f"   Debug: Pipeline object ID after run: {id(self.trellis_pipeline)}")
+                
+                # Check memory after generation without clearing it
+                if torch.cuda.is_available():
+                    gpu_memory_free, gpu_memory_total = torch.cuda.mem_get_info(self.gpu_id)
+                    memory_used = gpu_memory_total - gpu_memory_free
+                    print(f"   Debug: Memory after generation: {memory_used / 1e9:.1f}GB used, {gpu_memory_free / 1e9:.1f}GB free")
                 
                 # Step 3: Extract and enhance Gaussian Splatting PLY
                 print("Step 3: Extracting and enhancing Gaussian Splatting PLY...")
@@ -1495,8 +1888,44 @@ class TrellisGenerator:
 # Initialize FastAPI app
 app = FastAPI(title="FLUX + TRELLIS Generation Server", version="1.0.0")
 
-# Initialize global generator
-generator = TrellisGenerator()
+# Multi-GPU generator instances
+gpu_generators = {}
+generation_jobs = {}
+gpu_initialization_lock = threading.Lock()  # Prevent simultaneous GPU initialization
+
+def get_or_create_generator(gpu_id: int) -> TrellisGenerator:
+    """Get or create a generator instance for a specific GPU"""
+    if gpu_id not in gpu_generators:
+        with gpu_initialization_lock:  # Ensure only one GPU initializes at a time
+            if gpu_id not in gpu_generators:  # Double-check after acquiring lock
+                try:
+                    print(f"🔧 Creating new generator instance for GPU {gpu_id}")
+                    gpu_generators[gpu_id] = TrellisGenerator(gpu_id)
+                    
+                    # Wait a moment for GPU to stabilize
+                    time.sleep(2)
+                    
+                except Exception as e:
+                    print(f"❌ Failed to create generator for GPU {gpu_id}: {e}")
+                    # Remove failed generator
+                    if gpu_id in gpu_generators:
+                        del gpu_generators[gpu_id]
+                    raise e
+    
+    return gpu_generators[gpu_id]
+
+def cleanup_gpu_generators():
+    """Clean up GPU generators to free memory"""
+    for gpu_id, generator in gpu_generators.items():
+        try:
+            generator._clear_gpu_memory()
+            del generator
+        except:
+            pass
+    gpu_generators.clear()
+
+# Initialize default generator on GPU 0
+default_generator = get_or_create_generator(0)
 
 @app.get("/job/status/")
 async def get_job_status():
@@ -1532,64 +1961,374 @@ async def reset_job_status():
 async def generate_3d_model_endpoint(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    gpu_id: Optional[int] = Form(0)
 ):
-    """Generate 3D model from text prompt using FLUX + TRELLIS pipeline."""
+    """Generate 3D model from text prompt using FLUX + TRELLIS pipeline on specified GPU."""
     
-    # Handle seed
-    if seed is None:
-        #seed = random.randint(0, MAX_SEED)
-        seed = 42
+    # Validate GPU ID
+    if gpu_id < 0 or gpu_id >= gpu_manager.num_gpus:
+        raise HTTPException(status_code=400, detail=f"Invalid GPU ID. Must be 0-{gpu_manager.num_gpus-1}")
     
-    # Generate model
-    result = generator.generate_3d_model(prompt, seed)
+    # Check if GPU is available
+    if not gpu_manager.reserve_gpu(gpu_id, f"gen_{int(time.time())}_{seed or 42}"):
+        raise HTTPException(status_code=503, detail=f"GPU {gpu_id} is currently busy")
     
-    if result is None:
-        raise HTTPException(status_code=500, detail="Generation failed")
+    try:
+        # Handle seed
+        if seed is None:
+            seed = 42
+        
+        # Get or create generator for this GPU
+        generator = get_or_create_generator(gpu_id)
+        
+        # Generate model
+        result = generator.generate_3d_model(prompt, seed)
+        
+        if result is None:
+            raise HTTPException(status_code=500, detail="Generation failed")
+        
+        ply_data, compressed_data = result
+        
+        # Apply SPZ compression if requested
+        if return_compressed:
+            try:
+                if compressed_data is None:
+                    import pyspz
+                    compressed_data = pyspz.compress(ply_data, workers=-1)
+                    print(f"🗜️ SPZ Compression for response (GPU {gpu_id}):")
+                    print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                    print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                    print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                
+                return Response(
+                    content=compressed_data,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=trellis_model_gpu{gpu_id}_{seed}.ply.spz",
+                        "X-Generation-Seed": str(seed),
+                        "X-Generation-Prompt": prompt,
+                        "X-Model-Format": "gaussian_splatting_ply",
+                        "X-Pipeline": "flux_trellis",
+                        "X-GPU-ID": str(gpu_id),
+                        "X-Compression": "spz",
+                        "X-Compression-Ratio": f"{len(compressed_data)/len(ply_data)*100:.1f}%"
+                    }
+                )
+            except Exception as e:
+                print(f"⚠️ SPZ compression failed (GPU {gpu_id}): {e}")
+                # Fall back to uncompressed
+        
+        # Return uncompressed PLY data
+        return Response(
+            content=ply_data,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename=trellis_model_gpu{gpu_id}_{seed}.ply",
+                "X-Generation-Seed": str(seed),
+                "X-Generation-Prompt": prompt,
+                "X-Model-Format": "gaussian_splatting_ply",
+                "X-Pipeline": "flux_trellis",
+                "X-GPU-ID": str(gpu_id),
+                "X-Compression": "none"
+            }
+        )
     
-    ply_data, compressed_data = result
+    finally:
+        # Always release the GPU
+        gpu_manager.release_gpu(gpu_id)
+
+@app.post("/generate_parallel/")
+async def generate_parallel_3d_models(
+    prompt: str = Form(...),
+    seeds: str = Form(...),  # Comma-separated seeds
+    return_compressed: Optional[bool] = Form(True),
+    max_parallel: Optional[int] = Form(8)
+):
+    """Generate multiple 3D models in parallel across available GPUs."""
     
-    # Apply SPZ compression if requested
-    if return_compressed:
-        try:
-            if compressed_data is None:
-                import pyspz
-                compressed_data = pyspz.compress(ply_data, workers=-1)
-                print(f"🗜️ SPZ Compression for response:")
-                print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
-                print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
-                print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
-            
-            return Response(
-                content=compressed_data,
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply.spz",
-                    "X-Generation-Seed": str(seed),
-                    "X-Generation-Prompt": prompt,
-                    "X-Model-Format": "gaussian_splatting_ply",
-                    "X-Pipeline": "flux_trellis",
-                    "X-Compression": "spz",
-                    "X-Compression-Ratio": f"{len(compressed_data)/len(ply_data)*100:.1f}%"
-                }
+    try:
+        # Parse seeds
+        seed_list = [int(s.strip()) for s in seeds.split(',')]
+        num_models = len(seed_list)
+        
+        # Limit parallel generations
+        max_parallel = min(max_parallel, gpu_manager.get_parallel_generation_capacity())
+        if num_models > max_parallel:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Too many models requested ({num_models}). Max parallel: {max_parallel}"
             )
-        except Exception as e:
-            print(f"⚠️ SPZ compression failed: {e}")
-            # Fall back to uncompressed
-    
-    # Return uncompressed PLY data
-    return Response(
-        content=ply_data,
-        media_type="application/octet-stream",
-        headers={
-            "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
-            "X-Generation-Seed": str(seed),
-            "X-Generation-Prompt": prompt,
-            "X-Model-Format": "gaussian_splatting_ply",
-            "X-Pipeline": "flux_trellis",
-            "X-Compression": "none"
+        
+        print(f"🚀 Starting parallel generation of {num_models} models on {max_parallel} GPUs")
+        
+        # Create generation jobs
+        jobs = []
+        for i, seed in enumerate(seed_list):
+            job = {
+                'id': f"parallel_gen_{int(time.time())}_{i}_{seed}",
+                'prompt': prompt,
+                'seed': seed,
+                'status': 'pending',
+                'start_time': None,
+                'end_time': None,
+                'result': None,
+                'error': None,
+                'gpu_id': None
+            }
+            jobs.append(job)
+            generation_jobs[job['id']] = job
+        
+        # Execute jobs in parallel using ThreadPoolExecutor
+        results = []
+        
+        def execute_generation(job):
+            try:
+                # Find available GPU
+                gpu_id = gpu_manager.get_available_gpu()
+                if gpu_id is None:
+                    job['status'] = 'failed'
+                    job['error'] = 'No GPU available'
+                    return job
+                
+                # Reserve GPU
+                if not gpu_manager.reserve_gpu(gpu_id, job['id']):
+                    job['status'] = 'failed'
+                    job['error'] = f'Failed to reserve GPU {gpu_id}'
+                    return job
+                
+                job['gpu_id'] = gpu_id
+                job['status'] = 'running'
+                job['start_time'] = time.time()
+                
+                print(f"🎯 Starting generation {job['id']} on GPU {gpu_id}")
+                
+                # Get generator for this GPU with retry logic
+                max_retries = 3
+                generator = None
+                
+                for attempt in range(max_retries):
+                    try:
+                        generator = get_or_create_generator(gpu_id)
+                        break
+                    except Exception as e:
+                        print(f"⚠️ Attempt {attempt + 1} failed to create generator for GPU {gpu_id}: {e}")
+                        if attempt < max_retries - 1:
+                            time.sleep(2)  # Wait before retry
+                            # Try to reset GPU
+                            try:
+                                gpu_manager.release_gpu(gpu_id)
+                                gpu_manager.gpu_states[gpu_id]['status'] = 'idle'
+                                time.sleep(1)
+                            except:
+                                pass
+                        else:
+                            raise e
+                
+                if generator is None:
+                    job['status'] = 'failed'
+                    job['error'] = f'Failed to create generator for GPU {gpu_id} after {max_retries} attempts'
+                    return job
+                
+                # Generate model
+                result = generator.generate_3d_model(job['prompt'], job['seed'])
+                
+                if result is None:
+                    job['status'] = 'failed'
+                    job['error'] = 'Generation failed'
+                else:
+                    job['status'] = 'completed'
+                    job['result'] = result
+                
+                job['end_time'] = time.time()
+                
+            except Exception as e:
+                job['status'] = 'failed'
+                job['error'] = str(e)
+                job['end_time'] = time.time()
+                print(f"❌ Generation {job['id']} failed: {e}")
+            finally:
+                # Release GPU
+                if job['gpu_id'] is not None:
+                    gpu_manager.release_gpu(job['gpu_id'])
+            
+            return job
+        
+        # Execute jobs in parallel
+        with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            future_to_job = {executor.submit(execute_generation, job): job for job in jobs}
+            
+            for future in as_completed(future_to_job):
+                job = future.result()
+                results.append(job)
+                
+                if job['status'] == 'completed':
+                    print(f"✅ Generation {job['id']} completed on GPU {job['gpu_id']}")
+                else:
+                    print(f"❌ Generation {job['id']} failed: {job['error']}")
+        
+        # Prepare response
+        successful_generations = [j for j in results if j['status'] == 'completed']
+        failed_generations = [j for j in results if j['status'] == 'failed']
+        
+        # Calculate total time safely
+        total_time = 0.0
+        if results:
+            valid_times = [j['end_time'] - j['start_time'] for j in results if j['start_time'] and j['end_time']]
+            if valid_times:
+                total_time = max(valid_times)
+        
+        response_data = {
+            "status": "completed",
+            "total_models": num_models,
+            "successful": len(successful_generations),
+            "failed": len(failed_generations),
+            "success_rate": len(successful_generations) / num_models * 100,
+            "total_time": total_time,
+            "jobs": results
         }
-    )
+        
+        # Add compressed data if requested
+        if return_compressed and successful_generations:
+            compressed_models = []
+            for job in successful_generations:
+                ply_data, compressed_data = job['result']
+                if compressed_data:
+                    compressed_models.append({
+                        'seed': job['seed'],
+                        'gpu_id': job['gpu_id'],
+                        'compressed_data': base64.b64encode(compressed_data).decode('utf-8'),
+                        'size_bytes': len(compressed_data)
+                    })
+            
+            response_data['compressed_models'] = compressed_models
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Parallel generation failed: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Parallel generation failed: {str(e)}")
+
+@app.get("/parallel_jobs/")
+async def get_parallel_jobs():
+    """Get status of parallel generation jobs"""
+    return {
+        "active_jobs": len([j for j in generation_jobs.values() if j['status'] in ['pending', 'running']]),
+        "completed_jobs": len([j for j in generation_jobs.values() if j['status'] == 'completed']),
+        "failed_jobs": len([j for j in generation_jobs.values() if j['status'] == 'failed']),
+        "jobs": generation_jobs
+    }
+
+@app.get("/gpu_status/")
+async def get_gpu_status():
+    """Get comprehensive GPU status and utilization"""
+    return gpu_manager.get_gpu_status()
+
+@app.post("/gpu_reset/{gpu_id}")
+async def reset_gpu(gpu_id: int):
+    """Reset a specific GPU (useful for recovery)"""
+    if gpu_id < 0 or gpu_id >= gpu_manager.num_gpus:
+        raise HTTPException(status_code=400, detail=f"Invalid GPU ID. Must be 0-{gpu_manager.num_gpus-1}")
+    
+    try:
+        # Release GPU if busy
+        gpu_manager.release_gpu(gpu_id)
+        
+        # Clear GPU memory
+        if gpu_id in gpu_generators:
+            gpu_generators[gpu_id]._clear_gpu_memory()
+        
+        # Reset GPU state
+        gpu_manager.gpu_states[gpu_id]['status'] = 'idle'
+        gpu_manager.gpu_states[gpu_id]['current_job'] = None
+        gpu_manager.gpu_loads[gpu_id] = 0
+        
+        return {
+            "status": "success",
+            "message": f"GPU {gpu_id} reset successfully",
+            "gpu_id": gpu_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset GPU {gpu_id}: {str(e)}")
+
+@app.post("/gpu_cleanup/")
+async def cleanup_all_gpus():
+    """Clean up all GPUs and free memory"""
+    try:
+        cleanup_gpu_generators()
+        return {
+            "status": "success",
+            "message": "All GPUs cleaned up successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cleanup GPUs: {str(e)}")
+
+@app.get("/gpu_health/")
+async def get_gpu_health():
+    """Get detailed GPU health information"""
+    try:
+        health_info = {}
+        
+        for gpu_id in range(gpu_manager.num_gpus):
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.set_device(gpu_id)
+                    
+                    # Get memory info
+                    memory_allocated = torch.cuda.memory_allocated(gpu_id)
+                    memory_reserved = torch.cuda.memory_reserved(gpu_id)
+                    memory_total = torch.cuda.get_device_properties(gpu_id).total_memory
+                    
+                    # Get GPU properties
+                    props = torch.cuda.get_device_properties(gpu_id)
+                    
+                    health_info[gpu_id] = {
+                        "status": gpu_manager.gpu_states[gpu_id]['status'],
+                        "memory_allocated_gb": memory_allocated / 1e9,
+                        "memory_reserved_gb": memory_reserved / 1e9,
+                        "memory_total_gb": memory_total / 1e9,
+                        "memory_free_gb": (memory_total - memory_allocated) / 1e9,
+                        "gpu_name": props.name,
+                        "compute_capability": f"{props.major}.{props.minor}",
+                        "multiprocessor_count": props.multi_processor_count,
+                        "current_job": gpu_manager.gpu_states[gpu_id]['current_job']
+                    }
+                    
+                    # Try to get nvidia-smi info
+                    try:
+                        result = subprocess.run(
+                            ['nvidia-smi', '--query-gpu=utilization.gpu,temperature.gpu,power.draw', 
+                             '--format=csv,noheader,nounits', '-i', str(gpu_id)],
+                            capture_output=True, text=True
+                        )
+                        if result.returncode == 0:
+                            lines = result.stdout.strip().split('\n')
+                            if lines and len(lines) > 0:
+                                parts = lines[0].split(', ')
+                                if len(parts) >= 3:
+                                    health_info[gpu_id].update({
+                                        "utilization_percent": float(parts[0]),
+                                        "temperature_celsius": float(parts[1]),
+                                        "power_draw_watts": float(parts[2])
+                                    })
+                    except:
+                        pass
+                        
+            except Exception as e:
+                health_info[gpu_id] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        return {
+            "status": "success",
+            "gpu_health": health_info,
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get GPU health: {str(e)}")
 
 @app.post("/validate/")
 async def validate_generation(
@@ -1623,7 +2362,21 @@ async def validate_generation(
 @app.get("/status/")
 async def get_server_status():
     """Get server status and metrics"""
-    return generator.get_status()
+    # Get status from default generator (GPU 0)
+    status = default_generator.get_status()
+    
+    # Add multi-GPU information
+    status.update({
+        "multi_gpu": {
+            "enabled": True,
+            "num_gpus": gpu_manager.num_gpus,
+            "gpu_status": gpu_manager.get_gpu_status(),
+            "parallel_capacity": gpu_manager.get_parallel_generation_capacity(),
+            "active_generators": len(gpu_generators)
+        }
+    })
+    
+    return status
 
 @app.get("/health/")
 async def health_check():
@@ -1897,60 +2650,79 @@ async def unload_lora():
 async def generate_with_isometric_3d_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    gpu_id: Optional[int] = Form(0)
 ):
-    """Generate 3D model using Isometric 3D LoRA"""
+    """Generate 3D model using Isometric 3D LoRA on specified GPU"""
     try:
-        # Load the LoRA
-        success = generator._load_lora('isometric_3d')
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to load Isometric 3D LoRA")
+        # Validate GPU ID
+        if gpu_id < 0 or gpu_id >= gpu_manager.num_gpus:
+            raise HTTPException(status_code=400, detail=f"Invalid GPU ID. Must be 0-{gpu_manager.num_gpus-1}")
         
-        # Apply LoRA trigger prefix
-        lora_config = FLUX_LORAS['isometric_3d']
-        trigger_prefix = lora_config.get('trigger_prefix', '')
-        enhanced_prompt = prompt
-        if trigger_prefix:
-            enhanced_prompt = f"{trigger_prefix} {prompt}"
-            print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
+        # Check if GPU is available
+        if not gpu_manager.reserve_gpu(gpu_id, f"isometric_3d_{int(time.time())}_{seed or 42}"):
+            raise HTTPException(status_code=503, detail=f"GPU {gpu_id} is currently busy")
         
-        # Generate with the LoRA
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
-        if result is None:
-            raise HTTPException(status_code=500, detail="Generation failed")
-        
-        ply_data, compressed_data = result
-        
-        # Return compressed data if requested
-        if return_compressed and compressed_data:
+        try:
+            # Get or create generator for this GPU
+            generator = get_or_create_generator(gpu_id)
+            
+            # Load the LoRA
+            success = generator._load_lora('isometric_3d')
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to load Isometric 3D LoRA")
+            
+            # Apply LoRA trigger prefix
+            lora_config = FLUX_LORAS['isometric_3d']
+            trigger_prefix = lora_config.get('trigger_prefix', '')
+            enhanced_prompt = prompt
+            if trigger_prefix:
+                enhanced_prompt = f"{trigger_prefix} {prompt}"
+                print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}' (GPU {gpu_id})")
+            
+            # Generate with the LoRA
+            result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+            if result is None:
+                raise HTTPException(status_code=500, detail="Generation failed")
+            
+            ply_data, compressed_data = result
+            
+            # Return compressed data if requested
+            if return_compressed and compressed_data:
+                return Response(
+                    content=compressed_data,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=isometric_3d_gpu{gpu_id}_{seed or 42}.ply.spz",
+                        "X-Generation-Seed": str(seed or 42),
+                        "X-Generation-Prompt": prompt,
+                        "X-Model-Format": "gaussian_splatting_ply",
+                        "X-Pipeline": "flux_trellis",
+                        "X-LoRA": "isometric_3d",
+                        "X-GPU-ID": str(gpu_id),
+                        "X-Compression": "spz"
+                    }
+                )
+            
+            # Return uncompressed PLY data
             return Response(
-                content=compressed_data,
+                content=ply_data,
                 media_type="application/octet-stream",
                 headers={
-                    "Content-Disposition": f"attachment; filename=isometric_3d_{seed or 42}.ply.spz",
+                    "Content-Disposition": f"attachment; filename=isometric_3d_gpu{gpu_id}_{seed or 42}.ply",
                     "X-Generation-Seed": str(seed or 42),
                     "X-Generation-Prompt": prompt,
                     "X-Model-Format": "gaussian_splatting_ply",
                     "X-Pipeline": "flux_trellis",
                     "X-LoRA": "isometric_3d",
-                    "X-Compression": "spz"
+                    "X-GPU-ID": str(gpu_id),
+                    "X-Compression": "none"
                 }
             )
-        
-        # Return uncompressed PLY data
-        return Response(
-            content=ply_data,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename=isometric_3d_{seed or 42}.ply",
-                "X-Generation-Seed": str(seed or 42),
-                "X-Generation-Prompt": prompt,
-                "X-Model-Format": "gaussian_splatting_ply",
-                "X-Pipeline": "flux_trellis",
-                "X-LoRA": "isometric_3d",
-                "X-Compression": "none"
-            }
-        )
+        finally:
+            # Always release the GPU
+            gpu_manager.release_gpu(gpu_id)
+            
     except Exception as e:
         return JSONResponse(content={
             "status": "error",
@@ -2444,64 +3216,284 @@ async def generate_with_sd15_game_icon_lora(
 async def generate_with_necklace_lora(
     prompt: str = Form(...), 
     seed: Optional[int] = Form(None),
-    return_compressed: Optional[bool] = Form(True)
+    return_compressed: Optional[bool] = Form(True),
+    gpu_id: Optional[int] = Form(0)
 ):
-    """Generate 3D model using FLUX with Necklace LoRA"""
+    """Generate 3D model using FLUX with Necklace LoRA on specified GPU"""
     try:
-        # Switch to FLUX model first
-        GENERATION_CONFIG['current_model'] = 'flux'
+        # Validate GPU ID
+        if gpu_id < 0 or gpu_id >= gpu_manager.num_gpus:
+            raise HTTPException(status_code=400, detail=f"Invalid GPU ID. Must be 0-{gpu_manager.num_gpus-1}")
         
-        success = generator._load_lora('necklace')
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to load Necklace LoRA")
+        # Check if GPU is available
+        if not gpu_manager.reserve_gpu(gpu_id, f"necklace_{int(time.time())}_{seed or 42}"):
+            raise HTTPException(status_code=503, detail=f"GPU {gpu_id} is currently busy")
         
-        # Apply LoRA trigger prefix
-        lora_config = FLUX_LORAS['necklace']
-        trigger_prefix = lora_config.get('trigger_prefix', '')
-        enhanced_prompt = prompt
-        if trigger_prefix:
-            enhanced_prompt = f"{trigger_prefix} {prompt}"
-            print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
-        
-        result = generator.generate_3d_model(enhanced_prompt, seed or 42)
-        if result is None:
-            raise HTTPException(status_code=500, detail="Generation failed")
-        
-        ply_data, compressed_data = result
-        
-        if return_compressed and compressed_data:
+        try:
+            # Switch to FLUX model first
+            GENERATION_CONFIG['current_model'] = 'flux'
+            
+            # Get or create generator for this GPU
+            generator = get_or_create_generator(gpu_id)
+            
+            success = generator._load_lora('necklace')
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to load Necklace LoRA")
+            
+            # Apply LoRA trigger prefix
+            lora_config = FLUX_LORAS['necklace']
+            trigger_prefix = lora_config.get('trigger_prefix', '')
+            enhanced_prompt = prompt
+            if trigger_prefix:
+                enhanced_prompt = f"{trigger_prefix} {prompt}"
+                print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}' (GPU {gpu_id})")
+            
+            result = generator.generate_3d_model(enhanced_prompt, seed or 42)
+            if result is None:
+                raise HTTPException(status_code=500, detail="Generation failed")
+            
+            ply_data, compressed_data = result
+            
+            if return_compressed and compressed_data:
+                return Response(
+                    content=compressed_data,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename=necklace_gpu{gpu_id}_{seed or 42}.ply.spz",
+                        "X-Generation-Seed": str(seed or 42),
+                        "X-Generation-Prompt": prompt,
+                        "X-Model-Format": "gaussian_splatting_ply",
+                        "X-Pipeline": "flux_trellis",
+                        "X-LoRA": "necklace",
+                        "X-GPU-ID": str(gpu_id),
+                        "X-Compression": "spz"
+                    }
+                )
+            
             return Response(
-                content=compressed_data,
+                content=ply_data,
                 media_type="application/octet-stream",
                 headers={
-                    "Content-Disposition": f"attachment; filename=necklace_{seed or 42}.ply.spz",
+                    "Content-Disposition": f"attachment; filename=necklace_gpu{gpu_id}_{seed or 42}.ply",
                     "X-Generation-Seed": str(seed or 42),
                     "X-Generation-Prompt": prompt,
                     "X-Model-Format": "gaussian_splatting_ply",
                     "X-Pipeline": "flux_trellis",
                     "X-LoRA": "necklace",
-                    "X-Compression": "spz"
+                    "X-GPU-ID": str(gpu_id),
+                    "X-Compression": "none"
                 }
             )
-        
-        return Response(
-            content=ply_data,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename=necklace_{seed or 42}.ply",
-                "X-Generation-Seed": str(seed or 42),
-                "X-Generation-Prompt": prompt,
-                "X-Model-Format": "gaussian_splatting_ply",
-                "X-Pipeline": "flux_trellis",
-                "X-LoRA": "necklace",
-                "X-Compression": "none"
-            }
-        )
+        finally:
+            # Always release the GPU
+            gpu_manager.release_gpu(gpu_id)
+            
     except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
+
+@app.post("/generate_parallel_lora/{lora_style}/")
+async def generate_parallel_with_lora(
+    lora_style: str,
+    prompt: str = Form(...),
+    seeds: str = Form(...),  # Comma-separated seeds
+    return_compressed: Optional[bool] = Form(True),
+    max_parallel: Optional[int] = Form(8)
+):
+    """Generate multiple 3D models in parallel using a specific LoRA style across available GPUs."""
+    
+    try:
+        # Validate LoRA style
+        if lora_style not in FLUX_LORAS and lora_style not in SD15_LORAS:
+            raise HTTPException(status_code=400, detail=f"Invalid LoRA style: {lora_style}")
+        
+        # Parse seeds
+        seed_list = [int(s.strip()) for s in seeds.split(',')]
+        num_models = len(seed_list)
+        
+        # Limit parallel generations
+        max_parallel = min(max_parallel, gpu_manager.get_parallel_generation_capacity())
+        if num_models > max_parallel:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Too many models requested ({num_models}). Max parallel: {max_parallel}"
+            )
+        
+        print(f"🚀 Starting parallel generation of {num_models} models with {lora_style} LoRA on {max_parallel} GPUs")
+        
+        # Create generation jobs
+        jobs = []
+        for i, seed in enumerate(seed_list):
+            job = {
+                'id': f"parallel_lora_{lora_style}_{int(time.time())}_{i}_{seed}",
+                'prompt': prompt,
+                'seed': seed,
+                'lora_style': lora_style,
+                'status': 'pending',
+                'start_time': None,
+                'end_time': None,
+                'result': None,
+                'error': None,
+                'gpu_id': None
+            }
+            jobs.append(job)
+            generation_jobs[job['id']] = job
+        
+        # Execute jobs in parallel using ThreadPoolExecutor
+        results = []
+        
+        def execute_lora_generation(job):
+            try:
+                # Find available GPU
+                gpu_id = gpu_manager.get_available_gpu()
+                if gpu_id is None:
+                    job['status'] = 'failed'
+                    job['error'] = 'No GPU available'
+                    return job
+                
+                # Reserve GPU
+                if not gpu_manager.reserve_gpu(gpu_id, job['id']):
+                    job['status'] = 'failed'
+                    job['error'] = f'Failed to reserve GPU {gpu_id}'
+                    return job
+                
+                job['gpu_id'] = gpu_id
+                job['status'] = 'running'
+                job['start_time'] = time.time()
+                
+                print(f"🎯 Starting {job['lora_style']} LoRA generation {job['id']} on GPU {gpu_id}")
+                
+                # Get generator for this GPU with retry logic
+                max_retries = 3
+                generator = None
+                
+                for attempt in range(max_retries):
+                    try:
+                        generator = get_or_create_generator(gpu_id)
+                        break
+                    except Exception as e:
+                        print(f"⚠️ Attempt {attempt + 1} failed to create generator for GPU {gpu_id}: {e}")
+                        if attempt < max_retries - 1:
+                            time.sleep(2)  # Wait before retry
+                            # Try to reset GPU
+                            try:
+                                gpu_manager.release_gpu(gpu_id)
+                                gpu_manager.gpu_states[gpu_id]['status'] = 'idle'
+                                time.sleep(1)
+                            except:
+                                pass
+                        else:
+                            raise e
+                
+                if generator is None:
+                    job['status'] = 'failed'
+                    job['error'] = f'Failed to create generator for GPU {gpu_id} after {max_retries} attempts'
+                    return job
+                
+                # Load LoRA
+                success = generator._load_lora(job['lora_style'])
+                if not success:
+                    job['status'] = 'failed'
+                    job['error'] = f'Failed to load {job["lora_style"]} LoRA'
+                    return job
+                
+                # Apply LoRA trigger prefix
+                enhanced_prompt = job['prompt']
+                if job['lora_style'] in FLUX_LORAS:
+                    lora_config = FLUX_LORAS[job['lora_style']]
+                    trigger_prefix = lora_config.get('trigger_prefix', '')
+                    if trigger_prefix:
+                        enhanced_prompt = f"{trigger_prefix} {job['prompt']}"
+                        print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}' (GPU {gpu_id})")
+                elif job['lora_style'] in SD15_LORAS:
+                    lora_config = SD15_LORAS[job['lora_style']]
+                    trigger_prefix = lora_config.get('trigger_prefix', '')
+                    if trigger_prefix:
+                        enhanced_prompt = f"{trigger_prefix} {job['prompt']}"
+                        print(f"🎨 Applied SD15 LoRA trigger prefix: '{trigger_prefix}' (GPU {gpu_id})")
+                
+                # Generate model
+                result = generator.generate_3d_model(enhanced_prompt, job['seed'])
+                
+                if result is None:
+                    job['status'] = 'failed'
+                    job['error'] = 'Generation failed'
+                else:
+                    job['status'] = 'completed'
+                    job['result'] = result
+                
+                job['end_time'] = time.time()
+                
+            except Exception as e:
+                job['status'] = 'failed'
+                job['error'] = str(e)
+                job['end_time'] = time.time()
+            finally:
+                # Release GPU
+                if job['gpu_id'] is not None:
+                    gpu_manager.release_gpu(job['gpu_id'])
+            
+            return job
+        
+        # Execute jobs in parallel
+        with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            future_to_job = {executor.submit(execute_lora_generation, job): job for job in jobs}
+            
+            for future in as_completed(future_to_job):
+                job = future.result()
+                results.append(job)
+                
+                if job['status'] == 'completed':
+                    print(f"✅ {job['lora_style']} LoRA generation {job['id']} completed on GPU {job['gpu_id']}")
+                else:
+                    print(f"❌ {job['lora_style']} LoRA generation {job['id']} failed: {job['error']}")
+        
+        # Prepare response
+        successful_generations = [j for j in results if j['status'] == 'completed']
+        failed_generations = [j for j in results if j['status'] == 'failed']
+        
+        # Calculate total time safely
+        total_time = 0.0
+        if results:
+            valid_times = [j['end_time'] - j['start_time'] for j in results if j['start_time'] and j['end_time']]
+            if valid_times:
+                total_time = max(valid_times)
+        
+        response_data = {
+            "status": "completed",
+            "lora_style": lora_style,
+            "total_models": num_models,
+            "successful": len(successful_generations),
+            "failed": len(failed_generations),
+            "success_rate": len(successful_generations) / num_models * 100,
+            "total_time": total_time,
+            "jobs": results
+        }
+        
+        # Add compressed data if requested
+        if return_compressed and successful_generations:
+            compressed_models = []
+            for job in successful_generations:
+                ply_data, compressed_data = job['result']
+                if compressed_data:
+                    compressed_models.append({
+                        'seed': job['seed'],
+                        'gpu_id': job['gpu_id'],
+                        'lora_style': job['lora_style'],
+                        'compressed_data': base64.b64encode(compressed_data).decode('utf-8'),
+                        'size_bytes': len(compressed_data)
+                    })
+            
+            response_data['compressed_models'] = compressed_models
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Parallel LoRA generation failed: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Parallel LoRA generation failed: {str(e)}")
 
 # Image generation endpoints for all LoRAs
 @app.post("/generate_image/isometric_3d/")
@@ -3589,23 +4581,51 @@ async def clip_feedback_loop_endpoint(
         raise HTTPException(status_code=500, detail=f"CLIP feedback loop failed: {str(e)}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server")
+    parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server with 8-GPU Parallel Processing")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8096, help="Port to bind to")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
+    parser.add_argument("--gpus", type=int, default=8, help="Number of GPUs to use")
     
     args = parser.parse_args()
     
-    print(f"Starting FLUX + TRELLIS Generation Server on {args.host}:{args.port}")
+    # Update GPU configuration
+    MULTI_GPU_CONFIG['num_gpus'] = min(args.gpus, torch.cuda.device_count())
+    
+    print(f"🚀 Starting FLUX + TRELLIS Generation Server with {MULTI_GPU_CONFIG['num_gpus']}-GPU Parallel Processing")
+    print(f"📍 Server: {args.host}:{args.port}")
     print("=" * 80)
     print("Pipeline: Text → FLUX → Image → TRELLIS → Gaussian Splatting PLY")
-    print("Features:")
+    print("Multi-GPU Features:")
+    print(f"  • {MULTI_GPU_CONFIG['num_gpus']} GPUs for parallel processing")
+    print("  • Intelligent GPU load balancing and scheduling")
+    print("  • Parallel generation of up to 8 models simultaneously")
+    print("  • GPU-specific model instances for optimal memory management")
+    print("  • Real-time GPU status monitoring and management")
+    print("Core Features:")
     print("  • FLUX text-to-image generation with quantization")
     print("  • TRELLIS image-to-3D Gaussian Splatting generation")
     print("  • SPZ compression for efficient storage/transmission")
+    print("  • Multiple LoRA styles (Isometric 3D, Live 3D, Game Assets, etc.)")
     print("  • Optional validation integration")
-    print("  • Memory-optimized for RTX 4090 (24GB)")
+    print("  • Memory-optimized per GPU (20GB limit)")
     print("=" * 80)
+    print("API Endpoints:")
+    print("  • POST /generate/ - Single generation on specific GPU")
+    print("  • POST /generate_parallel/ - Parallel generation across GPUs")
+    print("  • POST /generate_parallel_lora/{style}/ - Parallel LoRA generation")
+    print("  • GET /gpu_status/ - Real-time GPU status")
+    print("  • GET /parallel_jobs/ - Parallel job status")
+    print("  • POST /gpu_reset/{id} - Reset specific GPU")
+    print("  • POST /gpu_cleanup/ - Clean up all GPUs")
+    print("=" * 80)
+    
+    # Initialize GPU manager
+    print(f"🔧 Initializing Multi-GPU Manager...")
+    gpu_manager._update_gpu_info()
+    
+    print(f"✅ Multi-GPU system ready with {gpu_manager.num_gpus} GPUs")
+    print(f"📊 Parallel generation capacity: {gpu_manager.get_parallel_generation_capacity()} models")
     
     uvicorn.run(
         app, 

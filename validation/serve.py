@@ -13,7 +13,7 @@ import pybase64
 import pyspz
 import torch
 import uvicorn
-from engine.data_structures import (
+from validation.engine.data_structures import (
     GaussianSplattingData,
     RenderRequest,
     TimeStat,
@@ -21,10 +21,10 @@ from engine.data_structures import (
     ValidationResponse,
     ValidationResult,
 )
-from engine.io.ply import PlyLoader
-from engine.rendering.renderer import Renderer
-from engine.utils.gs_data_checker_utils import is_input_data_valid
-from engine.validation_engine import ValidationEngine
+from validation.engine.io.ply import PlyLoader
+from validation.engine.rendering.renderer import Renderer
+from validation.engine.utils.gs_data_checker_utils import is_input_data_valid
+from validation.engine.validation_engine import ValidationEngine
 from fastapi import FastAPI, HTTPException
 from loguru import logger
 from PIL import Image
@@ -76,9 +76,9 @@ app.router.lifespan_context = lifespan
 
 
 def _decode_assets(request: ValidationRequest | RenderRequest) -> bytes:
-    t1 = time()
+    t1 = time.time()
     assets = pybase64.b64decode(request.data, validate=True)
-    t2 = time()
+    t2 = time.time()
     logger.info(
         f"Assets decoded. Size: {len(request.data)} -> {len(assets)}. "
         f"Time taken: {t2 - t1:.2f} sec. Prompt: {request.prompt}."
@@ -89,7 +89,7 @@ def _decode_assets(request: ValidationRequest | RenderRequest) -> bytes:
         assets = pyspz.decompress(assets, include_normals=False)
         logger.info(
             f"Decompressed. Size: {compressed_size} -> {len(assets)}. "
-            f"Time taken: {time() - t2:.2f} sec. Prompt: {request.prompt}."
+            f"Time taken: {time.time() - t2:.2f} sec. Prompt: {request.prompt}."
         )
 
     return assets
@@ -130,7 +130,7 @@ def prepare_input_data(
         img_height=render_img_height,
         theta_angles=render_theta_angles,
     )
-    t3 = time()
+    t3 = time.time()
     time_stat.image_rendering_time = t3 - t2
     logger.info(f"Image Rendering took: {time_stat.image_rendering_time} sec.")
     return gs_data_gpu, images, time_stat
@@ -158,11 +158,11 @@ def _validate_text_vs_image(
 ) -> ValidationResult:
     """Function for validation of the data that was generated using provided prompt"""
 
-    t1 = time()
+    t1 = time.time()
     val_res: ValidationResult = validator.validate_text_to_gs(prompt, images)
+    validation_time = time.time() - t1
     logger.info(f" Score: {val_res.final_score}. Prompt: {prompt}")
-    val_res.validation_time = time() - t1
-    logger.info(f"Validation took: {val_res.validation_time} sec.")
+    logger.info(f"Validation took: {validation_time} sec.")
     return val_res
 
 
@@ -173,7 +173,7 @@ def _validate_image_vs_image(
 ) -> ValidationResult:
     """Function for validation of the data that was generated using prompt-image"""
 
-    t1 = time()
+    t1 = time.time()
     val_res: ValidationResult = validator.validate_image_to_gs(prompt_image, images)
     logger.info(f" Score: {val_res.final_score}. Prompt: provided image.")
     logger.info(f" Validation took: {time.time() - t1} sec.")
@@ -241,7 +241,7 @@ def decode_and_validate_txt(
     renderer: Renderer,
     validator: ValidationEngine,
 ) -> tuple[ValidationResponse, TimeStat]:
-    t1 = time()
+    t1 = time.time()
     assets = _decode_assets(request)
     gs_data, gs_rendered_images, time_stat = prepare_input_data(
         assets,
@@ -254,9 +254,9 @@ def decode_and_validate_txt(
     )
 
     if gs_data is not None and request.prompt is not None:
-        t2 = time()
+        t2 = time.time()
         validation_result = _validate_text_vs_image(request.prompt, gs_rendered_images, validator)
-        time_stat.validation_time = time() - t2
+        time_stat.validation_time = time.time() - t2
 
         response = _finalize_results(
             validation_result,
@@ -301,17 +301,17 @@ def decode_and_validate_img(
     renderer: Renderer,
     validator: ValidationEngine,
 ) -> tuple[ValidationResponse, TimeStat]:
-    t1 = time()
+    t1 = time.time()
     assets = _decode_assets(request)
     gs_data, gs_rendered_images, time_stat = prepare_input_data(assets, renderer, ply_data_loader, validator)
 
     if gs_data is not None and request.prompt_image:
-        t2 = time()
+        t2 = time.time()
         image_data = pybase64.b64decode(request.prompt_image)
         prompt_image = Image.open(io.BytesIO(image_data))
         torch_prompt_image = torch.tensor(np.asarray(prompt_image))
         validation_results = _validate_image_vs_image(torch_prompt_image, gs_rendered_images, validator)
-        time_stat.validation_time = t2 - time()
+        time_stat.validation_time = time.time() - t2
 
         response = _finalize_results(
             validation_results,
@@ -618,7 +618,7 @@ async def reload_models() -> dict:
         if 'alignment_scorer' in backup and backup['alignment_scorer']:
             logger.info("Reloading alignment scorer...")
             # This is more complex - need to restore the alignment scorer object
-            from engine.metrics.alignment_scorer import AlignmentScorer
+            from validation.engine.metrics.alignment_scorer import AlignmentScorer
             validator.alignment_scorer = AlignmentScorer(device=device)
             
             if 'model' in backup['alignment_scorer'] and backup['alignment_scorer']['model']:

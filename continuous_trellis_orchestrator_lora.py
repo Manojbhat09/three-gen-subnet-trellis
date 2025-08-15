@@ -1231,68 +1231,68 @@ class ContinuousTrellisOrchestrator:
             
             if self.config.get('enable_prompt_optimization', True):
                 # Check if reproducibility system is available and enabled
-            if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
-                self.reproducibility_system and 
-                self.config.get('enable_reproducibility_optimization', True)):
-                
-                min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
-                repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
-                    task.prompt, min_similarity, run_validation=False
-                )
-                
-                if repro_result:
-                    optimized_prompt = repro_result['optimized_prompt']
-                    similarity = repro_result['similarity']
-                    gold_score = repro_result['gold_score']
+                if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
+                    self.reproducibility_system and 
+                    self.config.get('enable_reproducibility_optimization', True)):
                     
-                    if self.config.get('log_optimization_details', True):
-                        self.logger.info(f"🔄 Reproducibility optimization applied:")
-                        self.logger.info(f"   Original: {task.prompt}")
-                        self.logger.info(f"   Optimized: {optimized_prompt}")
-                        self.logger.info(f"   Similarity: {similarity:.3f}")
-                        self.logger.info(f"   Gold score: {gold_score:.4f}")
-                    else:
+                    min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
+                    repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
+                        task.prompt, min_similarity, run_validation=False
+                    )
+                    
+                    if repro_result:
+                        optimized_prompt = repro_result['optimized_prompt']
+                        similarity = repro_result['similarity']
+                        gold_score = repro_result['gold_score']
+                        
+                        if self.config.get('log_optimization_details', True):
+                            self.logger.info(f"🔄 Reproducibility optimization applied:")
+                            self.logger.info(f"   Original: {task.prompt}")
+                            self.logger.info(f"   Optimized: {optimized_prompt}")
+                            self.logger.info(f"   Similarity: {similarity:.3f}")
+                            self.logger.info(f"   Gold score: {gold_score:.4f}")
+                        else:
                             self.logger.info(f"🔄 Reproducibility optimized (sim: {similarity:.2f}, gold: {gold_score:.3f})")
+                        
+                        self.stats['prompts_optimized'] += 1
+                        self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
+                        
+                    # Step 3: Fall back to traditional optimization if reproducibility didn't work
+                    elif OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
+                        # Use the new fast optimizer
+                        result = self.prompt_optimizer.optimize_with_examples(task.prompt)
+                        optimized_prompt = result
+                        confidence = 0.8
+                        
+                        if self.config.get('log_optimization_details', True):
+                            self.logger.info(f"🚀 Traditional optimization applied:")
+                            self.logger.info(f"   Original: {task.prompt}")
+                            self.logger.info(f"   Optimized: {optimized_prompt}")
+                            self.logger.info(f"   Confidence: {confidence:.1%}")
+                        
+                        self.stats['prompts_optimized'] += 1
+                        self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
+                
+                else:
+                    # Fallback to original optimizer
+                    optimization_result = self.prompt_optimizer.optimize_prompt(
+                        task.prompt, 
+                        aggressive=self.config.get('optimization_aggressive_mode', False)
+                    )
+                    analysis = optimization_result['analysis']
+                    
+                    # Log the analysis if enabled
+                    if self.config.get('log_optimization_details', True):
+                        self.logger.info(f"🔍 Prompt Analysis for '{task.prompt[:50]}...':")
+                        self.logger.info(f"   Risk Level: {analysis['risk_level']}")
+                        
+                        if analysis['risk_factors']:
+                            self.logger.info(f"   Risk Factors:")
+                            for factor in analysis['risk_factors']:
+                                self.logger.info(f"     • {factor}")
                     
                     self.stats['prompts_optimized'] += 1
-                    self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
-                    
-                # Step 3: Fall back to traditional optimization if reproducibility didn't work
-                elif OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
-                # Use the new fast optimizer
-                result = self.prompt_optimizer.optimize_with_examples(task.prompt)
-                    optimized_prompt = result
-                    confidence = 0.8
-                
-                if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"🚀 Traditional optimization applied:")
-                    self.logger.info(f"   Original: {task.prompt}")
-                    self.logger.info(f"   Optimized: {optimized_prompt}")
-                    self.logger.info(f"   Confidence: {confidence:.1%}")
-                
-                self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
-            
-            else:
-                # Fallback to original optimizer
-                optimization_result = self.prompt_optimizer.optimize_prompt(
-                    task.prompt, 
-                    aggressive=self.config.get('optimization_aggressive_mode', False)
-                )
-                analysis = optimization_result['analysis']
-                
-                # Log the analysis if enabled
-                if self.config.get('log_optimization_details', True):
-                    self.logger.info(f"🔍 Prompt Analysis for '{task.prompt[:50]}...':")
-                    self.logger.info(f"   Risk Level: {analysis['risk_level']}")
-                    
-                    if analysis['risk_factors']:
-                        self.logger.info(f"   Risk Factors:")
-                        for factor in analysis['risk_factors']:
-                            self.logger.info(f"     • {factor}")
-                
-                self.stats['prompts_optimized'] += 1
-                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
+                    self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
             
             # Return comprehensive optimization result
             return {

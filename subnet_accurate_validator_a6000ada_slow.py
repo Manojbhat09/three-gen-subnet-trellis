@@ -11,6 +11,12 @@ import os
 # Fix CUDA deterministic behavior before any CUDA operations
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
+# Critical: Disable mixed precision for A6000 vs RTX 6000 Ada consistency
+import torch
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+torch.use_deterministic_algorithms(True, warn_only=True)
+
 import contextlib
 import base64
 import time
@@ -87,8 +93,9 @@ def load_validator_clip(device):
 
 def encode_text(model, tokenizer, device, text: str):
     tokens = tokenizer(text).to(device)
-    with torch.no_grad(), torch.amp.autocast(device.type):
-        feats = model.encode_text(tokens)
+    with torch.no_grad():
+        # Use FP32 for A6000 vs RTX 6000 Ada consistency
+        feats = model.encode_text(tokens).float()
         feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats
 
@@ -99,8 +106,9 @@ def encode_image(model, normalize, device, img: Image.Image, res: int = 224):
     t = t.unsqueeze(0).to(device)
     t = F.interpolate(t, size=(res, res), mode="bicubic", align_corners=False)
     t = normalize(t)
-    with torch.no_grad(), torch.amp.autocast(device.type):
-        feats = model.encode_image(t)
+    with torch.no_grad():
+        # Use FP32 for A6000 vs RTX 6000 Ada consistency
+        feats = model.encode_image(t).float()
         feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats
 
@@ -222,26 +230,14 @@ def validate_with_production_logic(ply_data: bytes, prompt: str) -> dict:
         print(f"   Computing CLIP scores against: '{prompt}'")
         
         # Run the exact production validation function
-        try:
-            print(f"   Calling decode_and_validate_txt with:")
-            print(f"   - request: {type(request_data)} ")
-            print(f"   - ply_data_loader: {type(ply_data_loader)}")
-            print(f"   - renderer: {type(renderer)}")
-            print(f"   - validator: {type(validator)}")
-            
-            validation_result: ValidationResultData = decode_and_validate_txt(
-                request=request_data,
-                ply_data_loader=ply_data_loader,
-                renderer=renderer,
-                zstd_decompressor=zstd_decompressor,
-                validator=validator,
-                include_time_stat=True
-            )
-        except Exception as inner_e:
-            print(f"   Inner error details: {inner_e}")
-            import traceback
-            traceback.print_exc()
-            raise inner_e
+        validation_result: ValidationResultData = decode_and_validate_txt(
+            request=request_data,
+            ply_data_loader=ply_data_loader,
+            renderer=renderer,
+            zstd_decompressor=zstd_decompressor,
+            validator=validator,
+            include_time_stat=True
+        )
         
         print(f"✅ Production validation completed")
         
@@ -423,7 +419,7 @@ def main():
         print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
         print(f"   (Using optimized prompt for generation, original prompt for validation)")
     else:
-        print(f"🔧 Using same prompt for generation and validation")
+        print(f"�� Using same prompt for generation and validation")
     print(f"🔧 Using endpoint: {endpoint}")
     print(f"🔧 Using: decode_and_validate_txt (production function)")
     print(f"🎯 CLIP Model: convnext_large_d (production-accurate)")

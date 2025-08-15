@@ -36,7 +36,7 @@ class ValidationResult(BaseModel):
     lpips_score: float  # perceptive similarity score
 
 
-# Compatibility classes for existing scripts
+# Compatibility classes for existing scripts - CRITICAL for subnet_accurate_validator.py
 class RequestData(BaseModel):
     """Compatibility class for existing validation scripts"""
     prompt: str | None = Field(default=None, max_length=1024, description="Prompt used to generate assets")

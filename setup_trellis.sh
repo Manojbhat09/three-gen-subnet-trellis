@@ -106,6 +106,10 @@ echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 # Activate the conda environment automatically on shell start
 echo "conda activate trellis_new" >> ~/.bashrc
 
+echo "Installing validation requirements"
+cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
+pip install -r requirements_validation.txt
+
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
 apt-get install tmux --yes
@@ -113,6 +117,9 @@ tmux new-session -d -s trellis_session
 tmux new-session -d -s trellis_session2
 tmux new-session -d -s trellis_session3
 tmux send-keys -t trellis_session2 'curl -fsSL https://ollama.com/install.sh | sh && ollama --version && ollama serve' C-m
+
+sleep 3m
+
 tmux send-keys -t trellis_session3 'ollama pull llama3.2:3b && ollama run llama3.2:3b' C-m
 
 # Pane 0: Run the server
@@ -120,17 +127,19 @@ echo "Starting server in tmux pane 0..."
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server.py" C-m
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore.py" C-m
 # tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_submit_server_highscore_A6000_flash.py" C-m
-tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_subnit_server_mix_lora_flash.py" C-m
-
+# tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/trellis_subnit_server_mix_lora_flash.py" C-m
+tmux send-keys -t trellis_session.0 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && python $WORKSPACE_DIR/three-gen-subnet-trellis/gpu_server_wrapper.py" C-m
+sleep 5m
 # Pane 1: Run the mining script
 echo "Starting mining script in tmux pane 1..."
 tmux split-window -v -t trellis_session
 tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && curl -d "prompt=pink bicycle" -X POST http://127.0.0.1:8096/generate/" C-m
-sleep 5m
+sleep 2m
 # tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_miner_optim.sh --continuous --harvest --submit" C-m
 tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activate && conda activate trellis_new && chmod +x $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh && bash $WORKSPACE_DIR/three-gen-subnet-trellis/run_trellis_mining.sh --continuous --harvest --submit" C-m
 
 echo "Attaching to tmux session..."
 tmux attach-session -t trellis_session
+
 
 echo "=== Setup Complete ==="
