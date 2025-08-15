@@ -106,6 +106,10 @@ echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 # Activate the conda environment automatically on shell start
 echo "conda activate trellis_new" >> ~/.bashrc
 
+echo "Installing validation requirements"
+cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
+pip install -r requirements_validation.txt
+
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
 apt-get install tmux --yes
