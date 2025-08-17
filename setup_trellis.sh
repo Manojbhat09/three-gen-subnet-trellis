@@ -113,6 +113,7 @@ echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 
 # Activate the conda environment automatically on shell start
 echo "conda activate trellis_new" >> ~/.bashrc
+echo "source /home/mbhat/miniconda/bin/activate && conda activate trellis_new" >> ~/.bashrc
 
 echo "source /home/mbhat/miniconda/bin/activate && conda activate trellis_new" >> ~/.bashrc
 
