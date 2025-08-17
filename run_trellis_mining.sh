@@ -205,7 +205,9 @@ main() {
         [ "$submit" = false ] && script_args+=(--no-submit)
         [ "$validate" = false ] && script_args+=(--no-validate)
         
-        python3 continuous_trellis_orchestrator.py "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator.py "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_lora_mod.py --max-concurrent-tasks 2 --max-concurrent-pulls 2 --no-lora-routing --blacklist "${script_args[@]}"
+        python3 continuous_trellis_orchestrator_lora.py  "${script_args[@]}"
         
     elif [ "$mode" == "simulation" ]; then
         print_status "Starting SIMULATION orchestrator..."

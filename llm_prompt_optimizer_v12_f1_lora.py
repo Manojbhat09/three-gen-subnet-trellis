@@ -450,6 +450,7 @@ Your strategy must adapt based on the 3D model's known strengths:
 
 ### Final Instruction
 Your entire response must be **only** the final, optimized prompt.
+-   **End with:** `, 3D front view, white background`
 -   **No explanations.**
 
 Process the following `ORIGINAL PROMPT` according to these instructions.

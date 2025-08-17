@@ -2,6 +2,7 @@
 """
 Subnet 17 (404-GEN) - FLUX + TRELLIS Generation Server
 Purpose: HTTP server for high-quality 3D model generation using Flux and TRELLIS
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
 Produces validation-compatible Gaussian Splatting PLY files with SPZ compression
 
 Text Prompt → FLUX Image → TRELLIS 3D → Gaussian Splatting PLY + SPZ Compression
@@ -64,19 +65,14 @@ random.seed(seed)
 
 torch.backends.cudnn.deterministic = True    # For reproducibility with cuDNN
 torch.backends.cudnn.benchmark = False       # Disable for reproducibility
-# torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
 # os.environ['ATTN_BACKEND'] = 'xformers'
 # export ATTN_BACKEND=xformers
 # export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-torch.backends.cuda.matmul.allow_tf32 = False  # CRITICAL: Disable TF32
-torch.backends.cudnn.allow_tf32 = False        # CRITICAL: Disable TF32
-torch.use_deterministic_algorithms(True, warn_only=True)
-torch.backends.cuda.enable_flash_sdp(True)
+
 # Add TRELLIS to Python path
 import sys
 TRELLIS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TRELLIS-TextoImagen3D")
@@ -158,8 +154,8 @@ GENERATION_CONFIG = {
     'hunyuan_pag_scale': 1.3,
     'hunyuan_width': 1024,
     'hunyuan_height': 1024,
-    # TRELLIS precision (disabled for cross-GPU consistency)
-    'trellis_use_fp16': False,
+    # TRELLIS precision (use half-precision to reduce memory and speed up)
+    'trellis_use_fp16': True,
     # TRELLIS torch.compile acceleration
     'trellis_compile': False,
     'trellis_compile_mode': 'reduce-overhead',  # options: 'reduce-overhead', 'max-autotune' (if supported)
@@ -167,7 +163,7 @@ GENERATION_CONFIG = {
     'trellis_compile_dynamic': False,
     'trellis_compile_flow_models': False,
     # FLUX schnell mode (4-step fast inference)
-    'flux_use_schnell': False,
+    'flux_use_schnell': True,
     'flux_schnell_steps': 4,
     'flux_schnell_guidance': 0.0,
 }
@@ -338,6 +334,19 @@ HUNYUAN_LORAS = {
     }
 }
 
+from PIL import Image
+from rembg import remove, new_session
+
+class BackgroundRemover():
+    def __init__(self, session=None, putalpha=True):
+        self.session = new_session(session)
+        self.putalpha = putalpha
+
+    def __call__(self, image: Image.Image):
+        output = remove(image, session=self.session, bgcolor=[255, 255, 255, 0], putalpha=self.putalpha)
+        return output
+
+
 @dataclass
 class GenerationMetrics:
     total_generations: int = 0
@@ -448,27 +457,16 @@ generation_job_status = {
 }
 
 class TrellisGenerator:
-        def __init__(self, gpu_id: int = 0):
-        # Multi-GPU configuration
-        self.gpu_id = gpu_id
-        self.device = f'cuda:{gpu_id % torch.cuda.device_count()}'
-        
-                # Thread safety for multi-GPU
-        self._model_lock = threading.RLock()
-        
+    def __init__(self):
         # Initialize model instance variables
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         self.flux_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
         self.flux_transformer = None
         self.flux_text_encoder_2 = None
         self.sdxl_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
         self.sd15_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
         self.hunyuan_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
         self.trellis_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
         self.background_remover = None
         self.load_rembg = True
         self.metrics = GenerationMetrics()
@@ -492,23 +490,6 @@ class TrellisGenerator:
         Path(GENERATION_CONFIG['output_dir']).mkdir(exist_ok=True)
         print("🔧 TRELLIS Generator initialized")
         self.ready = True
-
-    
-    def _validate_tensor_device(self, tensor, operation_name="operation"):
-        """Ensure tensor is on the correct device"""
-        if tensor.device != self.device:
-            print(f"⚠️  {operation_name}: Moving tensor from {tensor.device} to {self.device}")
-            return tensor.to(self.device)
-        return tensor
-    
-    def _validate_model_device(self, model, model_name="model"):
-        """Ensure model is on the correct device"""
-        if hasattr(model, 'device'):
-            model_device = next(model.parameters()).device
-            if model_device != self.device:
-                print(f"⚠️  {model_name}: Moving from {model_device} to {self.device}")
-                return model.to(self.device)
-        return model
 
     def _clear_gpu_memory(self):
         """Clear GPU memory cache aggressively"""
@@ -538,7 +519,6 @@ class TrellisGenerator:
         return 0
 
     def _load_flux_models(self):
-        with self._model_lock:
         """Load FLUX models"""
         if self.flux_pipeline is not None:
             print("✓ FLUX models already loaded")
@@ -547,17 +527,23 @@ class TrellisGenerator:
         print("🔧 Loading FLUX models...")
         
         try:
-            device = self.device if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
-            dtype = torch.float32  # Force FP32 for cross-GPU consistency
+            dtype = torch.bfloat16
             
             file_url = GENERATION_CONFIG['flux_model_url']
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             # If schnell mode is enabled, prefer the schnell checkpoint for the base repo
             if GENERATION_CONFIG.get('flux_use_schnell', False):
                 try:
-                    single_file_base_model = "black-forest-labs/FLUX.1-schnell"
+                    # single_file_base_model = "black-forest-labs/FLUX.1-schnell"
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+                    single_file_base_model = "manbeast3b/flux.1-schnell-full1"
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+                    file_url = None
                     print("⚡ Using FLUX.1-schnell base model (schnell mode enabled)")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 except Exception:
                     pass
             
@@ -565,7 +551,7 @@ class TrellisGenerator:
             print("Loading FLUX text encoder with 8-bit quantization...")
             quantization_config_tf = BitsAndBytesConfigTF(
                 load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.float32
+                bnb_8bit_compute_dtype=torch.bfloat16
             )
             self.flux_text_encoder_2 = T5EncoderModel.from_pretrained(
                 # single_file_base_model,
@@ -581,7 +567,7 @@ class TrellisGenerator:
             # If a direct file is provided (e.g., .gguf/.safetensors/.ckpt or http URL), use from_single_file.
             # Otherwise, load from the base repo via from_pretrained.
             use_single_file = False
-            if 'gguf' in file_url:
+            if file_url is not None and 'gguf' in file_url:
                 use_single_file = True
                 file_url = file_url.replace("/resolve/main/", "/blob/main/").replace("?download=true", "")
             else:
@@ -604,31 +590,42 @@ class TrellisGenerator:
                     torch_dtype=dtype,
                     config=single_file_base_model
                 )
+                # Initialize pipeline
+                print("Initializing FLUX pipeline...")
+                self.flux_pipeline = FluxPipeline.from_pretrained(
+                    single_file_base_model, 
+                    transformer=self.flux_transformer, 
+                    text_encoder_2=self.flux_text_encoder_2, 
+                    torch_dtype=dtype, 
+                    token=huggingface_token
+                )
+
             else:
-                print("Loading FLUX transformer from repo (no single file provided)...")
-                self.flux_transformer = FluxTransformer2DModel.from_pretrained(
-                    single_file_base_model,
-                    subfolder="transformer",
-                    torch_dtype=dtype,
+                # print("Loading FLUX transformer from repo (no single file provided)...")
+                # self.flux_transformer = FluxTransformer2DModel.from_pretrained(
+                #     single_file_base_model,
+                #     subfolder="transformer",
+                #     torch_dtype=dtype,
+                #     token=huggingface_token
+                # )
+                # Initialize pipeline
+                print("Initializing FLUX pipeline...")
+                self.flux_pipeline = FluxPipeline.from_pretrained(
+                    single_file_base_model, 
+                    text_encoder_2=self.flux_text_encoder_2, 
+                    torch_dtype=dtype, 
                     token=huggingface_token
                 )
             
-            # Initialize pipeline
-            print("Initializing FLUX pipeline...")
-            self.flux_pipeline = FluxPipeline.from_pretrained(
-                single_file_base_model, 
-                transformer=self.flux_transformer, 
-                text_encoder_2=self.flux_text_encoder_2, 
-                torch_dtype=dtype, 
-                token=huggingface_token
-            )
             self.flux_pipeline.to("cuda")
 
             # from flux_caching import apply_cache_on_pipe
             # apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
-            # self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
-
+            self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
+            if GENERATION_CONFIG.get('flux_use_schnell', False):
+                self.flux_pipeline.transformer = torch.compile(self.flux_pipeline.transformer, mode="max-autotune", fullgraph=True)
+    
             # from torchao.quantization import quantize_, float8_dynamic_activation_float8_weight
             # quantize_(self.flux_pipeline.vae, float8_dynamic_activation_float8_weight())
             
@@ -654,10 +651,11 @@ class TrellisGenerator:
             
         except Exception as e:
             print(f"❌ FLUX model loading failed: {e}")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             traceback.print_exc()
             self._unload_flux_models()
     
-        def _unload_flux_models(self):
+    def _unload_flux_models(self):
         """Unload FLUX models to free GPU memory"""
         print("🧹 Unloading FLUX models...")
         
@@ -665,9 +663,8 @@ class TrellisGenerator:
         
         if self.flux_pipeline is not None:
             del self.flux_pipeline
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             self.flux_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
             models_unloaded.append("flux_pipeline")
         
         if self.flux_transformer is not None:
@@ -684,8 +681,7 @@ class TrellisGenerator:
             self._clear_gpu_memory()
             print(f"✅ FLUX models unloaded: {', '.join(models_unloaded)}")
 
-        def _load_sdxl_pipeline(self):
-        with self._model_lock:
+    def _load_sdxl_pipeline(self):
         """Load SDXL pipeline"""
         if self.sdxl_pipeline is not None:
             print("✓ SDXL pipeline already loaded")
@@ -694,14 +690,15 @@ class TrellisGenerator:
         print("🔧 Loading SDXL pipeline...")
         
         try:
-            device = self.device if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
             
             # Load SDXL with optimizations
             self.sdxl_pipeline = StableDiffusionPipeline.from_pretrained(
                 GENERATION_CONFIG['sdxl_model_path'],
-                torch_dtype=torch.float32,
+                torch_dtype=torch.float16,
                 use_safetensors=True,
+                variant="fp16",
                 token=huggingface_token
             )
             
@@ -721,19 +718,17 @@ class TrellisGenerator:
             traceback.print_exc()
             self._unload_sdxl_pipeline()
 
-        def _unload_sdxl_pipeline(self):
+    def _unload_sdxl_pipeline(self):
         """Unload SDXL pipeline to free GPU memory"""
         if self.sdxl_pipeline is not None:
             print("🧹 Unloading SDXL pipeline...")
             del self.sdxl_pipeline
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             self.sdxl_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
             self._clear_gpu_memory()
             print("✅ SDXL pipeline unloaded")
 
-        def _load_sd15_pipeline(self):
-        with self._model_lock:
+    def _load_sd15_pipeline(self):
         """Load SD1.5 pipeline"""
         if self.sd15_pipeline is not None:
             print("✓ SD1.5 pipeline already loaded")
@@ -742,13 +737,13 @@ class TrellisGenerator:
         print("🔧 Loading SD1.5 pipeline...")
         
         try:
-            device = self.device if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
             
             # Load SD1.5 with optimizations
             self.sd15_pipeline = StableDiffusionPipeline.from_pretrained(
                 GENERATION_CONFIG['sd15_model_path'],
-                torch_dtype=torch.float32,
+                torch_dtype=torch.float16,
                 use_safetensors=True,
                 token=huggingface_token
             )
@@ -769,19 +764,17 @@ class TrellisGenerator:
             traceback.print_exc()
             self._unload_sd15_pipeline()
 
-        def _unload_sd15_pipeline(self):
+    def _unload_sd15_pipeline(self):
         """Unload SD1.5 pipeline to free GPU memory"""
         if self.sd15_pipeline is not None:
             print("🧹 Unloading SD1.5 pipeline...")
             del self.sd15_pipeline
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             self.sd15_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
             self._clear_gpu_memory()
             print("✅ SD1.5 pipeline unloaded")
 
-        def _load_hunyuan_pipeline(self):
-        with self._model_lock:
+    def _load_hunyuan_pipeline(self):
         """Load HunyuanDiT pipeline"""
         if self.hunyuan_pipeline is not None:
             print("✓ HunyuanDiT pipeline already loaded")
@@ -790,7 +783,7 @@ class TrellisGenerator:
         print("🔧 Loading HunyuanDiT pipeline...")
         
         try:
-            device = self.device if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
             
             # Initialize HunyuanDiT pipeline
             self.hunyuan_pipeline = HunyuanDiTPipeline(
@@ -814,19 +807,17 @@ class TrellisGenerator:
             traceback.print_exc()
             self._unload_hunyuan_pipeline()
     
-        def _unload_hunyuan_pipeline(self):
+    def _unload_hunyuan_pipeline(self):
         """Unload HunyuanDiT pipeline to free GPU memory"""
         if self.hunyuan_pipeline is not None:
             print("🧹 Unloading HunyuanDiT pipeline...")
             del self.hunyuan_pipeline
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             self.hunyuan_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
             self._clear_gpu_memory()
             print("✅ HunyuanDiT pipeline unloaded")
 
-        def _load_trellis_pipeline(self):
-        with self._model_lock:
+    def _load_trellis_pipeline(self):
         """Load TRELLIS pipeline"""
         if self.trellis_pipeline is not None:
             print("✓ TRELLIS pipeline already loaded")
@@ -841,7 +832,7 @@ class TrellisGenerator:
             try:
                 self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
                     GENERATION_CONFIG['trellis_model_path'],
-                    torch_dtype=torch.float32  # Force FP32 for cross-GPU consistency
+                    torch_dtype=torch.float16 if use_fp16 else None
                 )
             except TypeError:
                 # Some implementations may not accept torch_dtype
@@ -849,20 +840,31 @@ class TrellisGenerator:
                     GENERATION_CONFIG['trellis_model_path']
                 )
 
-            # Move to device and ensure FP32 for consistency
+            # Move to device / dtype
             if torch.cuda.is_available():
-                self.trellis_pipeline.to("cuda")
-                # Convert to FP32 if possible
-                try:
-                    self.trellis_pipeline.float()
-                except:
-                    print("⚠️ Could not convert TRELLIS pipeline to FP32, continuing...")
+                if use_fp16:
+                    try:
+                        # Preferred path if pipeline supports dtype argument on to()
+                        self.trellis_pipeline.to("cuda", dtype=torch.float16)
+                    except Exception:
+                        # Fallback: move then cast if supported
+            # MULTI-GPU FIX: Use configurable device instead of .cuda()
+                        self.trellis_pipeline.to(device)
+                        if hasattr(self.trellis_pipeline, 'half'):
+                            try:
+                                self.trellis_pipeline.half()
+                            except Exception:
+                                pass
+                else:
+            # MULTI-GPU FIX: Use configurable device instead of .cuda()
+                    self.trellis_pipeline.to(device)
             else:
-                self.trellis_pipeline.to("cpu")
-                try:
-                    self.trellis_pipeline.float()
-                except:
-                    print("⚠️ Could not convert TRELLIS pipeline to FP32, continuing...")
+                # CPU fallback; cast to fp16 if requested and supported (has limited effect on CPU)
+                if use_fp16 and hasattr(self.trellis_pipeline, 'to'):
+                    try:
+                        self.trellis_pipeline.to(dtype=torch.float16)
+                    except Exception:
+                        pass
 
             # Optionally compile modules after the pipeline is loaded
             if GENERATION_CONFIG.get('trellis_compile', False) and hasattr(torch, 'compile'):
@@ -916,20 +918,18 @@ class TrellisGenerator:
             print(f"❌ TRELLIS pipeline loading failed: {e}")
             traceback.print_exc()
             self.trellis_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
 
-        def _unload_trellis_pipeline(self):
+    def _unload_trellis_pipeline(self):
         """Unload TRELLIS pipeline to free GPU memory"""
         if self.trellis_pipeline is not None:
             print("🧹 Unloading TRELLIS pipeline...")
             del self.trellis_pipeline
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             self.trellis_pipeline = None
-            torch.cuda.empty_cache()  # Multi-GPU: Clear GPU memory
             self._clear_gpu_memory()
             print("✅ TRELLIS pipeline unloaded")
 
-        def _load_background_remover(self):
+    def _load_background_remover(self):
         """Load background removal model"""
         if self.background_remover is not None:
             print("✓ Background remover already loaded")
@@ -938,7 +938,7 @@ class TrellisGenerator:
         print("🔧 Loading background remover...")
         
         try:
-            # self.background_remover = BackgroundRemover(session=new_session("u2netp"), putalpha=True)
+            # self.background_remover = BackgroundRemover(session="u2netp", putalpha=True)
             self.background_remover = BackgroundRemover()
             print("✅ Background remover loaded successfully")
             
@@ -947,7 +947,7 @@ class TrellisGenerator:
             traceback.print_exc()
             self.background_remover = None
 
-        def _unload_background_remover(self):
+    def _unload_background_remover(self):
         """Unload background remover to free GPU memory"""
         if self.background_remover is not None:
             print("🧹 Unloading background remover...")
@@ -956,33 +956,41 @@ class TrellisGenerator:
             self._clear_gpu_memory()
             print("✅ Background remover unloaded")
 
-        def _load_lora(self, lora_key: str):
+    def _load_lora(self, lora_key: str):
         """Load a specific LoRA onto the current pipeline"""
         current_model = GENERATION_CONFIG.get('current_model', 'flux')
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         
         # Ensure the correct pipeline is loaded
         if current_model == 'flux' and self.flux_pipeline is None:
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             print("🔧 Loading FLUX pipeline for LoRA...")
             self._load_flux_models()
         elif current_model == 'sdxl' and self.sdxl_pipeline is None:
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             print("🔧 Loading SDXL pipeline for LoRA...")
             self._load_sdxl_pipeline()
         elif current_model == 'sd15' and self.sd15_pipeline is None:
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             print("🔧 Loading SD1.5 pipeline for LoRA...")
             self._load_sd15_pipeline()
         
         # Select pipeline and LoRA configs based on current model
         if current_model == 'flux':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.flux_pipeline
             lora_configs = FLUX_LORAS
         elif current_model == 'sdxl':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.sdxl_pipeline
             lora_configs = SDXL_LORAS
         elif current_model == 'sd15':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.sd15_pipeline
             lora_configs = SD15_LORAS
         else:
             print(f"❌ Unknown model type: {current_model}")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             return False
         
         if pipeline is None:
@@ -1022,6 +1030,7 @@ class TrellisGenerator:
                     pipeline.load_lora_weights(lora_path)
                 except Exception as e:
                     if current_model == 'flux' and ("final_layer" in str(e) or "adaLN" in str(e)):
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                         print(f"⚠️ LoRA needs patching, applying adaLN fix...")
                         # Apply patcher fix
                         import safetensors.torch
@@ -1067,19 +1076,24 @@ class TrellisGenerator:
             traceback.print_exc()
             return False
 
-        def _unload_lora(self):
+    def _unload_lora(self):
         """Unload current LoRA from current pipeline"""
         current_model = GENERATION_CONFIG.get('current_model', 'flux')
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         
         # Determine which pipeline to use
         if current_model == 'flux':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.flux_pipeline
         elif current_model == 'sdxl':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.sdxl_pipeline
         elif current_model == 'sd15':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             pipeline = self.sd15_pipeline
         else:
             print(f"❌ Unknown model type: {current_model}")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             return
         
         if pipeline is None:
@@ -1096,15 +1110,19 @@ class TrellisGenerator:
         except Exception as e:
             print(f"⚠️ Error unloading {current_model.upper()} LoRA: {e}")
 
-        def get_available_loras(self) -> Dict[str, Any]:
+    def get_available_loras(self) -> Dict[str, Any]:
         """Get list of available LoRAs for current model"""
         current_model = GENERATION_CONFIG.get('current_model', 'flux')
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         
         if current_model == 'flux':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             lora_configs = FLUX_LORAS
         elif current_model == 'sdxl':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             lora_configs = SDXL_LORAS
         elif current_model == 'sd15':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             lora_configs = SD15_LORAS
         else:
             return {}
@@ -1120,7 +1138,7 @@ class TrellisGenerator:
             for key, config in lora_configs.items()
         }
 
-        def _resolve_flux_inference_params(self, guidance_scale: float, steps: int) -> Tuple[float, int, Dict[str, Any]]:
+    def _resolve_flux_inference_params(self, guidance_scale: float, steps: int) -> Tuple[float, int, Dict[str, Any]]:
         """Apply schnell overrides for FLUX if enabled.
 
         Returns:
@@ -1129,11 +1147,11 @@ class TrellisGenerator:
         extra_kwargs: Dict[str, Any] = {}
         if GENERATION_CONFIG.get('flux_use_schnell', False):
             guidance_scale = GENERATION_CONFIG.get('flux_schnell_guidance', 0.0)
-            # steps = GENERATION_CONFIG.get('flux_schnell_steps', 4)
+            steps = GENERATION_CONFIG.get('flux_schnell_steps', 4)
             extra_kwargs['max_sequence_length'] = 256
         return guidance_scale, steps, extra_kwargs
 
-        def center_object_in_image(self, image: Image.Image, white_threshold: int = 240, padding: int = 20) -> Image.Image:
+    def center_object_in_image(self, image: Image.Image, white_threshold: int = 240, padding: int = 20) -> Image.Image:
         """
         Center the main object in the image by detecting content and repositioning it
         
@@ -1243,7 +1261,7 @@ class TrellisGenerator:
             print("   Continuing with original image...")
             return image
 
-        def generate_hunyuan_image(self, prompt: str, seed: int = 42, lora_key: str = None) -> Optional[Image.Image]:
+    def generate_hunyuan_image(self, prompt: str, seed: int = 42, lora_key: str = None) -> Optional[Image.Image]:
         """Generate image using HunyuanDiT with optional LoRA"""
         try:
             print(f"🎨 Generating HunyuanDiT image for: '{prompt}' (seed: {seed})")
@@ -1282,8 +1300,9 @@ class TrellisGenerator:
             traceback.print_exc()
             return None
 
-        def generate_3d_model(self, prompt: str, seed: int = 42, num_inference_steps: Optional[int] = None, guidance_scale: Optional[float] = None, ss_sampling_steps: Optional[int] = None, slat_sampling_steps: Optional[int] = None, slat_guidance_strength: Optional[float] = None, ss_guidance_strength: Optional[float] = None) -> Optional[Tuple[bytes, Optional[bytes]]]:
+    def generate_3d_model(self, prompt: str, seed: int = 42, num_inference_steps: Optional[int] = None, guidance_scale: Optional[float] = None, ss_sampling_steps: Optional[int] = None, slat_sampling_steps: Optional[int] = None, slat_guidance_strength: Optional[float] = None, ss_guidance_strength: Optional[float] = None) -> Optional[Tuple[bytes, Optional[bytes]]]:
         """Generate 3D model from text prompt using FLUX + TRELLIS pipeline"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         
         job_id = f"gen_{int(time.time())}_{seed}"
         generation_job_status.update({
@@ -1308,15 +1327,17 @@ class TrellisGenerator:
                 
                 # Step 1: Generate image with selected model
                 current_model = GENERATION_CONFIG.get('current_model', 'flux')
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 print(f"Step 1: Generating image with {current_model.upper()}...")
                 
-                device = self.device if torch.cuda.is_available() else "cpu"
+                device = "cuda" if torch.cuda.is_available() else "cpu"
                 
                 # Enhanced prompt with LoRA trigger prefix if applicable
                 enhanced_prompt = prompt
                 current_lora = GENERATION_CONFIG.get('current_lora')
                 
                 if current_model == 'flux':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                     if self.flux_pipeline is None:
                         self._load_flux_models()
                     
@@ -1346,6 +1367,7 @@ class TrellisGenerator:
                         ).images[0]
                 
                 elif current_model == 'sdxl':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                     if self.sdxl_pipeline is None:
                         self._load_sdxl_pipeline()
                     
@@ -1370,6 +1392,7 @@ class TrellisGenerator:
                         ).images[0]
                 
                 elif current_model == 'sd15':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                     if self.sd15_pipeline is None:
                         self._load_sd15_pipeline()
                     
@@ -1395,6 +1418,7 @@ class TrellisGenerator:
                 
                 else:
                     raise ValueError(f"Unknown model type: {current_model}")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 
                 print(f"✓ {current_model.upper()} image generated successfully")
                 generation_asset.add_asset(AssetType.FLUX_IMAGE, image)  # Keep same asset type for compatibility
@@ -1439,7 +1463,9 @@ class TrellisGenerator:
                 # self._unload_background_remover()
                 
                 # Step 2: Generate 3D model with TRELLIS
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 print("Step 2: Generating 3D model with TRELLIS...")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 if self.trellis_pipeline is None:   
                     self._load_trellis_pipeline()
                     if self.trellis_pipeline is None:
@@ -1452,28 +1478,76 @@ class TrellisGenerator:
                 effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
                 effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
 
-                # Use FP32 for cross-GPU consistency (A6000 vs RTX 6000 Ada compatibility)
-                print("🔧 Running TRELLIS in FP32 mode for cross-GPU consistency")
-                outputs = self.trellis_pipeline.run(
-                    image,
-                    seed=seed,
-                    formats=["gaussian"], # "mesh"
-                    preprocess_image=False,
-                    sparse_structure_sampler_params={
-                        "steps": effective_ss_steps,
-                        "cfg_strength": effective_ss_guidance,
-                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                    slat_sampler_params={
-                        "steps": effective_slat_steps,
-                        "cfg_strength": effective_slat_guidance,
-                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                        "rescale_t": 3.0,  # Temperature rescaling for better quality
-                    },
-                )
+                # Use autocast to reduce activation memory and speed up compute on CUDA
+                use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+                if use_fp16:
+                    try:
+                        with torch.autocast(device_type="cuda", dtype=torch.float16):
+                            outputs = self.trellis_pipeline.run(
+                                image,
+                                seed=seed,
+                                formats=["gaussian"],
+                                preprocess_image=False,
+                                sparse_structure_sampler_params={
+                                    "steps": effective_ss_steps,
+                                    "cfg_strength": effective_ss_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                                slat_sampler_params={
+                                    "steps": effective_slat_steps,
+                                    "cfg_strength": effective_slat_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                            )
+                    except RuntimeError as e:
+                        # Some mesh decoding ops may not support fp16 (scatter/scatter_reduce dtype issues)
+                        if "scatter()" in str(e) or "scatter_reduce" in str(e):
+                            print("⚠️ FP16 mesh decode failed (scatter dtype mismatch). Retrying gaussian-only without autocast...")
+                            with torch.autocast(device_type="cuda", enabled=False):
+                                outputs = self.trellis_pipeline.run(
+                                    image,
+                                    seed=seed,
+                                    formats=["gaussian"],  # Avoid mesh path in fp16
+                                    preprocess_image=False,
+                                    sparse_structure_sampler_params={
+                                        "steps": effective_ss_steps,
+                                        "cfg_strength": effective_ss_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                    slat_sampler_params={
+                                        "steps": effective_slat_steps,
+                                        "cfg_strength": effective_slat_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                )
+                        else:
+                            raise
+                else:
+                    outputs = self.trellis_pipeline.run(
+                        image,
+                        seed=seed,
+                        formats=["gaussian", "mesh"],
+                        preprocess_image=False,
+                        sparse_structure_sampler_params={
+                            "steps": effective_ss_steps,
+                            "cfg_strength": effective_ss_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                        slat_sampler_params={
+                            "steps": effective_slat_steps,
+                            "cfg_strength": effective_slat_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                    )
                 
                 print("✓ 3D model generated successfully")
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 
                 # Step 3: Extract and enhance Gaussian Splatting PLY
                 print("Step 3: Extracting and enhancing Gaussian Splatting PLY...")
@@ -1607,7 +1681,7 @@ class TrellisGenerator:
                 
                 return None
 
-        def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> Dict[str, Any]:
         """Get server status and metrics"""
         return {
             "status": "running",
@@ -1641,7 +1715,7 @@ class TrellisGenerator:
             "ready":self.ready
         }
 
-        def submit_for_validation(self, prompt: str, ply_data: bytes) -> Dict[str, Any]:
+    def submit_for_validation(self, prompt: str, ply_data: bytes) -> Dict[str, Any]:
         """Submit PLY for validation"""
         try:
             validation_url = GENERATION_CONFIG['validation_server_url']
@@ -1710,16 +1784,16 @@ class TrellisGenerator:
                 "validation_score": 0.0
             }
 
-        # Initialize FastAPI app
-        app = FastAPI(title="FLUX + TRELLIS Generation Server", version="1.0.0")
+# Initialize FastAPI app
+app = FastAPI(title="FLUX + TRELLIS Generation Server", version="1.0.0")
 
-        # Initialize global generator
-        generator = TrellisGenerator()
+# Initialize global generator
+generator = TrellisGenerator()
 
-        @app.get("/job/status/")
-        async def get_job_status():
-        """Get current job processing status"""
-        return {
+@app.get("/job/status/")
+async def get_job_status():
+    """Get current job processing status"""
+    return {
         "job_id": generation_job_status["current_job_id"],
         "status": generation_job_status["status"],
         "prompt": generation_job_status["prompt"],
@@ -1728,13 +1802,13 @@ class TrellisGenerator:
         "end_time": generation_job_status["end_time"],
         "processing_time": (generation_job_status["end_time"] - generation_job_status["start_time"]) if generation_job_status["end_time"] and generation_job_status["start_time"] else None,
         "error": generation_job_status["error"]
-        }
+    }
 
-        @app.post("/job/reset/")
-        async def reset_job_status():
-        """Reset job status to idle"""
-        global generation_job_status
-        generation_job_status = {
+@app.post("/job/reset/")
+async def reset_job_status():
+    """Reset job status to idle"""
+    global generation_job_status
+    generation_job_status = {
         "current_job_id": None,
         "status": "idle",
         "prompt": None,
@@ -1743,30 +1817,31 @@ class TrellisGenerator:
         "end_time": None,
         "ply_path": None,
         "error": None
-        }
-        return {"status": "reset"}
+    }
+    return {"status": "reset"}
 
-        @app.post("/generate/")
-        async def generate_3d_model_endpoint(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model from text prompt using FLUX + TRELLIS pipeline."""
+@app.post("/generate/")
+async def generate_3d_model_endpoint(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model from text prompt using FLUX + TRELLIS pipeline."""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         #seed = random.randint(0, MAX_SEED)
         seed = 42
     
-        # Generate model
-        result = generator.generate_3d_model(
+    # Generate model
+    result = generator.generate_3d_model(
         prompt,
         seed,
         num_inference_steps=num_inference_steps,
@@ -1775,15 +1850,15 @@ class TrellisGenerator:
         slat_sampling_steps=slat_sampling_steps,
         slat_guidance_strength=slat_guidance_strength,
         ss_guidance_strength=ss_guidance_strength
-        )
+    )
     
-        if result is None:
+    if result is None:
         raise HTTPException(status_code=500, detail="Generation failed")
     
-        ply_data, compressed_data = result
+    ply_data, compressed_data = result
     
-        # Apply SPZ compression if requested
-        if return_compressed:
+    # Apply SPZ compression if requested
+    if return_compressed:
         try:
             if compressed_data is None:
                 import pyspz
@@ -1810,8 +1885,8 @@ class TrellisGenerator:
             print(f"⚠️ SPZ compression failed: {e}")
             # Fall back to uncompressed
     
-        # Return uncompressed PLY data
-        return Response(
+    # Return uncompressed PLY data
+    return Response(
         content=ply_data,
         media_type="application/octet-stream",
         headers={
@@ -1822,15 +1897,15 @@ class TrellisGenerator:
             "X-Pipeline": "flux_trellis",
             "X-Compression": "none"
         }
-        )
+    )
 
-        @app.post("/validate/")
-        async def validate_generation(
-        prompt: str = Form(...),
-        use_last_generation: Optional[bool] = Form(True)
-        ):
-        """Validate the last generation or submit for validation"""
-        try:
+@app.post("/validate/")
+async def validate_generation(
+    prompt: str = Form(...),
+    use_last_generation: Optional[bool] = Form(True)
+):
+    """Validate the last generation or submit for validation"""
+    try:
         if use_last_generation:
             # Get the last generated PLY
             ply_data = generator.asset_manager.get_asset(AssetType.GAUSSIAN_SPLATTING_PLY)
@@ -1847,26 +1922,26 @@ class TrellisGenerator:
             "validation_results": validation_results
         })
         
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.get("/status/")
-        async def get_server_status():
-        """Get server status and metrics"""
-        return generator.get_status()
+@app.get("/status/")
+async def get_server_status():
+    """Get server status and metrics"""
+    return generator.get_status()
 
-        @app.get("/health/")
-        async def health_check():
-        """Health check endpoint"""
-        return {"status": "healthy", "timestamp": time.time()}
+@app.get("/health/")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "timestamp": time.time()}
 
-        @app.get("/assets/")
-        async def get_assets():
-        """Get information about the last generation's assets"""
-        try:
+@app.get("/assets/")
+async def get_assets():
+    """Get information about the last generation's assets"""
+    try:
         if generator.asset_manager.current_asset:
             asset = generator.asset_manager.current_asset
             return JSONResponse(content={
@@ -1883,16 +1958,16 @@ class TrellisGenerator:
                 "status": "no_generation",
                 "message": "No generation has been completed yet"
             })
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.get("/assets/{asset_type}")
-        async def get_asset_file(asset_type: str):
-        """Get a specific asset file from the last generation"""
-        try:
+@app.get("/assets/{asset_type}")
+async def get_asset_file(asset_type: str):
+    """Get a specific asset file from the last generation"""
+    try:
         # Convert string to AssetType enum
         try:
             asset_type_enum = AssetType(asset_type)
@@ -1939,37 +2014,37 @@ class TrellisGenerator:
             }
         )
         
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/clear_cache/")
-        async def clear_cache():
-        """Clear GPU memory cache"""
-        try:
+@app.post("/clear_cache/")
+async def clear_cache():
+    """Clear GPU memory cache"""
+    try:
         available_memory = generator._clear_gpu_memory()
         return {
             "status": "cache_cleared", 
             "available_memory_gb": available_memory
         }
-        except Exception as e:
+    except Exception as e:
         return {"error": f"Failed to clear cache: {str(e)}"}
 
-        @app.get("/config/")
-        async def get_config():
-        """Get current configuration"""
-        return GENERATION_CONFIG
+@app.get("/config/")
+async def get_config():
+    """Get current configuration"""
+    return GENERATION_CONFIG
 
-        @app.post("/config/centering/")
-        async def update_centering_config(
-        enabled: bool = Form(True),
-        white_threshold: int = Form(240),
-        padding: int = Form(30)
-        ):
-        """Update object centering configuration"""
-        try:
+@app.post("/config/centering/")
+async def update_centering_config(
+    enabled: bool = Form(True),
+    white_threshold: int = Form(240),
+    padding: int = Form(30)
+):
+    """Update object centering configuration"""
+    try:
         GENERATION_CONFIG['enable_object_centering'] = enabled
         GENERATION_CONFIG['centering_white_threshold'] = white_threshold
         GENERATION_CONFIG['centering_padding'] = padding
@@ -1983,22 +2058,22 @@ class TrellisGenerator:
                 "centering_padding": padding
             }
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/config/quality/")
-        async def update_quality_config(
-        guidance_scale: float = Form(4.0),
-        ss_guidance_strength: float = Form(9.5),
-        ss_sampling_steps: int = Form(30),
-        slat_guidance_strength: float = Form(5.0),
-        slat_sampling_steps: int = Form(30)
-        ):
-        """Update TRELLIS quality configuration for maximum validation scores"""
-        try:
+@app.post("/config/quality/")
+async def update_quality_config(
+    guidance_scale: float = Form(4.0),
+    ss_guidance_strength: float = Form(9.5),
+    ss_sampling_steps: int = Form(30),
+    slat_guidance_strength: float = Form(5.0),
+    slat_sampling_steps: int = Form(30)
+):
+    """Update TRELLIS quality configuration for maximum validation scores"""
+    try:
         GENERATION_CONFIG['guidance_scale'] = guidance_scale
         GENERATION_CONFIG['ss_guidance_strength'] = ss_guidance_strength
         GENERATION_CONFIG['ss_sampling_steps'] = ss_sampling_steps
@@ -2016,19 +2091,20 @@ class TrellisGenerator:
                 "slat_sampling_steps": slat_sampling_steps
             }
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/config/model/")
-        async def switch_model(
-        model: str = Form(...)  # 'flux', 'sdxl', or 'sd15'
-        ):
-        """Switch between different models (FLUX, SDXL, SD1.5)"""
-        try:
+@app.post("/config/model/")
+async def switch_model(
+    model: str = Form(...)  # 'flux', 'sdxl', or 'sd15'
+):
+    """Switch between different models (FLUX, SDXL, SD1.5)"""
+    try:
         if model not in ['flux', 'sdxl', 'sd15']:
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             return JSONResponse(content={
                 "status": "error",
                 "message": "Invalid model. Must be 'flux', 'sdxl', or 'sd15'"
@@ -2047,31 +2123,32 @@ class TrellisGenerator:
             "current_model": model,
             "current_lora": None
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.get("/config/model/")
-        async def get_current_model():
-        """Get current model configuration"""
-        try:
+@app.get("/config/model/")
+async def get_current_model():
+    """Get current model configuration"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         return {
             "status": "success",
             "current_model": GENERATION_CONFIG.get('current_model', 'flux'),
             "available_models": ['flux', 'sdxl', 'sd15']
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.get("/loras/")
-        async def get_available_loras():
-        """Get list of available LoRAs"""
-        try:
+@app.get("/loras/")
+async def get_available_loras():
+    """Get list of available LoRAs"""
+    try:
         loras = generator.get_available_loras()
         return {
             "status": "success",
@@ -2079,16 +2156,16 @@ class TrellisGenerator:
             "current_lora": GENERATION_CONFIG.get('current_lora'),
             "lora_scale": GENERATION_CONFIG.get('lora_scale', 1.0)
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/loras/load/{lora_key}")
-        async def load_lora(lora_key: str):
-        """Load a specific LoRA"""
-        try:
+@app.post("/loras/load/{lora_key}")
+async def load_lora(lora_key: str):
+    """Load a specific LoRA"""
+    try:
         success = generator._load_lora(lora_key)
         if success:
             return {
@@ -2102,16 +2179,16 @@ class TrellisGenerator:
                 "status": "error",
                 "message": f"Failed to load LoRA '{lora_key}'"
             }, status_code=500)
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/loras/unload/")
-        async def unload_lora():
-        """Unload current LoRA"""
-        try:
+@app.post("/loras/unload/")
+async def unload_lora():
+    """Unload current LoRA"""
+    try:
         generator._unload_lora()
         return {
             "status": "success",
@@ -2119,27 +2196,28 @@ class TrellisGenerator:
             "current_lora": None,
             "lora_scale": 1.0
         }
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        # Individual LoRA endpoints
-        @app.post("/generate/isometric_3d/")
-        async def generate_with_isometric_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Isometric 3D LoRA"""
-        try:
+# Individual LoRA endpoints
+@app.post("/generate/isometric_3d/")
+async def generate_with_isometric_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Isometric 3D LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         # Load the LoRA
         success = generator._load_lora('isometric_3d')
         if not success:
@@ -2199,26 +2277,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/live_3d/")
-        async def generate_with_live_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Live 3D LoRA"""
-        try:
+@app.post("/generate/live_3d/")
+async def generate_with_live_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Live 3D LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('live_3d')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Live 3D LoRA")
@@ -2274,26 +2353,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/game_assets/")
-        async def generate_with_game_assets_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Game Assets LoRA"""
-        try:
+@app.post("/generate/game_assets/")
+async def generate_with_game_assets_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Game Assets LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('game_assets')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Game Assets LoRA")
@@ -2349,26 +2429,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/patched_realism/")
-        async def generate_with_patched_realism_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Patched Realism LoRA"""
-        try:
+@app.post("/generate/patched_realism/")
+async def generate_with_patched_realism_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Patched Realism LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('patched_realism')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Patched Realism LoRA")
@@ -2424,26 +2505,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/tf2_style/")
-        async def generate_with_tf2_style_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using TF2 Style LoRA"""
-        try:
+@app.post("/generate/tf2_style/")
+async def generate_with_tf2_style_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using TF2 Style LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('tf2_style')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load TF2 Style LoRA")
@@ -2499,26 +2581,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/baolei/")
-        async def generate_with_baolei_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Baolei Style LoRA"""
-        try:
+@app.post("/generate/baolei/")
+async def generate_with_baolei_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Baolei Style LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('baolei')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Baolei Style LoRA")
@@ -2574,26 +2657,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/cartoon_3d/")
-        async def generate_with_cartoon_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Cartoon 3D Render LoRA"""
-        try:
+@app.post("/generate/cartoon_3d/")
+async def generate_with_cartoon_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Cartoon 3D Render LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('cartoon_3d')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Cartoon 3D Render LoRA")
@@ -2649,26 +2733,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/cinema/")
-        async def generate_with_cinema_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using Cinema Style LoRA"""
-        try:
+@app.post("/generate/cinema/")
+async def generate_with_cinema_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using Cinema Style LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         success = generator._load_lora('cinema')
         if not success:
             raise HTTPException(status_code=500, detail="Failed to load Cinema Style LoRA")
@@ -2724,27 +2809,29 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/sd15_game_icon/")
-        async def generate_with_sd15_game_icon_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(7.5),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using SD1.5 Game Icon LoRA"""
-        try:
+@app.post("/generate/sd15_game_icon/")
+async def generate_with_sd15_game_icon_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(7.5),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using SD1.5 Game Icon LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         # Switch to SD1.5 model first
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         GENERATION_CONFIG['current_model'] = 'sd15'
         
         success = generator._load_lora('game_icon')
@@ -2802,27 +2889,29 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        @app.post("/generate/necklace/")
-        async def generate_with_necklace_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
-        ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
-        slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
-        slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
-        ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
-        ):
-        """Generate 3D model using FLUX with Necklace LoRA"""
-        try:
+@app.post("/generate/necklace/")
+async def generate_with_necklace_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using FLUX with Necklace LoRA"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
+    try:
         # Switch to FLUX model first
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         GENERATION_CONFIG['current_model'] = 'flux'
         
         success = generator._load_lora('necklace')
@@ -2880,27 +2969,27 @@ class TrellisGenerator:
                 "X-Compression": "none"
             }
         )
-        except Exception as e:
+    except Exception as e:
         return JSONResponse(content={
             "status": "error",
             "message": str(e)
         }, status_code=500)
 
-        # Image generation endpoints for all LoRAs
-        @app.post("/generate_image/isometric_3d/")
-        async def generate_image_with_isometric_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Isometric 3D LoRA (without 3D generation)."""
+# Image generation endpoints for all LoRAs
+@app.post("/generate_image/isometric_3d/")
+async def generate_image_with_isometric_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Isometric 3D LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -2955,25 +3044,25 @@ class TrellisGenerator:
             "lora": "isometric_3d"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/live_3d/")
-        async def generate_image_with_live_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Live 3D LoRA (without 3D generation)."""
+@app.post("/generate_image/live_3d/")
+async def generate_image_with_live_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Live 3D LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3028,25 +3117,25 @@ class TrellisGenerator:
             "lora": "live_3d"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/game_assets/")
-        async def generate_image_with_game_assets_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Game Assets LoRA (without 3D generation)."""
+@app.post("/generate_image/game_assets/")
+async def generate_image_with_game_assets_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Game Assets LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3101,25 +3190,25 @@ class TrellisGenerator:
             "lora": "game_assets"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/patched_realism/")
-        async def generate_image_with_patched_realism_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Patched Realism LoRA (without 3D generation)."""
+@app.post("/generate_image/patched_realism/")
+async def generate_image_with_patched_realism_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Patched Realism LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3174,25 +3263,25 @@ class TrellisGenerator:
             "lora": "patched_realism"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/tf2_style/")
-        async def generate_image_with_tf2_style_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with TF2 Style LoRA (without 3D generation)."""
+@app.post("/generate_image/tf2_style/")
+async def generate_image_with_tf2_style_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with TF2 Style LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3247,25 +3336,25 @@ class TrellisGenerator:
             "lora": "tf2_style"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/baolei/")
-        async def generate_image_with_baolei_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Baolei LoRA (without 3D generation)."""
+@app.post("/generate_image/baolei/")
+async def generate_image_with_baolei_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Baolei LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3320,25 +3409,25 @@ class TrellisGenerator:
             "lora": "baolei"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/cartoon_3d/")
-        async def generate_image_with_cartoon_3d_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Cartoon 3D LoRA (without 3D generation)."""
+@app.post("/generate_image/cartoon_3d/")
+async def generate_image_with_cartoon_3d_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Cartoon 3D LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3393,25 +3482,25 @@ class TrellisGenerator:
             "lora": "cartoon_3d"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/cinema/")
-        async def generate_image_with_cinema_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Cinema LoRA (without 3D generation)."""
+@app.post("/generate_image/cinema/")
+async def generate_image_with_cinema_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Cinema LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3466,25 +3555,25 @@ class TrellisGenerator:
             "lora": "cinema"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/sd15_game_icon/")
-        async def generate_image_with_sd15_game_icon_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using SD1.5 with Game Icon LoRA (without 3D generation)."""
+@app.post("/generate_image/sd15_game_icon/")
+async def generate_image_with_sd15_game_icon_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using SD1.5 with Game Icon LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to SD1.5 model
         GENERATION_CONFIG['current_model'] = 'sd15'
         
@@ -3534,25 +3623,25 @@ class TrellisGenerator:
             "lora": "game_icon"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        @app.post("/generate_image/necklace/")
-        async def generate_image_with_necklace_lora(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using FLUX with Necklace LoRA (without 3D generation)."""
+@app.post("/generate_image/necklace/")
+async def generate_image_with_necklace_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using FLUX with Necklace LoRA (without 3D generation)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Switch to FLUX model
         GENERATION_CONFIG['current_model'] = 'flux'
         
@@ -3606,24 +3695,24 @@ class TrellisGenerator:
             "lora": "necklace"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        # HunyuanDiT image generation endpoints
-        @app.post("/generate_image_hunyuan/")
-        async def generate_hunyuan_image_endpoint(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None)
-        ):
-        """Generate image using HunyuanDiT (without LoRA)."""
+# HunyuanDiT image generation endpoints
+@app.post("/generate_image_hunyuan/")
+async def generate_hunyuan_image_endpoint(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None)
+):
+    """Generate image using HunyuanDiT (without LoRA)."""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         # Generate image with HunyuanDiT
         image = generator.generate_hunyuan_image(prompt, seed)
         
@@ -3647,33 +3736,36 @@ class TrellisGenerator:
             "pipeline": "hunyuan_dit_only"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ HunyuanDiT image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"HunyuanDiT image generation failed: {str(e)}")
 
 
 
-        # General image generation endpoint (without LoRA)
-        @app.post("/generate_image/")
-        async def generate_image_endpoint(
-        prompt: str = Form(...), 
-        seed: Optional[int] = Form(None),
-        num_inference_steps: Optional[int] = Form(25),
-        guidance_scale: Optional[float] = Form(7.5)
-        ):
-        """Generate image only using current model (without 3D generation)."""
+# General image generation endpoint (without LoRA)
+@app.post("/generate_image/")
+async def generate_image_endpoint(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(25),
+    guidance_scale: Optional[float] = Form(7.5)
+):
+    """Generate image only using current model (without 3D generation)."""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         current_model = GENERATION_CONFIG.get('current_model', 'flux')
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
         # Create seeded generator for reproducibility across pipelines
         seed_generator = torch.Generator(device=GENERATION_CONFIG['device']).manual_seed(seed)
         
         if current_model == 'flux':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             # Load FLUX if not loaded
             if generator.flux_pipeline is None:
                 generator._load_flux_models()
@@ -3698,6 +3790,7 @@ class TrellisGenerator:
                 image = flux_output.images[0]  # Extract the first image from the output
                 
         elif current_model == 'sdxl':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             # Load SDXL if not loaded
             if generator.sdxl_pipeline is None:
                 generator._load_sdxl_pipeline()
@@ -3714,6 +3807,7 @@ class TrellisGenerator:
                 ).images[0]
                 
         elif current_model == 'sd15':
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
             # Load SD1.5 if not loaded
             if generator.sd15_pipeline is None:
                 generator._load_sd15_pipeline()
@@ -3749,26 +3843,26 @@ class TrellisGenerator:
             "lora": None
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image generation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        # Optimization endpoints
-        @app.post("/optimize_prompt/")
-        async def optimize_prompt_endpoint(
-        prompt: str = Form(...),
-        seed: Optional[int] = Form(None),
-        find_optimal_lora: Optional[bool] = Form(True),
-        target_score: Optional[float] = Form(0.8)
-        ):
-        """Optimize prompt for maximum CLIP alignment score using feedback loops"""
+# Optimization endpoints
+@app.post("/optimize_prompt/")
+async def optimize_prompt_endpoint(
+    prompt: str = Form(...),
+    seed: Optional[int] = Form(None),
+    find_optimal_lora: Optional[bool] = Form(True),
+    target_score: Optional[float] = Form(0.8)
+):
+    """Optimize prompt for maximum CLIP alignment score using feedback loops"""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         from prompt_optimization_engine import CLIPAlignmentOptimizer
         
         # Initialize optimizer
@@ -3808,28 +3902,29 @@ class TrellisGenerator:
             "optimal_lora": session.iterations[0].lora_endpoint if session.iterations else "isometric_3d"
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Prompt optimization failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Prompt optimization failed: {str(e)}")
 
 
-        @app.post("/optimize_and_generate/")
-        async def optimize_and_generate_endpoint(
-        prompt: str = Form(...),
-        seed: Optional[int] = Form(None),
-        return_compressed: Optional[bool] = Form(True),
-        target_score: Optional[float] = Form(0.8),
-        num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
-        guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale'])
-        ):
-        """Optimize prompt then generate 3D model with optimal settings"""
+@app.post("/optimize_and_generate/")
+async def optimize_and_generate_endpoint(
+    prompt: str = Form(...),
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    target_score: Optional[float] = Form(0.8),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale'])
+):
+    """Optimize prompt then generate 3D model with optimal settings"""
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         from prompt_optimization_engine import CLIPAlignmentOptimizer
         
         print(f"🚀 Starting optimize-and-generate for: '{prompt}'")
@@ -3884,6 +3979,7 @@ class TrellisGenerator:
             return JSONResponse(content={
                 "status": "error",
                 "error": "3D model generation failed after optimization",
+            torch.cuda.empty_cache()  # MULTI-GPU FIX: Clear GPU memory
                 "optimization_session": {
                     "original_prompt": prompt,
                     "optimized_prompt": optimized_prompt,
@@ -3930,21 +4026,21 @@ class TrellisGenerator:
         
         return JSONResponse(content=response_data)
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Optimize-and-generate failed: {e}")
         traceback.print_exc()
         metrics.failed_generations += 1
         raise HTTPException(status_code=500, detail=f"Optimize-and-generate failed: {str(e)}")
 
 
-        @app.post("/interrogate_image/")
-        async def interrogate_image_endpoint(
-        image: UploadFile = File(...),
-        style_focus: Optional[str] = Form("clip_optimized")
-        ):
-        """Use image interrogator to generate optimized prompt from uploaded image"""
+@app.post("/interrogate_image/")
+async def interrogate_image_endpoint(
+    image: UploadFile = File(...),
+    style_focus: Optional[str] = Form("clip_optimized")
+):
+    """Use image interrogator to generate optimized prompt from uploaded image"""
     
-        try:
+    try:
         from prompt_optimization_engine import ImageInterrogatorInterface
         
         # Read and process uploaded image
@@ -3970,26 +4066,26 @@ class TrellisGenerator:
                 "error": "Image interrogation failed"
             })
             
-        except Exception as e:
+    except Exception as e:
         print(f"❌ Image interrogation failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Image interrogation failed: {str(e)}")
 
 
-        @app.post("/clip_feedback_loop/")
-        async def clip_feedback_loop_endpoint(
-        prompt: str = Form(...),
-        lora_endpoint: Optional[str] = Form("isometric_3d"),
-        seed: Optional[int] = Form(None),
-        max_iterations: Optional[int] = Form(3)
-        ):
-        """Run CLIP feedback optimization loop for specific LoRA endpoint"""
+@app.post("/clip_feedback_loop/")
+async def clip_feedback_loop_endpoint(
+    prompt: str = Form(...),
+    lora_endpoint: Optional[str] = Form("isometric_3d"),
+    seed: Optional[int] = Form(None),
+    max_iterations: Optional[int] = Form(3)
+):
+    """Run CLIP feedback optimization loop for specific LoRA endpoint"""
     
-        # Handle seed
-        if seed is None:
+    # Handle seed
+    if seed is None:
         seed = random.randint(0, 2**31 - 1)
     
-        try:
+    try:
         from prompt_optimization_engine import CLIPAlignmentOptimizer
         
         # Initialize optimizer
@@ -4018,34 +4114,34 @@ class TrellisGenerator:
             "iterations": result.iteration
         })
         
-        except Exception as e:
+    except Exception as e:
         print(f"❌ CLIP feedback loop failed: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"CLIP feedback loop failed: {str(e)}")
 
-        if __name__ == "__main__":
-        parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server")
-        parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-        parser.add_argument("--port", type=int, default=8096, help="Port to bind to")
-        parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8096, help="Port to bind to")
+    parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
     
-        args = parser.parse_args()
+    args = parser.parse_args()
     
-        print(f"Starting FLUX + TRELLIS Generation Server on {args.host}:{args.port}")
-        print("=" * 80)
-        print("Pipeline: Text → FLUX → Image → TRELLIS → Gaussian Splatting PLY")
-        print("Features:")
-        print("  • FLUX text-to-image generation with quantization")
-        print("  • TRELLIS image-to-3D Gaussian Splatting generation")
-        print("  • SPZ compression for efficient storage/transmission")
-        print("  • Optional validation integration")
-        print("  • Memory-optimized for RTX 4090 (24GB)")
-        print("=" * 80)
+    print(f"Starting FLUX + TRELLIS Generation Server on {args.host}:{args.port}")
+    print("=" * 80)
+    print("Pipeline: Text → FLUX → Image → TRELLIS → Gaussian Splatting PLY")
+    print("Features:")
+    print("  • FLUX text-to-image generation with quantization")
+    print("  • TRELLIS image-to-3D Gaussian Splatting generation")
+    print("  • SPZ compression for efficient storage/transmission")
+    print("  • Optional validation integration")
+    print("  • Memory-optimized for RTX 4090 (24GB)")
+    print("=" * 80)
     
-        uvicorn.run(
+    uvicorn.run(
         app, 
         host=args.host, 
         port=args.port,
         workers=args.workers,
         log_level="info"
-        ) 
+    ) 

@@ -1,0 +1,68 @@
+2025-08-14 09:28:50,907 - INFO - 📚 Loaded RL memory: 8 strategies, 15 sessions
+2025-08-14 09:28:50,908 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-14 09:28:50,909 - INFO -    Strategy tracking: 8 strategies
+2025-08-14 09:28:50,910 - INFO -    Past sessions: 15
+2025-08-14 09:28:50,910 - INFO -    Exploration rate: 0.78
+2025-08-14 09:28:50,911 - INFO -    Max rounds per optimization: 15
+2025-08-14 09:28:50,914 - INFO -    Min rounds before convergence: 5
+2025-08-14 09:28:50,914 - INFO -    Adaptive convergence: ENABLED
+2025-08-14 09:28:50,955 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-14 09:28:50,956 - INFO - Starting episodic optimization: 2 episodes, 439 prompts per episode
+2025-08-14 09:28:50,960 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-14 09:28:50,960 - INFO - 
+============================================================
+2025-08-14 09:28:50,961 - INFO - STARTING EPISODE 1/2
+2025-08-14 09:28:50,962 - INFO - ============================================================
+2025-08-14 09:28:50,963 - INFO - 🔍 Checking server health at episode start...
+2025-08-14 09:28:50,983 - INFO - ✅ Server health check passed
+2025-08-14 09:28:51,002 - INFO - 
+--- Episode 1, Prompt 1 (Total: 439) ---
+2025-08-14 09:28:51,003 - INFO - Optimizing: 'intricately carved wooden totem pole'
+2025-08-14 09:28:51,003 - INFO - 🔍 Checking server availability before optimization...
+2025-08-14 09:28:51,014 - INFO - ✅ Server is available (status: idle)
+2025-08-14 09:28:51,017 - INFO - 📝 Marked server as used at 1755163731.017183
+2025-08-14 09:28:51,017 - INFO - ✅ Server is available and marked as used
+2025-08-14 09:28:51,019 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-14 09:28:51,020 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-14 09:28:51,020 - INFO -       🔧 Using endpoint: generate/
+2025-08-14 09:28:51,026 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'intricately carved wooden totem pole'
+2025-08-14 09:28:51,027 - INFO -    Session: rl_session_1755163731_8030
+2025-08-14 09:28:51,027 - INFO -    Max rounds: 17
+2025-08-14 09:28:51,028 - INFO -    Min rounds before convergence: 5
+2025-08-14 09:28:51,029 - INFO -    Target score: 0.99
+2025-08-14 09:28:51,029 - INFO - 
+   🔄 RL Round 1/17
+2025-08-14 09:28:51,030 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 09:28:59,151 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 47.088074752}
+2025-08-14 09:28:59,152 - INFO -       🔍 Validating...
+2025-08-14 09:28:59,152 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with moss and lichen growing on its weathered surface, leaning against a massive cedar tree in the misty forest, front view, accurate, complete, white background...'
+2025-08-14 09:28:59,152 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-14 09:33:59,480 - ERROR -       ❌ Validation error: Command '['bash', '-c', 'source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py "intricately carved wooden totem pole" "an intricately carved wooden totem pole with moss and lichen growing on its weathered surface, leaning against a massive cedar tree in the misty forest, front view, accurate, complete, white background" --endpoint "generate/"']' timed out after 300 seconds
+2025-08-14 09:33:59,481 - INFO -       📊 Validation score: 0.0000
+2025-08-14 09:33:59,482 - INFO - 
+   🔄 RL Round 2/17
+2025-08-14 09:33:59,485 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-14 09:34:12,045 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.236140544}
+2025-08-14 09:34:12,047 - INFO -       🔍 Validating...
+2025-08-14 09:34:12,048 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with moss and lichen growing on its weathered surface, adorned with polished stone beads that reflect the dappled light filtering through the forest canopy above, front view, accurate, complete, white background...'
+2025-08-14 09:34:12,049 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-14 09:35:36,604 - INFO -       📊 Validation score: 0.8167
+2025-08-14 09:35:36,604 - INFO -       🎯 New best score: 0.8167
+2025-08-14 09:35:36,604 - INFO - 
+   🔄 RL Round 3/17
+2025-08-14 09:35:36,604 - INFO -       🎯 Strategy: minimalist_refinement (exploit)
+2025-08-14 09:35:41,870 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.234043392}
+2025-08-14 09:35:41,872 - INFO -       🔍 Validating...
+2025-08-14 09:35:41,874 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with delicate spirals and patterns etched into its surface, front view, accurate, complete, white background...'
+2025-08-14 09:35:41,877 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-14 09:37:02,451 - INFO -       📊 Validation score: 0.8338
+2025-08-14 09:37:02,452 - INFO -       🎯 New best score: 0.8338
+2025-08-14 09:37:02,452 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-14 09:37:02,452 - INFO - 
+   🔄 RL Round 4/17
+2025-08-14 09:37:02,452 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-14 09:37:08,187 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 20.234043392}
+2025-08-14 09:37:08,189 - INFO -       🔍 Validating...
+2025-08-14 09:37:08,190 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with delicate spirals and patterns etched into its surface, adorned with a few strategically placed moss fragments and subtle wear marks from years of weathering, front view, accurate, complete, white background...'
+2025-08-14 09:37:08,191 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'

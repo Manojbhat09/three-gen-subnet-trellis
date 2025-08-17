@@ -32,7 +32,7 @@ from dataclasses import dataclass, asdict
 try:
     # from smart_prompt_optimizer_fixed import OptimizedPromptOptimizer
     # from llm_prompt_optimizer_v7_f1 import LLMPromptOptimizer
-    from llm_prompt_optimizer_v12_f1 import LLMPromptOptimizer
+    from llm_prompt_optimizer_v12_f1_lora import LLMPromptOptimizer
     OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = True
     print("✅ Using new performance-optimized prompt optimizer")
 except ImportError:
@@ -754,7 +754,7 @@ class ContinuousTrellisOrchestrator:
         
         # Initialize reproducibility system
         if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
+            self.reproducibility_system = LLMClosePromptReproducibility(episodic_memory_file="consolidated_episodic_logs/episodic_memory.json")
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
             self.reproducibility_system = None
@@ -792,6 +792,7 @@ class ContinuousTrellisOrchestrator:
             'server_status_check_errors': 0, # Track server status check errors
             'lora_routing_decisions': 0,    # Track LoRA routing decisions
             'lora_routing_accuracy': 0.0,   # Track LoRA routing accuracy
+            'blacklisted_validators_skipped': 0, # Track blacklisted validator skips
         }
         
         self.logger.info("🎯 Continuous TRELLIS Orchestrator initialized")
@@ -826,12 +827,16 @@ class ContinuousTrellisOrchestrator:
         """Get default configuration"""
         return {
             # Bittensor settings
-            'wallet_name': 'manbeast3b',
-            'hotkey_name': 'm3b',
+            'wallet_name': 'test2m3b2',
+            'hotkey_name': 't2m3b2',
             'netuid': 17,
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
             'max_validators': 50,           # Maximum number of validators to track
+            
+            # Validator blacklisting
+            'validator_blacklist': [180],   # UIDs to blacklist (e.g., 180 is a WC)
+            'enable_validator_blacklisting': True,
             
             # Server settings
             'generation_server_url': 'http://localhost:8096',
@@ -893,7 +898,7 @@ class ContinuousTrellisOrchestrator:
                 )
                 self.logger.info(f"✅ Wallet loaded: {self.wallet.hotkey.ss58_address}")
             
-            self.subtensor = bt.subtensor(network="test") #TODO
+            # self.subtensor = bt.subtensor(network="test") #TODO
             if self.subtensor is None:
                 self.subtensor = bt.subtensor(network="finney")
                 self.logger.info("✅ Subtensor connected")
@@ -992,11 +997,18 @@ class ContinuousTrellisOrchestrator:
                         inactive_count += 1
             
             active_validators = len([v for v in self.validators.values() if v.is_active])
+            blacklisted_validators = len([v for v in self.validators.values() if v.is_active and self.is_validator_blacklisted(v.uid)])
             
             self.logger.info(f"✅ Validator refresh complete:")
             self.logger.info(f"   Active validators: {active_validators}")
+            self.logger.info(f"   Blacklisted validators: {blacklisted_validators}")
             self.logger.info(f"   Inactive validators: {inactive_count}")
             self.logger.info(f"   Total eligible validators found: {len(eligible_validators)}")
+            
+            # Log blacklisted validators if any
+            if blacklisted_validators > 0:
+                blacklisted_uids = [v.uid for v in self.validators.values() if v.is_active and self.is_validator_blacklisted(v.uid)]
+                self.logger.info(f"   🚫 Blacklisted UIDs: {blacklisted_uids}")
             
             # Log top validators by stake
             top_validators = sorted(
@@ -1013,12 +1025,30 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Validator refresh failed: {e}")
             traceback.print_exc()
     
+    def is_validator_blacklisted(self, validator_uid: int) -> bool:
+        """Check if a validator is blacklisted"""
+        if not self.config.get('enable_validator_blacklisting', True):
+            return False
+        
+        blacklist = self.config.get('validator_blacklist', [])
+        is_blacklisted = validator_uid in blacklist
+        
+        if is_blacklisted:
+            self.logger.debug(f"🚫 Validator UID {validator_uid} is blacklisted - skipping")
+            self.stats['blacklisted_validators_skipped'] += 1
+        
+        return is_blacklisted
+    
     def is_validator_available(self, validator: ValidatorState) -> bool:
         """Check if validator is available for task pulling"""
         current_time = time.time()
         
         # Check if validator is active
         if not validator.is_active:
+            return False
+        
+        # Check if validator is blacklisted
+        if self.is_validator_blacklisted(validator.uid):
             return False
         
         # Check cooldown
@@ -1224,8 +1254,13 @@ class ContinuousTrellisOrchestrator:
         """
         try:
             # Step 1: Route to optimal LoRA first
-            lora_info = self.route_prompt_to_optimal_lora(task)
-            
+            # lora_info = self.route_prompt_to_optimal_lora(task)
+            lora_info = {
+                'lora_name': 'cinema',
+                'endpoint': '/generate/cinema/',
+                'reasoning': 'Default model (LoRA router not available)',
+                'confidence': 'High'
+            }
             # Step 2: Optimize prompt based on selected LoRA
             optimized_prompt = task.prompt  # Default to original
             
@@ -1774,6 +1809,12 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Server unavailable skips: {self.stats.get('server_unavailable_skips', 0)}")
         self.logger.info(f"Server status check errors: {self.stats.get('server_status_check_errors', 0)}")
         
+        # Validator blacklisting statistics
+        self.logger.info(f"Blacklisted validators skipped: {self.stats.get('blacklisted_validators_skipped', 0)}")
+        blacklist = self.config.get('validator_blacklist', [])
+        if blacklist:
+            self.logger.info(f"Current blacklist: {blacklist}")
+        
         if uptime_hours > 0:
             self.logger.info(f"Tasks/hour: {self.stats['tasks_processed'] / uptime_hours:.1f}")
             self.logger.info(f"Rewards/hour: {self.stats['total_rewards'] / uptime_hours:.6f} TAO")
@@ -1915,6 +1956,10 @@ async def main():
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
     parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
     
+    # Validator blacklisting arguments  
+    parser.add_argument("--blacklist", type=int, nargs="*", default=[180], help="Validator UIDs to blacklist (default: [180])")
+    parser.add_argument("--no-blacklist", action="store_true", help="Disable validator blacklisting")
+    
     args = parser.parse_args()
     
     # Build config
@@ -1954,6 +1999,12 @@ async def main():
     if args.variable_seeds:
         config['use_fixed_seed'] = False
     config['fixed_seed_value'] = args.seed
+    
+    # Validator blacklisting configuration
+    if args.no_blacklist:
+        config['enable_validator_blacklisting'] = False
+    if args.blacklist is not None:
+        config['validator_blacklist'] = args.blacklist
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)

@@ -1,0 +1,1181 @@
+2025-08-16 14:45:16,866 - INFO - 📄 Starting fresh RL loop memory
+2025-08-16 14:45:16,867 - INFO - 🔄 RL LOOP AGENT INITIALIZED (IMPROVED)
+2025-08-16 14:45:16,867 - INFO -    Strategy tracking: 8 strategies
+2025-08-16 14:45:16,867 - INFO -    Past sessions: 0
+2025-08-16 14:45:16,867 - INFO -    Exploration rate: 0.60
+2025-08-16 14:45:16,867 - INFO -    Max rounds per optimization: 15
+2025-08-16 14:45:16,867 - INFO -    Min rounds before convergence: 5
+2025-08-16 14:45:16,867 - INFO -    Adaptive convergence: ENABLED
+2025-08-16 14:45:16,893 - INFO - 🔄 Initialized reproducibility system for pre-optimization
+2025-08-16 14:45:16,894 - INFO - Starting episodic optimization: 2 episodes, 439 prompts per episode
+2025-08-16 14:45:16,894 - INFO - Target score: 0.99, Max rounds per prompt: 17
+2025-08-16 14:45:16,894 - INFO - 
+============================================================
+2025-08-16 14:45:16,894 - INFO - STARTING EPISODE 1/2
+2025-08-16 14:45:16,894 - INFO - ============================================================
+2025-08-16 14:45:16,895 - INFO - 🔍 Checking server health at episode start...
+2025-08-16 14:45:16,914 - INFO - ✅ Server health check passed
+2025-08-16 14:45:16,914 - INFO - 
+--- Episode 1, Prompt 1 (Total: 439) ---
+2025-08-16 14:45:16,915 - INFO - Optimizing: 'intricately carved wooden totem pole'
+2025-08-16 14:45:16,915 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 14:45:16,930 - INFO - ✅ Server is available (status: completed)
+2025-08-16 14:45:16,930 - INFO - 📝 Marked server as used at 1755355516.9309046
+2025-08-16 14:45:16,931 - INFO - ✅ Server is available and marked as used
+2025-08-16 14:45:16,931 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 14:45:16,931 - INFO -       🔧 Overriding endpoint: generate/
+2025-08-16 14:45:16,931 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 14:45:16,942 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'intricately carved wooden totem pole'
+2025-08-16 14:45:16,942 - INFO -    Session: rl_session_1755355516_9555
+2025-08-16 14:45:16,945 - INFO -    Max rounds: 17
+2025-08-16 14:45:16,945 - INFO -    Min rounds before convergence: 5
+2025-08-16 14:45:16,945 - INFO -    Target score: 0.99
+2025-08-16 14:45:16,945 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 14:45:16,945 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-16 14:45:30,018 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.312369152}
+2025-08-16 14:45:30,019 - INFO -       🔍 Validating...
+2025-08-16 14:45:30,019 - INFO -       📝 Using optimized prompt for generation: 'a intricately carved wooden totem pole with richly textured patina and subtle inlays of cedar and obsidian, front view, accurate, complete, white background...'
+2025-08-16 14:45:30,019 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:47:11,881 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:47:11,882 - INFO -       📊 Validation score: 0.7785
+2025-08-16 14:47:11,882 - INFO -       🎯 New best score: 0.7785
+2025-08-16 14:47:11,882 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 14:47:11,882 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-16 14:47:16,757 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.308174848}
+2025-08-16 14:47:16,758 - INFO -       🔍 Validating...
+2025-08-16 14:47:16,759 - INFO -       📝 Using optimized prompt for generation: 'intricately carved wooden totem pole, front view, accurate, complete, white background...'
+2025-08-16 14:47:16,759 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:48:58,576 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:48:58,576 - INFO -       📊 Validation score: 0.6533
+2025-08-16 14:48:58,577 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 14:48:58,577 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 14:48:58,578 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 14:49:07,361 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:49:07,362 - INFO -       🔍 Validating...
+2025-08-16 14:49:07,362 - INFO -       📝 Using optimized prompt for generation: 'a intricately carved wooden totem pole with visible cracks and subtle wear on the surface, accented by a rich patina that highlights its natural texture, front view, accurate, complete, white background...'
+2025-08-16 14:49:07,363 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:50:53,822 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:50:53,822 - INFO -       📊 Validation score: 0.7783
+2025-08-16 14:50:53,822 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 14:50:53,822 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 14:50:53,822 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-16 14:51:01,840 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:51:01,840 - INFO -       🔍 Validating...
+2025-08-16 14:51:01,843 - INFO -       📝 Using optimized prompt for generation: 'a intricately carved wooden totem pole with richly textured patina, subtle inlays of cedar and obsidian, and a delicate spiral pattern on the base, front view, accurate, complete, white background...'
+2025-08-16 14:51:01,844 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:52:44,415 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:52:44,416 - INFO -       📊 Validation score: 0.7748
+2025-08-16 14:52:44,416 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 14:52:44,416 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 14:52:44,416 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 14:52:51,745 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:52:51,746 - INFO -       🔍 Validating...
+2025-08-16 14:52:51,746 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with visible wear and subtle patina on the surface, accented by intricate patterns of cedar and obsidian, front view, accurate, complete, white background...'
+2025-08-16 14:52:51,746 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:54:41,302 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:54:41,303 - INFO -       📊 Validation score: 0.7336
+2025-08-16 14:54:41,303 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 14:54:41,303 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 14:54:41,303 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 14:54:48,795 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:54:48,797 - INFO -       🔍 Validating...
+2025-08-16 14:54:48,798 - INFO -       📝 Using optimized prompt for generation: 'a intricately carved wooden totem pole with richly textured patina and subtle inlays of cedar and obsidian, subtly weathered and worn at the edges, front view, accurate, complete, white background...'
+2025-08-16 14:54:48,798 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:56:32,218 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:56:32,218 - INFO -       📊 Validation score: 0.7808
+2025-08-16 14:56:32,218 - INFO -       🎯 New best score: 0.7808
+2025-08-16 14:56:32,218 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 14:56:32,218 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 14:56:32,218 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 14:56:40,492 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:56:40,493 - INFO -       🔍 Validating...
+2025-08-16 14:56:40,493 - INFO -       📝 Using optimized prompt for generation: 'a intricately carved wooden totem pole with a richly textured patina, subtle inlays of cedar and obsidian, and visible wear on the surface that hints at its age, front view, accurate, complete, white background...'
+2025-08-16 14:56:40,493 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 14:58:22,607 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 14:58:22,608 - INFO -       📊 Validation score: 0.7947
+2025-08-16 14:58:22,609 - INFO -       🎯 New best score: 0.7947
+2025-08-16 14:58:22,609 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-16 14:58:22,610 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 14:58:22,610 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 14:58:28,054 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 14:58:28,055 - INFO -       🔍 Validating...
+2025-08-16 14:58:28,055 - INFO -       📝 Using optimized prompt for generation: 'an intricately carved wooden totem pole with visible signs of wear on the surface, subtle cracks and fissures in the wood grain, and a richly textured patina that hints at its age, front view, accurate, complete, white background...'
+2025-08-16 14:58:28,055 - INFO -       🎯 Computing scores against original prompt: 'intricately carved wooden totem pole...'
+2025-08-16 15:00:12,394 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:00:12,395 - INFO -       📊 Validation score: 0.7934
+2025-08-16 15:00:12,395 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.001)
+2025-08-16 15:00:12,396 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 15:00:12,396 - INFO -    Best prompt: a intricately carved wooden totem pole with a richly textured patina, subtle inlays of cedar and obsidian, and visible wear on the surface that hints at its age, front view, accurate, complete, white background
+2025-08-16 15:00:12,396 - INFO -    Best score: 0.7947
+2025-08-16 15:00:12,397 - INFO -    Rounds: 8
+2025-08-16 15:00:12,397 - INFO -    Convergence: True
+2025-08-16 15:00:12,397 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.001)
+2025-08-16 15:00:12,397 - INFO -    Exploration ratio: 62.5%
+2025-08-16 15:00:12,397 - INFO -    Insights learned: 3
+2025-08-16 15:00:12,397 - INFO -    Total time: 895.45s
+2025-08-16 15:00:12,398 - INFO - Prompt optimized in 8 rounds: 0.779 → 0.795 (+0.016)
+2025-08-16 15:00:12,398 - INFO - ✅ Target score achieved!
+2025-08-16 15:00:12,398 - INFO - 
+--- Episode 1, Prompt 2 (Total: 439) ---
+2025-08-16 15:00:12,398 - INFO - Optimizing: 'little black chain'
+2025-08-16 15:00:12,398 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 15:00:12,418 - INFO - ✅ Server is available (status: completed)
+2025-08-16 15:00:12,419 - INFO - 📝 Marked server as used at 1755356412.419022
+2025-08-16 15:00:12,419 - INFO - ✅ Server is available and marked as used
+2025-08-16 15:00:12,419 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 15:00:12,419 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 15:00:12,419 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 15:00:12,435 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'little black chain'
+2025-08-16 15:00:12,435 - INFO -    Session: rl_session_1755356412_6977
+2025-08-16 15:00:12,435 - INFO -    Max rounds: 17
+2025-08-16 15:00:12,435 - INFO -    Min rounds before convergence: 5
+2025-08-16 15:00:12,435 - INFO -    Target score: 0.99
+2025-08-16 15:00:12,436 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 15:00:12,436 - INFO -       🔍 Explore performing better - increasing epsilon to 0.64
+2025-08-16 15:00:12,436 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 15:00:19,970 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 15:00:19,973 - INFO -       🔍 Validating...
+2025-08-16 15:00:19,976 - INFO -       📝 Using optimized prompt for generation: 'little black chain, front view, accurate, complete, white background...'
+2025-08-16 15:00:19,976 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:02:03,789 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:02:03,789 - INFO -       📊 Validation score: 0.5803
+2025-08-16 15:02:03,789 - INFO -       🎯 New best score: 0.5803
+2025-08-16 15:02:03,789 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 15:02:03,789 - INFO -       🔍 Explore performing better - increasing epsilon to 0.69
+2025-08-16 15:02:03,790 - INFO -       🎯 Strategy: conservative_enhancement (exploit)
+2025-08-16 15:02:09,946 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.306077696}
+2025-08-16 15:02:09,947 - INFO -       🔍 Validating...
+2025-08-16 15:02:09,948 - INFO -       📝 Using optimized prompt for generation: 'a small, sleek little black chain with a subtle sheen and delicate links, hanging in front of a neutral-colored background, front view, accurate, complete, white background...'
+2025-08-16 15:02:09,948 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:03:48,054 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:03:48,055 - INFO -       📊 Validation score: 0.6930
+2025-08-16 15:03:48,055 - INFO -       🎯 New best score: 0.6930
+2025-08-16 15:03:48,055 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-16 15:03:48,055 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 15:03:48,056 - INFO -       🔍 Explore performing better - increasing epsilon to 0.74
+2025-08-16 15:03:48,057 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 15:03:54,561 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:03:54,564 - INFO -       🔍 Validating...
+2025-08-16 15:03:54,564 - INFO -       📝 Using optimized prompt for generation: 'a delicate, curved little black chain with a subtle sheen and intricate details, suspended in mid-air, front view, accurate, complete, white background...'
+2025-08-16 15:03:54,564 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:05:39,265 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:05:39,266 - INFO -       📊 Validation score: 0.7657
+2025-08-16 15:05:39,266 - INFO -       🎯 New best score: 0.7657
+2025-08-16 15:05:39,266 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-16 15:05:39,266 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 15:05:39,266 - INFO -       🔍 Explore performing better - increasing epsilon to 0.79
+2025-08-16 15:05:39,266 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:05:46,287 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:05:46,291 - INFO -       🔍 Validating...
+2025-08-16 15:05:46,291 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with a subtle sheen and delicate links, adorned with tiny silver accents and worn smooth by frequent use...'
+2025-08-16 15:05:46,292 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:07:32,576 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:07:32,576 - INFO -       📊 Validation score: 0.7768
+2025-08-16 15:07:32,576 - INFO -       🎯 New best score: 0.7768
+2025-08-16 15:07:32,577 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:07:32,577 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 15:07:32,577 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:07:32,577 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 15:07:39,456 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:07:39,456 - INFO -       🔍 Validating...
+2025-08-16 15:07:39,457 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and an understated elegance, resting against a polished silver accent, front view, accurate, complete, white background...'
+2025-08-16 15:07:39,457 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:09:24,267 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:09:24,267 - INFO -       📊 Validation score: 0.6199
+2025-08-16 15:09:24,268 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:09:24,268 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 15:09:24,268 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:09:24,268 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 15:09:32,502 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:09:32,505 - INFO -       🔍 Validating...
+2025-08-16 15:09:32,505 - INFO -       📝 Using optimized prompt for generation: 'a delicate, curved little black chain with a subtle sheen and intricate details, suspended in mid-air over a minimalist background, front view, accurate, complete, white background...'
+2025-08-16 15:09:32,507 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:11:20,105 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:11:20,105 - INFO -       📊 Validation score: 0.7826
+2025-08-16 15:11:20,105 - INFO -       🎯 New best score: 0.7826
+2025-08-16 15:11:20,105 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:11:20,106 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 15:11:20,106 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 15:11:20,106 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:11:20,106 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 15:11:27,172 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:11:27,173 - INFO -       🔍 Validating...
+2025-08-16 15:11:27,173 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with an intricate texture and delicate links, suspended in mid-air over a subtle shadow, front view, accurate, complete, white background...'
+2025-08-16 15:11:27,173 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:13:20,254 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:13:20,254 - INFO -       📊 Validation score: 0.6290
+2025-08-16 15:13:20,254 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:13:20,254 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:13:20,254 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 15:13:20,255 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:13:20,255 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 15:13:27,048 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:13:27,051 - INFO -       🔍 Validating...
+2025-08-16 15:13:27,052 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and an understated elegance, front view, accurate, complete, white background...'
+2025-08-16 15:13:27,052 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:15:07,413 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:15:07,414 - INFO -       📊 Validation score: 0.6995
+2025-08-16 15:15:07,415 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:15:07,415 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-16 15:15:07,415 - INFO - 
+   🔄 RL Round 9/17
+2025-08-16 15:15:07,417 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:15:07,417 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 15:15:13,588 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:15:13,590 - INFO -       🔍 Validating...
+2025-08-16 15:15:13,591 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and a subtle sheen, adorned with intricate metalwork details that catch the light...'
+2025-08-16 15:15:13,592 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:16:57,104 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:16:57,104 - INFO -       📊 Validation score: 0.6814
+2025-08-16 15:16:57,107 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:16:57,107 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:16:57,107 - INFO - 
+   🔄 RL Round 10/17
+2025-08-16 15:16:57,107 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:16:57,107 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 15:17:04,475 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.303980544}
+2025-08-16 15:17:04,475 - INFO -       🔍 Validating...
+2025-08-16 15:17:04,475 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and a subtle sheen, adorned with tiny silver accents and resting against a soft, velvety surface, front view, accurate, complete, white background...'
+2025-08-16 15:17:04,476 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:18:41,173 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:18:41,174 - INFO -       📊 Validation score: 0.5483
+2025-08-16 15:18:41,174 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:18:41,174 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:18:41,174 - INFO - 
+   🔄 RL Round 11/17
+2025-08-16 15:18:41,174 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:18:41,174 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:18:47,539 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.301883392}
+2025-08-16 15:18:47,540 - INFO -       🔍 Validating...
+2025-08-16 15:18:47,541 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and a subtle sheen, adorned with tiny silver accents on the clasp, front view, accurate, complete, white background...'
+2025-08-16 15:18:47,541 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:20:28,425 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:20:28,425 - INFO -       📊 Validation score: 0.8567
+2025-08-16 15:20:28,425 - INFO -       🎯 New best score: 0.8567
+2025-08-16 15:20:28,425 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:20:28,426 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:20:28,426 - INFO - 
+   🔄 RL Round 12/17
+2025-08-16 15:20:28,426 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:20:28,426 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 15:20:35,245 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.297689088}
+2025-08-16 15:20:35,246 - INFO -       🔍 Validating...
+2025-08-16 15:20:35,246 - INFO -       📝 Using optimized prompt for generation: 'a refined little black chain with delicate links and a subtle sheen, hanging in front of a neutral background, front view, accurate, complete, white background...'
+2025-08-16 15:20:35,247 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:22:13,548 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:22:13,548 - INFO -       📊 Validation score: 0.3763
+2025-08-16 15:22:13,549 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:22:13,549 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:22:13,549 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-16 15:22:13,549 - INFO - 
+   🔄 RL Round 13/17
+2025-08-16 15:22:13,550 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 15:22:13,553 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 15:22:19,984 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.293494784}
+2025-08-16 15:22:19,985 - INFO -       🔍 Validating...
+2025-08-16 15:22:19,986 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and an understated elegance, front view, accurate, complete, white background...'
+2025-08-16 15:22:19,986 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:24:04,019 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:24:04,019 - INFO -       📊 Validation score: 0.6984
+2025-08-16 15:24:04,019 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:24:04,019 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:24:04,019 - INFO - 
+   🔄 RL Round 14/17
+2025-08-16 15:24:04,020 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 15:24:11,581 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:24:11,582 - INFO -       🔍 Validating...
+2025-08-16 15:24:11,582 - INFO -       📝 Using optimized prompt for generation: 'a delicate little black chain with subtle metallic undertones and a smooth, polished finish, front view, accurate, complete, white background...'
+2025-08-16 15:24:11,582 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:25:58,104 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:25:58,104 - INFO -       📊 Validation score: 0.7375
+2025-08-16 15:25:58,105 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:25:58,105 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-16 15:25:58,105 - INFO - 
+   🔄 RL Round 15/17
+2025-08-16 15:25:58,105 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:26:05,066 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:26:05,069 - INFO -       🔍 Validating...
+2025-08-16 15:26:05,069 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and an understated elegance, suspended in mid-air over a soft, white background, front view, accurate, complete, white background...'
+2025-08-16 15:26:05,070 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:27:44,805 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:27:44,806 - INFO -       📊 Validation score: 0.7065
+2025-08-16 15:27:44,806 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:27:44,806 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:27:44,806 - INFO - 
+   🔄 RL Round 16/17
+2025-08-16 15:27:44,806 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:27:53,412 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:27:53,413 - INFO -       🔍 Validating...
+2025-08-16 15:27:53,413 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and a subtle sheen, adorned with intricate metalwork that hints at its luxurious origins, front view, accurate, complete, white background...'
+2025-08-16 15:27:53,414 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:29:35,394 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:29:35,394 - INFO -       📊 Validation score: 0.7558
+2025-08-16 15:29:35,394 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:29:35,395 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:29:35,395 - INFO - 
+   🔄 RL Round 17/17
+2025-08-16 15:29:35,395 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 15:29:44,707 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:29:44,716 - INFO -       🔍 Validating...
+2025-08-16 15:29:44,716 - INFO -       📝 Using optimized prompt for generation: 'a slender little black chain with delicate links and an understated elegance, suspended in mid-air over a minimalist background with subtle texture and shading, front view, accurate, complete, white background...'
+2025-08-16 15:29:44,716 - INFO -       🎯 Computing scores against original prompt: 'little black chain...'
+2025-08-16 15:31:25,427 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:31:25,428 - INFO -       📊 Validation score: 0.6735
+2025-08-16 15:31:25,429 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:31:25,436 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 15:31:25,437 - INFO -    Best prompt: a slender little black chain with delicate links and a subtle sheen, adorned with tiny silver accents on the clasp, front view, accurate, complete, white background
+2025-08-16 15:31:25,438 - INFO -    Best score: 0.8567
+2025-08-16 15:31:25,443 - INFO -    Rounds: 17
+2025-08-16 15:31:25,443 - INFO -    Convergence: False
+2025-08-16 15:31:25,444 - INFO -    Convergence reason: Not converged
+2025-08-16 15:31:25,444 - INFO -    Exploration ratio: 88.2%
+2025-08-16 15:31:25,444 - INFO -    Insights learned: 3
+2025-08-16 15:31:25,444 - INFO -    Total time: 1872.99s
+2025-08-16 15:31:25,445 - INFO - Prompt optimized in 17 rounds: 0.580 → 0.857 (+0.276)
+2025-08-16 15:31:25,446 - INFO - ⏰ Max rounds reached
+2025-08-16 15:31:25,447 - INFO - 
+--- Episode 1, Prompt 3 (Total: 439) ---
+2025-08-16 15:31:25,448 - INFO - Optimizing: 'sturdy metallic blue pliers'
+2025-08-16 15:31:25,449 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 15:31:25,473 - INFO - ✅ Server is available (status: completed)
+2025-08-16 15:31:25,474 - INFO - 📝 Marked server as used at 1755358285.4748495
+2025-08-16 15:31:25,475 - INFO - ✅ Server is available and marked as used
+2025-08-16 15:31:25,476 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 15:31:25,476 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 15:31:25,477 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 15:31:25,485 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'sturdy metallic blue pliers'
+2025-08-16 15:31:25,485 - INFO -    Session: rl_session_1755358285_3791
+2025-08-16 15:31:25,485 - INFO -    Max rounds: 17
+2025-08-16 15:31:25,487 - INFO -    Min rounds before convergence: 5
+2025-08-16 15:31:25,487 - INFO -    Target score: 0.99
+2025-08-16 15:31:25,488 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 15:31:25,488 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 15:31:34,426 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:31:34,430 - INFO -       🔍 Validating...
+2025-08-16 15:31:34,430 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with intricate engravings and a worn, rubber grip, front view, accurate, complete, white background...'
+2025-08-16 15:31:34,430 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:33:15,598 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:33:15,599 - INFO -       📊 Validation score: 0.6699
+2025-08-16 15:33:15,599 - INFO -       🎯 New best score: 0.6699
+2025-08-16 15:33:15,600 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 15:33:15,600 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 15:33:22,797 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:33:22,799 - INFO -       🔍 Validating...
+2025-08-16 15:33:22,801 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with a rubberized grip and subtle scratches on the handle, front view, accurate, complete, white background...'
+2025-08-16 15:33:22,803 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:35:12,963 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:35:12,964 - INFO -       📊 Validation score: 0.6633
+2025-08-16 15:35:12,964 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:35:12,964 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 15:35:12,964 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 15:35:22,647 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:35:22,648 - INFO -       🔍 Validating...
+2025-08-16 15:35:22,648 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with fine, textured engravings along the handle and a rubberized grip with subtle wear patterns, front view, accurate, front view, accurate, complete, white background...'
+2025-08-16 15:35:22,649 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:37:05,091 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:37:05,092 - INFO -       📊 Validation score: 0.7201
+2025-08-16 15:37:05,092 - INFO -       🎯 New best score: 0.7201
+2025-08-16 15:37:05,092 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 15:37:05,092 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 15:37:05,093 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:37:12,845 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:37:12,847 - INFO -       🔍 Validating...
+2025-08-16 15:37:12,850 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with a textured, worn grip and fine engravings along the handle, front view, accurate, complete, white background...'
+2025-08-16 15:37:12,850 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:39:11,592 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:39:11,592 - INFO -       📊 Validation score: 0.6645
+2025-08-16 15:39:11,593 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:39:11,593 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 15:39:11,593 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:39:22,948 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:39:22,949 - INFO -       🔍 Validating...
+2025-08-16 15:39:22,950 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with fine, satin-finish engravings along the handle and a rubberized grip with subtle texture, front view, front view, accurate, complete, white background...'
+2025-08-16 15:39:22,950 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:41:12,745 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:41:12,745 - INFO -       📊 Validation score: 0.6906
+2025-08-16 15:41:12,746 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:41:12,746 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:41:12,746 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 15:41:12,746 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 15:41:23,543 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:41:23,543 - INFO -       🔍 Validating...
+2025-08-16 15:41:23,544 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with satin-finish engravings along the handle and a rubberized grip, front view, accurate......'
+2025-08-16 15:41:23,544 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:43:26,506 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:43:26,506 - INFO -       📊 Validation score: 0.6280
+2025-08-16 15:43:26,507 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:43:26,507 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:43:26,507 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 15:43:26,507 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 15:43:37,579 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:43:37,580 - INFO -       🔍 Validating...
+2025-08-16 15:43:37,580 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with a satin-finish coating on the metal handle and fine, textured engravings along the edge of the grip, worn in places, front view, accurate, complete, white background...'
+2025-08-16 15:43:37,580 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:45:22,497 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:45:22,497 - INFO -       📊 Validation score: 0.7875
+2025-08-16 15:45:22,497 - INFO -       🎯 New best score: 0.7875
+2025-08-16 15:45:22,497 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:45:22,498 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:45:22,498 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 15:45:22,498 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 15:45:30,626 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:45:30,627 - INFO -       🔍 Validating...
+2025-08-16 15:45:30,631 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with fine, textured engravings along the handle and a rubberized grip, front view, accurate, detailed, front view, accurate, complete, white background...'
+2025-08-16 15:45:30,631 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:47:13,354 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:47:13,354 - INFO -       📊 Validation score: 0.6430
+2025-08-16 15:47:13,355 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:47:13,355 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 15:47:13,355 - INFO - 
+   🔄 RL Round 9/17
+2025-08-16 15:47:13,355 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 15:47:22,000 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:47:22,000 - INFO -       🔍 Validating...
+2025-08-16 15:47:22,000 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with fine, brushed engravings along the handle and a rubberized grip, front view, accurate, complete, white background...'
+2025-08-16 15:47:22,000 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:49:47,767 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:49:47,767 - INFO -       📊 Validation score: 0.6490
+2025-08-16 15:49:47,767 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:49:47,767 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-16 15:49:47,767 - INFO - 
+   🔄 RL Round 10/17
+2025-08-16 15:49:47,768 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 15:49:56,705 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:49:56,706 - INFO -       🔍 Validating...
+2025-08-16 15:49:56,709 - INFO -       📝 Using optimized prompt for generation: 'sturdy metallic blue pliers with a satin-finish coating on the metal handle, fine, textured engravings along the spine, and a rubberized grip with subtle ridges, front view, accurate, complete, white background...'
+2025-08-16 15:49:56,709 - INFO -       🎯 Computing scores against original prompt: 'sturdy metallic blue pliers...'
+2025-08-16 15:51:47,256 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:51:47,256 - INFO -       📊 Validation score: 0.6486
+2025-08-16 15:51:47,256 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 15:51:47,256 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.000)
+2025-08-16 15:51:47,262 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 15:51:47,273 - INFO -    Best prompt: sturdy metallic blue pliers with a satin-finish coating on the metal handle and fine, textured engravings along the edge of the grip, worn in places, front view, accurate, complete, white background
+2025-08-16 15:51:47,273 - INFO -    Best score: 0.7875
+2025-08-16 15:51:47,273 - INFO -    Rounds: 10
+2025-08-16 15:51:47,273 - INFO -    Convergence: True
+2025-08-16 15:51:47,273 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.000)
+2025-08-16 15:51:47,273 - INFO -    Exploration ratio: 80.0%
+2025-08-16 15:51:47,273 - INFO -    Insights learned: 2
+2025-08-16 15:51:47,273 - INFO -    Total time: 1221.77s
+2025-08-16 15:51:47,274 - INFO - Prompt optimized in 10 rounds: 0.670 → 0.787 (+0.118)
+2025-08-16 15:51:47,274 - INFO - ✅ Target score achieved!
+2025-08-16 15:51:47,274 - INFO - 
+--- Episode 1, Prompt 4 (Total: 439) ---
+2025-08-16 15:51:47,274 - INFO - Optimizing: 'orange glass filled with orange juice above'
+2025-08-16 15:51:47,274 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 15:51:47,303 - INFO - ✅ Server is available (status: completed)
+2025-08-16 15:51:47,304 - INFO - 📝 Marked server as used at 1755359507.3048344
+2025-08-16 15:51:47,306 - INFO - ✅ Server is available and marked as used
+2025-08-16 15:51:47,307 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 15:51:47,308 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 15:51:47,309 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 15:51:47,315 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'orange glass filled with orange juice above'
+2025-08-16 15:51:47,317 - INFO -    Session: rl_session_1755359507_5775
+2025-08-16 15:51:47,317 - INFO -    Max rounds: 17
+2025-08-16 15:51:47,318 - INFO -    Min rounds before convergence: 5
+2025-08-16 15:51:47,319 - INFO -    Target score: 0.99
+2025-08-16 15:51:47,320 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 15:51:47,320 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 15:51:58,197 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:51:58,199 - INFO -       🔍 Validating...
+2025-08-16 15:51:58,200 - INFO -       📝 Using optimized prompt for generation: 'a tall glass filled with orange juice, suspended in mid-air above a lush green orchard with vibrant citrus trees and a warm sun shining down, front view, accurate, complete, white background...'
+2025-08-16 15:51:58,201 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 15:53:41,833 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:53:41,834 - INFO -       📊 Validation score: 0.5747
+2025-08-16 15:53:41,835 - INFO -       🎯 New best score: 0.5747
+2025-08-16 15:53:41,836 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 15:53:41,837 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 15:53:51,669 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.291397632}
+2025-08-16 15:53:51,670 - INFO -       🔍 Validating...
+2025-08-16 15:53:51,671 - INFO -       📝 Using optimized prompt for generation: 'a slender glass of layered orange juice suspended in mid-air above a rustic wooden table with worn leather upholstery and soft golden lighting, front view, accurate, complete, white background...'
+2025-08-16 15:53:51,671 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 15:55:35,175 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:55:35,176 - INFO -       📊 Validation score: 0.5896
+2025-08-16 15:55:35,176 - INFO -       🎯 New best score: 0.5896
+2025-08-16 15:55:35,176 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 15:55:35,176 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 15:55:35,176 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 15:55:42,162 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 15:55:42,168 - INFO -       🔍 Validating...
+2025-08-16 15:55:42,168 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with orange juice suspended in mid-air above a wooden table with intricate carvings, front view, accurate, complete, white background...'
+2025-08-16 15:55:42,168 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 15:57:28,588 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:57:28,606 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-16 15:57:28,607 - INFO -       📊 Validation score: 0.0000
+2025-08-16 15:57:28,607 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 15:57:28,607 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 15:57:35,466 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 15:57:35,467 - INFO -       🔍 Validating...
+2025-08-16 15:57:35,468 - INFO -       📝 Using optimized prompt for generation: 'a slender glass of layered orange juice suspended in mid-air over a simple wooden table with a small, elegant golden spoon resting beside it, front view, accurate, complete, white background...'
+2025-08-16 15:57:35,471 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 15:59:18,152 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 15:59:18,152 - INFO -       📊 Validation score: 0.5806
+2025-08-16 15:59:18,153 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 15:59:18,153 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 15:59:25,074 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 15:59:25,077 - INFO -       🔍 Validating...
+2025-08-16 15:59:25,078 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with orange juice suspended in mid-air above a modern minimalist coffee table with clean lines and a subtle sheen...'
+2025-08-16 15:59:25,082 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:01:10,117 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:01:10,118 - INFO -       📊 Validation score: 0.6830
+2025-08-16 16:01:10,118 - INFO -       🎯 New best score: 0.6830
+2025-08-16 16:01:10,119 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:01:10,120 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-16 16:01:10,122 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 16:01:10,122 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 16:01:17,569 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:01:17,570 - INFO -       🔍 Validating...
+2025-08-16 16:01:17,570 - INFO -       📝 Using optimized prompt for generation: 'a slender, crystal-clear glass filled with vibrant orange juice suspended in mid-air above a rustic wooden table...'
+2025-08-16 16:01:17,571 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:02:57,822 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:02:57,823 - INFO -       📊 Validation score: 0.6391
+2025-08-16 16:02:57,824 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:02:57,824 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:02:57,824 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 16:02:57,824 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 16:03:04,991 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:03:04,991 - INFO -       🔍 Validating...
+2025-08-16 16:03:04,991 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a minimalist coffee table, front view, accurate, complete, white background...'
+2025-08-16 16:03:04,991 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:04:45,345 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:04:45,346 - INFO -       📊 Validation score: 0.3809
+2025-08-16 16:04:45,346 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:04:45,346 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:04:45,346 - INFO -       🔍 Increasing exploration to 0.79
+2025-08-16 16:04:45,346 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 16:04:45,346 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 16:04:53,776 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:04:53,778 - INFO -       🔍 Validating...
+2025-08-16 16:04:53,781 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a minimalist wooden table with clean lines and subtle texture, front view, accurate, complete, white background...'
+2025-08-16 16:04:53,781 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:06:40,153 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:06:40,153 - INFO -       📊 Validation score: 0.4276
+2025-08-16 16:06:40,154 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:06:40,154 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-16 16:06:40,154 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-16 16:06:40,154 - INFO - 
+   🔄 RL Round 9/17
+2025-08-16 16:06:40,154 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 16:06:47,850 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:06:47,850 - INFO -       🔍 Validating...
+2025-08-16 16:06:47,851 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a minimalist wooden table with intricate carvings and subtle candlelight casting warm shadows, front view, accurate, complete, white background...'
+2025-08-16 16:06:47,854 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:08:32,331 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:08:32,332 - INFO -       📊 Validation score: 0.6503
+2025-08-16 16:08:32,333 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:08:32,334 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-16 16:08:32,335 - INFO - 
+   🔄 RL Round 10/17
+2025-08-16 16:08:32,336 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 16:08:40,429 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:08:40,430 - INFO -       🔍 Validating...
+2025-08-16 16:08:40,433 - INFO -       📝 Using optimized prompt for generation: 'a slender glass of layered orange juice suspended in mid-air over a simple, elegant wooden desk with a hint of morning sunlight peeking through the blinds, front view, accurate, complete, white background...'
+2025-08-16 16:08:40,433 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:10:18,843 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:10:18,843 - INFO -       📊 Validation score: 0.5264
+2025-08-16 16:10:18,844 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:10:18,844 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:10:18,844 - INFO - 
+   🔄 RL Round 11/17
+2025-08-16 16:10:18,844 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 16:10:27,318 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:10:27,320 - INFO -       🔍 Validating...
+2025-08-16 16:10:27,321 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with orange juice suspended in mid-air above a minimalist wooden table with intricately carved details on the legs, front view, accurate, complete, white background...'
+2025-08-16 16:10:27,321 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:12:10,889 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:12:10,890 - INFO -       📊 Validation score: 0.8045
+2025-08-16 16:12:10,890 - INFO -       🎯 New best score: 0.8045
+2025-08-16 16:12:10,890 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:12:10,890 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-16 16:12:10,891 - INFO - 
+   🔄 RL Round 12/17
+2025-08-16 16:12:10,891 - INFO -       🎯 Strategy: aggressive_transformation (exploit)
+2025-08-16 16:12:18,381 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:12:18,382 - INFO -       🔍 Validating...
+2025-08-16 16:12:18,382 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a modern minimalist coffee table with a subtle sheen and delicate curves, front view, accurate, complete, white background...'
+2025-08-16 16:12:18,382 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:14:05,269 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:14:05,273 - INFO -       📊 Validation score: 0.5542
+2025-08-16 16:14:05,273 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:14:05,277 - INFO - 
+   🔄 RL Round 13/17
+2025-08-16 16:14:05,277 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 16:14:12,651 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:14:12,654 - INFO -       🔍 Validating...
+2025-08-16 16:14:12,654 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with orange juice suspended in mid-air above a minimalist wooden table with clean lines and subtle imperfections, front view, accurate, complete, white background...'
+2025-08-16 16:14:12,656 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:15:55,771 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:15:55,771 - INFO -       📊 Validation score: 0.5142
+2025-08-16 16:15:55,772 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:15:55,772 - INFO - 
+   🔄 RL Round 14/17
+2025-08-16 16:15:55,772 - INFO -       🎯 Strategy: aggressive_transformation (explore)
+2025-08-16 16:16:03,168 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:16:03,169 - INFO -       🔍 Validating...
+2025-08-16 16:16:03,169 - INFO -       📝 Using optimized prompt for generation: 'a slender glass of layered orange juice suspended in mid-air above a minimalist wooden table with clean lines and a subtle glow, front view, accurate, complete, white background...'
+2025-08-16 16:16:03,169 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:17:49,288 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:17:49,288 - INFO -       📊 Validation score: 0.6944
+2025-08-16 16:17:49,289 - INFO -       📈 Improvement detected: aggressive_transformation working better
+2025-08-16 16:17:49,289 - INFO - 
+   🔄 RL Round 15/17
+2025-08-16 16:17:49,289 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-16 16:17:56,742 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:17:56,742 - INFO -       🔍 Validating...
+2025-08-16 16:17:56,742 - INFO -       📝 Using optimized prompt for generation: 'a slender, crystal-clear glass filled with vibrant orange juice suspended in mid-air above, front view, accurate, complete, white background...'
+2025-08-16 16:17:56,742 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:19:39,800 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:19:39,801 - INFO -       📊 Validation score: 0.4922
+2025-08-16 16:19:39,801 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:19:39,802 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-16 16:19:39,802 - INFO - 
+   🔄 RL Round 16/17
+2025-08-16 16:19:39,802 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-16 16:19:50,510 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:19:50,511 - INFO -       🔍 Validating...
+2025-08-16 16:19:50,514 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a minimalist wooden table with intricate carvings and subtle reflections on the surface, front view, accurate, complete, white background...'
+2025-08-16 16:19:50,514 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:21:32,437 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:21:32,438 - INFO -       📊 Validation score: 0.5561
+2025-08-16 16:21:32,439 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-16 16:21:32,439 - INFO - 
+   🔄 RL Round 17/17
+2025-08-16 16:21:32,439 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-16 16:21:43,172 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:21:43,175 - INFO -       🔍 Validating...
+2025-08-16 16:21:43,176 - INFO -       📝 Using optimized prompt for generation: 'a slender glass filled with vibrant orange juice suspended in mid-air above a minimalist wooden table with intricate carvings of citrus leaves and subtle warmth emanating from the glass...'
+2025-08-16 16:21:43,176 - INFO -       🎯 Computing scores against original prompt: 'orange glass filled with orange juice above...'
+2025-08-16 16:23:25,168 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:23:25,169 - INFO -       📊 Validation score: 0.5988
+2025-08-16 16:23:25,181 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 16:23:25,181 - INFO -    Best prompt: a slender glass filled with orange juice suspended in mid-air above a minimalist wooden table with intricately carved details on the legs, front view, accurate, complete, white background
+2025-08-16 16:23:25,181 - INFO -    Best score: 0.8045
+2025-08-16 16:23:25,181 - INFO -    Rounds: 17
+2025-08-16 16:23:25,181 - INFO -    Convergence: False
+2025-08-16 16:23:25,181 - INFO -    Convergence reason: Not converged
+2025-08-16 16:23:25,191 - INFO -    Exploration ratio: 82.4%
+2025-08-16 16:23:25,191 - INFO -    Insights learned: 3
+2025-08-16 16:23:25,191 - INFO -    Total time: 1897.85s
+2025-08-16 16:23:25,191 - INFO - Prompt optimized in 17 rounds: 0.575 → 0.804 (+0.230)
+2025-08-16 16:23:25,191 - INFO - ⏰ Max rounds reached
+2025-08-16 16:23:25,191 - INFO - 
+--- Episode 1, Prompt 5 (Total: 439) ---
+2025-08-16 16:23:25,192 - INFO - Optimizing: 'burgundy pliers insulated handles'
+2025-08-16 16:23:25,192 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 16:23:25,206 - INFO - ✅ Server is available (status: completed)
+2025-08-16 16:23:25,206 - INFO - 📝 Marked server as used at 1755361405.2069118
+2025-08-16 16:23:25,207 - INFO - ✅ Server is available and marked as used
+2025-08-16 16:23:25,207 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 16:23:25,207 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 16:23:25,207 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 16:23:25,216 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'burgundy pliers insulated handles'
+2025-08-16 16:23:25,216 - INFO -    Session: rl_session_1755361405_6056
+2025-08-16 16:23:25,216 - INFO -    Max rounds: 17
+2025-08-16 16:23:25,216 - INFO -    Min rounds before convergence: 5
+2025-08-16 16:23:25,216 - INFO -    Target score: 0.99
+2025-08-16 16:23:25,216 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 16:23:25,216 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 16:23:31,322 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:23:31,325 - INFO -       🔍 Validating...
+2025-08-16 16:23:31,325 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, insulated copper-grip handles, front view, accurate, complete, white background...'
+2025-08-16 16:23:31,328 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:25:16,717 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:25:16,719 - INFO -       📊 Validation score: 0.6801
+2025-08-16 16:25:16,719 - INFO -       🎯 New best score: 0.6801
+2025-08-16 16:25:16,720 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 16:25:16,721 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 16:25:24,021 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:25:24,025 - INFO -       🔍 Validating...
+2025-08-16 16:25:24,025 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles, front view, accurate, complete, white background...'
+2025-08-16 16:25:24,025 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:27:05,911 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:27:05,911 - INFO -       📊 Validation score: 0.7445
+2025-08-16 16:27:05,911 - INFO -       🎯 New best score: 0.7445
+2025-08-16 16:27:05,911 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-16 16:27:05,911 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 16:27:05,911 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 16:27:13,726 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:27:13,730 - INFO -       🔍 Validating...
+2025-08-16 16:27:13,731 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring a comfortable ergonomic design for reduced fatigue during extended use, front view, accurate, complete, white background...'
+2025-08-16 16:27:13,732 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:28:58,931 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:28:58,931 - INFO -       📊 Validation score: 0.8089
+2025-08-16 16:28:58,932 - INFO -       🎯 New best score: 0.8089
+2025-08-16 16:28:58,932 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-16 16:28:58,932 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 16:28:58,932 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:28:58,932 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 16:29:07,598 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:29:07,600 - INFO -       🔍 Validating...
+2025-08-16 16:29:07,601 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring a comfortable ergonomic design and a precision-ground cutting edge, front view, accurate, complete, white background...'
+2025-08-16 16:29:07,602 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:30:51,138 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:30:51,138 - INFO -       📊 Validation score: 0.8317
+2025-08-16 16:30:51,139 - INFO -       🎯 New best score: 0.8317
+2025-08-16 16:30:51,139 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-16 16:30:51,139 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 16:30:51,139 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:30:51,139 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 16:30:58,695 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:30:58,696 - INFO -       🔍 Validating...
+2025-08-16 16:30:58,698 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with intricately textured, rubberized insulated copper-grip handles featuring a comfortable ergonomic design and subtle curvature to fit perfectly in the hand, front view, accurate, complete, white background...'
+2025-08-16 16:30:58,698 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:32:39,552 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:32:39,552 - INFO -       📊 Validation score: 0.8215
+2025-08-16 16:32:39,553 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:32:39,553 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 16:32:39,553 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:32:39,553 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 16:32:49,011 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:32:49,013 - INFO -       🔍 Validating...
+2025-08-16 16:32:49,014 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring a comfortable ergonomic design and precise measurements for optimal tooling, front view, accurate, complete, white background...'
+2025-08-16 16:32:49,014 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:34:32,318 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:34:32,318 - INFO -       📊 Validation score: 0.7274
+2025-08-16 16:34:32,318 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:34:32,318 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 16:34:32,319 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:34:32,319 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 16:34:39,548 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:34:39,550 - INFO -       🔍 Validating...
+2025-08-16 16:34:39,551 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring ergonomic contours and precision-ground edges, front view, accurate, complete, white background...'
+2025-08-16 16:34:39,551 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:36:21,970 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:36:21,971 - INFO -       📊 Validation score: 0.7814
+2025-08-16 16:36:21,971 - INFO -       📈 Improvement detected: minimalist_refinement working better
+2025-08-16 16:36:21,971 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 16:36:21,971 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:36:21,972 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 16:36:29,737 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:36:29,738 - INFO -       🔍 Validating...
+2025-08-16 16:36:29,739 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized copper-grip handles featuring a contoured ergonomic design and textured surface for secure grip...'
+2025-08-16 16:36:29,739 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:38:14,742 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:38:14,742 - INFO -       📊 Validation score: 0.8688
+2025-08-16 16:38:14,743 - INFO -       🎯 New best score: 0.8688
+2025-08-16 16:38:14,743 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:38:14,743 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-16 16:38:14,743 - INFO - 
+   🔄 RL Round 9/17
+2025-08-16 16:38:14,744 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:38:14,744 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 16:38:22,346 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:38:22,347 - INFO -       🔍 Validating...
+2025-08-16 16:38:22,348 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring ergonomic contours and subtle ridges for optimal grip, front view, front view, accurate, complete, white background...'
+2025-08-16 16:38:22,353 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:40:08,610 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:40:08,611 - INFO -       📊 Validation score: 0.7981
+2025-08-16 16:40:08,611 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:40:08,612 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:40:08,612 - INFO - 
+   🔄 RL Round 10/17
+2025-08-16 16:40:08,612 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:40:08,612 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 16:40:15,951 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:40:15,951 - INFO -       🔍 Validating...
+2025-08-16 16:40:15,955 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with intricately textured, rubberized insulated copper-grip handles featuring ergonomic contours and subtle wear patterns from frequent use, front view, accurate, complete, white background...'
+2025-08-16 16:40:15,955 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:41:56,138 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:41:56,138 - INFO -       📊 Validation score: 0.7722
+2025-08-16 16:41:56,139 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:41:56,139 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:41:56,139 - INFO - 
+   🔄 RL Round 11/17
+2025-08-16 16:41:56,139 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:41:56,139 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 16:42:03,313 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:42:03,316 - INFO -       🔍 Validating...
+2025-08-16 16:42:03,317 - INFO -       📝 Using optimized prompt for generation: 'burgundy pliers with thick, rubberized insulated copper-grip handles featuring ergonomic contours and precise machining details, front view, accurate, complete, white background...'
+2025-08-16 16:42:03,318 - INFO -       🎯 Computing scores against original prompt: 'burgundy pliers insulated handles...'
+2025-08-16 16:43:48,888 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:43:48,888 - INFO -       📊 Validation score: 0.7715
+2025-08-16 16:43:48,888 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:43:48,888 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.001)
+2025-08-16 16:43:48,902 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 16:43:48,902 - INFO -    Best prompt: burgundy pliers with thick, rubberized copper-grip handles featuring a contoured ergonomic design and textured surface for secure grip
+2025-08-16 16:43:48,902 - INFO -    Best score: 0.8688
+2025-08-16 16:43:48,902 - INFO -    Rounds: 11
+2025-08-16 16:43:48,902 - INFO -    Convergence: True
+2025-08-16 16:43:48,902 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.001)
+2025-08-16 16:43:48,902 - INFO -    Exploration ratio: 100.0%
+2025-08-16 16:43:48,903 - INFO -    Insights learned: 3
+2025-08-16 16:43:48,904 - INFO -    Total time: 1223.67s
+2025-08-16 16:43:48,904 - INFO - Prompt optimized in 11 rounds: 0.680 → 0.869 (+0.189)
+2025-08-16 16:43:48,904 - INFO - ✅ Target score achieved!
+2025-08-16 16:43:48,904 - INFO - 
+--- Episode 1, Prompt 6 (Total: 439) ---
+2025-08-16 16:43:48,904 - INFO - Optimizing: 'dark gray cylindrical body'
+2025-08-16 16:43:48,904 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 16:43:48,926 - INFO - ✅ Server is available (status: completed)
+2025-08-16 16:43:48,927 - INFO - 📝 Marked server as used at 1755362628.9262717
+2025-08-16 16:43:48,927 - INFO - ✅ Server is available and marked as used
+2025-08-16 16:43:48,929 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 16:43:48,929 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 16:43:48,929 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 16:43:48,936 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'dark gray cylindrical body'
+2025-08-16 16:43:48,936 - INFO -    Session: rl_session_1755362628_5473
+2025-08-16 16:43:48,936 - INFO -    Max rounds: 17
+2025-08-16 16:43:48,936 - INFO -    Min rounds before convergence: 5
+2025-08-16 16:43:48,936 - INFO -    Target score: 0.99
+2025-08-16 16:43:48,936 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 16:43:48,937 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:43:48,940 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 16:43:56,975 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:43:56,976 - INFO -       🔍 Validating...
+2025-08-16 16:43:56,976 - INFO -       📝 Using optimized prompt for generation: 'dark gray cylindrical body with intricate, swirling patterns of silver and blue hues, front view, accurate, complete, white background...'
+2025-08-16 16:43:56,976 - INFO -       🎯 Computing scores against original prompt: 'dark gray cylindrical body...'
+2025-08-16 16:45:49,108 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:45:49,108 - INFO -       📊 Validation score: 0.8362
+2025-08-16 16:45:49,108 - INFO -       🎯 New best score: 0.8362
+2025-08-16 16:45:49,109 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 16:45:49,109 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:45:49,109 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 16:45:56,658 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:45:56,662 - INFO -       🔍 Validating...
+2025-08-16 16:45:56,662 - INFO -       📝 Using optimized prompt for generation: 'a sleek, matte dark gray cylindrical body with a subtle sheen, featuring faint, raised ridges and a smooth, rounded cap at one end, front view, accurate, complete, white background...'
+2025-08-16 16:45:56,662 - INFO -       🎯 Computing scores against original prompt: 'dark gray cylindrical body...'
+2025-08-16 16:47:40,481 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:47:40,482 - INFO -       📊 Validation score: 0.7641
+2025-08-16 16:47:40,482 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:47:40,482 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 16:47:40,482 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:47:40,482 - INFO -       🎯 Strategy: hybrid_approach (explore)
+2025-08-16 16:47:46,673 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:47:46,674 - INFO -       🔍 Validating...
+2025-08-16 16:47:46,677 - INFO -       📝 Using optimized prompt for generation: 'a dark gray cylindrical body with subtle ridges and texture, slightly worn from usage, and a faint scent of metal...'
+2025-08-16 16:47:46,677 - INFO -       🎯 Computing scores against original prompt: 'dark gray cylindrical body...'
+2025-08-16 16:49:34,598 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:49:34,599 - INFO -       📊 Validation score: 0.8515
+2025-08-16 16:49:34,599 - INFO -       🎯 New best score: 0.8515
+2025-08-16 16:49:34,599 - INFO -       📈 Improvement detected: hybrid_approach working better
+2025-08-16 16:49:34,599 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 16:49:34,600 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:49:34,600 - INFO -       🎯 Strategy: conservative_enhancement (explore)
+2025-08-16 16:49:41,503 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:49:41,504 - INFO -       🔍 Validating...
+2025-08-16 16:49:41,504 - INFO -       📝 Using optimized prompt for generation: 'a dark gray cylindrical body with a matte finish, featuring a series of delicate, interlocking grooves that run parallel to its length and slightly raised, tactile ridges on the surface, front view, accurate, complete, white background...'
+2025-08-16 16:49:41,505 - INFO -       🎯 Computing scores against original prompt: 'dark gray cylindrical body...'
+2025-08-16 16:51:32,815 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:51:32,816 - INFO -       📊 Validation score: 0.8651
+2025-08-16 16:51:32,816 - INFO -       🎯 New best score: 0.8651
+2025-08-16 16:51:32,816 - INFO -       📈 Improvement detected: conservative_enhancement working better
+2025-08-16 16:51:32,816 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 16:51:32,817 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:51:32,817 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 16:51:39,463 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:51:39,464 - INFO -       🔍 Validating...
+2025-08-16 16:51:39,467 - INFO -       📝 Using optimized prompt for generation: 'a dark gray cylindrical body with subtle ridges and texture, featuring a series of delicate, interlocking grooves that evoke a sense of mechanical sophistication, front view, accurate, complete, white background...'
+2025-08-16 16:51:39,467 - INFO -       🎯 Computing scores against original prompt: 'dark gray cylindrical body...'
+2025-08-16 16:53:37,880 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:53:37,881 - INFO -       📊 Validation score: 0.8677
+2025-08-16 16:53:37,881 - INFO -       🎯 New best score: 0.8677
+2025-08-16 16:53:37,882 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 16:53:37,882 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: 0.003)
+2025-08-16 16:53:37,889 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 16:53:37,891 - INFO -    Best prompt: a dark gray cylindrical body with subtle ridges and texture, featuring a series of delicate, interlocking grooves that evoke a sense of mechanical sophistication, front view, accurate, complete, white background
+2025-08-16 16:53:37,891 - INFO -    Best score: 0.8677
+2025-08-16 16:53:37,891 - INFO -    Rounds: 5
+2025-08-16 16:53:37,891 - INFO -    Convergence: True
+2025-08-16 16:53:37,891 - INFO -    Convergence reason: Convergence threshold met (improvement: 0.003)
+2025-08-16 16:53:37,891 - INFO -    Exploration ratio: 100.0%
+2025-08-16 16:53:37,891 - INFO -    Insights learned: 3
+2025-08-16 16:53:37,891 - INFO -    Total time: 588.95s
+2025-08-16 16:53:37,892 - INFO - Prompt optimized in 5 rounds: 0.836 → 0.868 (+0.032)
+2025-08-16 16:53:37,892 - INFO - ✅ Target score achieved!
+2025-08-16 16:53:37,892 - INFO - 
+--- Episode 1, Prompt 7 (Total: 439) ---
+2025-08-16 16:53:37,892 - INFO - Optimizing: 'small white alien with blue eyes'
+2025-08-16 16:53:37,892 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 16:53:37,908 - INFO - ✅ Server is available (status: completed)
+2025-08-16 16:53:37,908 - INFO - 📝 Marked server as used at 1755363217.9088995
+2025-08-16 16:53:37,909 - INFO - ✅ Server is available and marked as used
+2025-08-16 16:53:37,909 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 16:53:37,910 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 16:53:37,910 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 16:53:37,915 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'small white alien with blue eyes'
+2025-08-16 16:53:37,922 - INFO -    Session: rl_session_1755363217_4141
+2025-08-16 16:53:37,923 - INFO -    Max rounds: 17
+2025-08-16 16:53:37,923 - INFO -    Min rounds before convergence: 5
+2025-08-16 16:53:37,923 - INFO -    Target score: 0.99
+2025-08-16 16:53:37,924 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 16:53:37,927 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:53:37,927 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 16:53:45,120 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:53:45,123 - INFO -       🔍 Validating...
+2025-08-16 16:53:45,124 - INFO -       📝 Using optimized prompt for generation: 'small white alien with delicate blue irises and intricate silver scales adorning its slender neck...'
+2025-08-16 16:53:45,125 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 16:55:34,851 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:55:34,851 - INFO -       📊 Validation score: 0.6317
+2025-08-16 16:55:34,851 - INFO -       🎯 New best score: 0.6317
+2025-08-16 16:55:34,851 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 16:55:34,852 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:55:34,852 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 16:55:42,118 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:55:42,121 - INFO -       🔍 Validating...
+2025-08-16 16:55:42,122 - INFO -       📝 Using optimized prompt for generation: 'small white alien with textured, pale blue skin that shimmers in the light, delicate blue eyes, and intricate silver scales adorning its slender neck and arms, front view, accurate, complete, white background...'
+2025-08-16 16:55:42,122 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 16:57:30,125 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:57:30,126 - INFO -       📊 Validation score: 0.7106
+2025-08-16 16:57:30,126 - INFO -       🎯 New best score: 0.7106
+2025-08-16 16:57:30,127 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 16:57:30,127 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 16:57:30,127 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:57:30,127 - INFO -       🎯 Strategy: material_focus (exploit)
+2025-08-16 16:57:38,306 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:57:38,307 - INFO -       🔍 Validating...
+2025-08-16 16:57:38,308 - INFO -       📝 Using optimized prompt for generation: 'small white alien with crystalline blue irises that refract soft light into its delicate face...'
+2025-08-16 16:57:38,308 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 16:59:30,955 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 16:59:30,955 - INFO -       📊 Validation score: 0.5642
+2025-08-16 16:59:30,956 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 16:59:30,956 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 16:59:30,957 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 16:59:30,959 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 16:59:40,007 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 16:59:40,007 - INFO -       🔍 Validating...
+2025-08-16 16:59:40,008 - INFO -       📝 Using optimized prompt for generation: 'small white alien with delicate blue eyes surrounded by a halo of soft, luminescent light, its skin subtly shifting between pearlescent hues as it moves, adorned with tiny, intricate patterns that resemble constellations in the night sky, front view, accurate, complete, white background...'
+2025-08-16 16:59:40,009 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:01:34,633 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:01:34,634 - INFO -       📊 Validation score: 0.4969
+2025-08-16 17:01:34,634 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 17:01:34,635 - INFO -       🔍 Increasing exploration to 0.80
+2025-08-16 17:01:34,635 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 17:01:34,635 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:01:34,635 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 17:01:44,937 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:01:44,941 - INFO -       🔍 Validating...
+2025-08-16 17:01:44,941 - INFO -       📝 Using optimized prompt for generation: 'small white alien with crystalline blue irises that refract light into delicate, translucent scales adorning its slender neck, front view, accurate, complete, white background...'
+2025-08-16 17:01:44,942 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:03:37,552 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:03:37,553 - INFO -       📊 Validation score: 0.5712
+2025-08-16 17:03:37,553 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 17:03:37,554 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 17:03:37,555 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 17:03:37,555 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:03:37,556 - INFO -       🎯 Strategy: material_focus (explore)
+2025-08-16 17:03:45,894 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:03:45,894 - INFO -       🔍 Validating...
+2025-08-16 17:03:45,898 - INFO -       📝 Using optimized prompt for generation: 'small white alien with delicate blue irises and intricate silver scales adorning its slender neck, giving off a soft luminescent glow in the dark, front view, accurate, complete, white background...'
+2025-08-16 17:03:45,898 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:05:39,583 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:05:39,583 - INFO -       📊 Validation score: 0.6020
+2025-08-16 17:05:39,584 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 17:05:39,584 - INFO -       📈 Improvement detected: material_focus working better
+2025-08-16 17:05:39,584 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 17:05:39,584 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 17:05:47,807 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:05:47,807 - INFO -       🔍 Validating...
+2025-08-16 17:05:47,807 - INFO -       📝 Using optimized prompt for generation: 'small white alien with iridescent, crystalline blue eyes that shimmer like opals and delicate, intricate silver scales adorning its slender neck, each scale reflecting a different hue of light as it moves, front view, accurate, complete, white background...'
+2025-08-16 17:05:47,807 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:07:36,282 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:07:36,282 - INFO -       📊 Validation score: 0.6716
+2025-08-16 17:07:36,283 - INFO -       🔍 Explore performing better - stricter convergence threshold: 0.005
+2025-08-16 17:07:36,283 - INFO -       📈 Improvement detected: artistic_elaboration working better
+2025-08-16 17:07:36,283 - INFO - 
+   🔄 RL Round 8/17
+2025-08-16 17:07:36,283 - INFO -       🎯 Strategy: artistic_elaboration (explore)
+2025-08-16 17:07:45,646 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:07:45,648 - INFO -       🔍 Validating...
+2025-08-16 17:07:45,650 - INFO -       📝 Using optimized prompt for generation: 'small white alien with luminous, iridescent blue eyes that shimmer like opals, delicate silver scales adorning its slender neck, and a subtle sheen to its pale skin that hints at an otherworldly origin....'
+2025-08-16 17:07:45,655 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:09:35,846 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:09:35,846 - INFO -       📊 Validation score: 0.5995
+2025-08-16 17:09:35,847 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 17:09:35,847 - INFO - 
+   🔄 RL Round 9/17
+2025-08-16 17:09:35,848 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 17:09:44,777 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:09:44,777 - INFO -       🔍 Validating...
+2025-08-16 17:09:44,777 - INFO -       📝 Using optimized prompt for generation: 'small white alien with crystalline blue irises that refract light into delicate, translucent skin folds, front view, accurate, complete, white background...'
+2025-08-16 17:09:44,777 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:11:37,111 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:11:37,111 - INFO -       📊 Validation score: 0.6356
+2025-08-16 17:11:37,112 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-16 17:11:37,112 - INFO - 
+   🔄 RL Round 10/17
+2025-08-16 17:11:37,112 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 17:11:44,319 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:11:44,321 - INFO -       🔍 Validating...
+2025-08-16 17:11:44,321 - INFO -       📝 Using optimized prompt for generation: 'small white alien with crystalline blue irises that refract light into delicate, translucent skin folds and intricate patterns etched onto its slender neck, front view, accurate, complete, white background...'
+2025-08-16 17:11:44,322 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:13:36,992 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:13:36,992 - INFO -       📊 Validation score: 0.6758
+2025-08-16 17:13:36,993 - INFO -       📈 Improvement detected: technical_precision working better
+2025-08-16 17:13:36,993 - INFO - 
+   🔄 RL Round 11/17
+2025-08-16 17:13:36,993 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:13:36,993 - INFO -       🎯 Strategy: technical_precision (explore)
+2025-08-16 17:13:44,739 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:13:44,740 - INFO -       🔍 Validating...
+2025-08-16 17:13:44,740 - INFO -       📝 Using optimized prompt for generation: 'small white alien with crystalline blue irises that refract light into delicate, translucent scales on its slender neck and arms, front view, accurate, complete, white background...'
+2025-08-16 17:13:44,740 - INFO -       🎯 Computing scores against original prompt: 'small white alien with blue eyes...'
+2025-08-16 17:15:25,683 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:15:25,684 - INFO -       📊 Validation score: 0.6689
+2025-08-16 17:15:25,684 - INFO -       ✅ Convergence achieved: Convergence threshold met (improvement: -0.007)
+2025-08-16 17:15:25,695 - INFO - 
+🎯 RL LOOP COMPLETE:
+2025-08-16 17:15:25,701 - INFO -    Best prompt: small white alien with textured, pale blue skin that shimmers in the light, delicate blue eyes, and intricate silver scales adorning its slender neck and arms, front view, accurate, complete, white background
+2025-08-16 17:15:25,701 - INFO -    Best score: 0.7106
+2025-08-16 17:15:25,701 - INFO -    Rounds: 11
+2025-08-16 17:15:25,701 - INFO -    Convergence: True
+2025-08-16 17:15:25,701 - INFO -    Convergence reason: Convergence threshold met (improvement: -0.007)
+2025-08-16 17:15:25,701 - INFO -    Exploration ratio: 90.9%
+2025-08-16 17:15:25,701 - INFO -    Insights learned: 3
+2025-08-16 17:15:25,701 - INFO -    Total time: 1307.77s
+2025-08-16 17:15:25,702 - INFO - Prompt optimized in 11 rounds: 0.632 → 0.711 (+0.079)
+2025-08-16 17:15:25,702 - INFO - ✅ Target score achieved!
+2025-08-16 17:15:25,705 - INFO - 
+--- Episode 1, Prompt 8 (Total: 439) ---
+2025-08-16 17:15:25,705 - INFO - Optimizing: 'translucent blue-tinted jagged crystal'
+2025-08-16 17:15:25,705 - INFO - 🔍 Checking server availability before optimization...
+2025-08-16 17:15:25,720 - INFO - ✅ Server is available (status: completed)
+2025-08-16 17:15:25,720 - INFO - 📝 Marked server as used at 1755364525.720625
+2025-08-16 17:15:25,723 - INFO - ✅ Server is available and marked as used
+2025-08-16 17:15:25,723 - INFO - 🔄 Reproducibility optimization returned no result
+2025-08-16 17:15:25,723 - INFO -       🔧 Overriding endpoint: /generate/cinema
+2025-08-16 17:15:25,723 - INFO -       🔧 Using endpoint: /generate/cinema
+2025-08-16 17:15:25,725 - INFO - 
+🔄 RL LOOP OPTIMIZATION: 'translucent blue-tinted jagged crystal'
+2025-08-16 17:15:25,725 - INFO -    Session: rl_session_1755364525_8779
+2025-08-16 17:15:25,726 - INFO -    Max rounds: 17
+2025-08-16 17:15:25,726 - INFO -    Min rounds before convergence: 5
+2025-08-16 17:15:25,726 - INFO -    Target score: 0.99
+2025-08-16 17:15:25,726 - INFO - 
+   🔄 RL Round 1/17
+2025-08-16 17:15:25,726 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:15:25,726 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 17:15:34,476 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:15:34,477 - INFO -       🔍 Validating...
+2025-08-16 17:15:34,478 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box surrounded by intricate golden filigree and soft, velvety shadows, front view, accurate, complete, white background...'
+2025-08-16 17:15:34,479 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:17:20,293 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:17:20,293 - INFO -       📊 Validation score: 0.6205
+2025-08-16 17:17:20,293 - INFO -       🎯 New best score: 0.6205
+2025-08-16 17:17:20,294 - INFO - 
+   🔄 RL Round 2/17
+2025-08-16 17:17:20,294 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:17:20,295 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 17:17:29,949 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:17:29,952 - INFO -       🔍 Validating...
+2025-08-16 17:17:29,952 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box surrounded by velvety darkness and the soft whispers of an unseen melody, front view, accurate, complete, white background...'
+2025-08-16 17:17:29,952 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:19:27,993 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:19:27,994 - INFO -       📊 Validation score: 0.6563
+2025-08-16 17:19:27,994 - INFO -       🎯 New best score: 0.6563
+2025-08-16 17:19:27,994 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-16 17:19:27,995 - INFO - 
+   🔄 RL Round 3/17
+2025-08-16 17:19:27,995 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:19:27,995 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 17:19:38,042 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:19:38,044 - INFO -       🔍 Validating...
+2025-08-16 17:19:38,045 - INFO -       📝 Using optimized prompt for generation: 'a slender glass of layered lemonade suspended in mid-air over a serene lake with lotus flowers and gentle ripples on the surface...'
+2025-08-16 17:19:38,046 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:21:19,137 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:21:19,138 - WARNING -    🔧 Score 0.0 - clearing CUDA cache
+2025-08-16 17:21:19,138 - INFO -       📊 Validation score: 0.0000
+2025-08-16 17:21:19,138 - INFO - 
+   🔄 RL Round 4/17
+2025-08-16 17:21:19,138 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:21:19,139 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 17:21:28,034 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:21:28,038 - INFO -       🔍 Validating...
+2025-08-16 17:21:28,038 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box surrounded by intricate patterns of silver filigree and softly glowing candles, front view, accurate, complete, white background...'
+2025-08-16 17:21:28,038 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:23:09,805 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:23:09,805 - INFO -       📊 Validation score: 0.5212
+2025-08-16 17:23:09,805 - INFO - 
+   🔄 RL Round 5/17
+2025-08-16 17:23:09,806 - INFO -       🎯 Strategy: contextual_scene_building (explore)
+2025-08-16 17:23:17,819 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:23:17,820 - INFO -       🔍 Validating...
+2025-08-16 17:23:17,820 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box surrounded by subtle wisps of fog that dance across its facets, front view, accurate, complete, white background...'
+2025-08-16 17:23:17,820 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:25:00,925 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:25:00,925 - INFO -       📊 Validation score: 0.7219
+2025-08-16 17:25:00,925 - INFO -       🎯 New best score: 0.7219
+2025-08-16 17:25:00,925 - INFO -       📈 Improvement detected: contextual_scene_building working better
+2025-08-16 17:25:00,925 - INFO - 
+   🔄 RL Round 6/17
+2025-08-16 17:25:00,926 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:25:00,926 - INFO -       🎯 Strategy: minimalist_refinement (explore)
+2025-08-16 17:25:10,107 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:25:10,107 - INFO -       🔍 Validating...
+2025-08-16 17:25:10,107 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box surrounded by elegant silver filigree and subtle ornate details, front view, accurate, complete, white background...'
+2025-08-16 17:25:10,107 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'
+2025-08-16 17:26:49,711 - INFO -       📄 Reading validation results from: subnet_validation_results_8096.json
+2025-08-16 17:26:49,711 - INFO -       📊 Validation score: 0.6919
+2025-08-16 17:26:49,711 - INFO -       📉 Score declined: Consider different approach
+2025-08-16 17:26:49,711 - INFO - 
+   🔄 RL Round 7/17
+2025-08-16 17:26:49,712 - INFO -       🔍 Explore performing better - increasing epsilon to 0.80
+2025-08-16 17:26:49,712 - INFO -       🎯 Strategy: hybrid_approach (exploit)
+2025-08-16 17:26:57,313 - INFO - [TRELLIS] GPU cache cleared: {'status': 'cache_cleared', 'available_memory_gb': 16.28930048}
+2025-08-16 17:26:57,315 - INFO -       🔍 Validating...
+2025-08-16 17:26:57,316 - INFO -       📝 Using optimized prompt for generation: 'a translucent blue-tinted jagged crystal suspended in a delicate, antique music box with intricate filigree and a subtle patina, front view, accurate, complete, white background...'
+2025-08-16 17:26:57,316 - INFO -       🎯 Computing scores against original prompt: 'translucent blue-tinted jagged crystal...'

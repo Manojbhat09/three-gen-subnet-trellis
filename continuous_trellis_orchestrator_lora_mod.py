@@ -47,7 +47,8 @@ except ImportError:
 # Import the organic LoRA router
 try:
     from final_organic_router import FinalOrganicRouter
-    ORGANIC_LORA_ROUTER_AVAILABLE = True
+    # ORGANIC_LORA_ROUTER_AVAILABLE = True
+    ORGANIC_LORA_ROUTER_AVAILABLE = False
     print("✅ Using organic LoRA router with 100% pattern learning accuracy")
 except ImportError:
     ORGANIC_LORA_ROUTER_AVAILABLE = False
@@ -764,7 +765,7 @@ class ContinuousTrellisOrchestrator:
         
         # Initialize reproducibility system
         if REPRODUCIBILITY_SYSTEM_AVAILABLE:
-            self.reproducibility_system = LLMClosePromptReproducibility()
+            self.reproducibility_system = LLMClosePromptReproducibility(episodic_memory_file="consolidated_episodic_logs/episodic_memory.json")
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
             self.reproducibility_system = None
@@ -839,8 +840,8 @@ class ContinuousTrellisOrchestrator:
         """Get default configuration"""
         return {
             # Bittensor settings
-            'wallet_name': 'manbeast3b',
-            'hotkey_name': 'm3b',
+            'wallet_name': 'test2m3b2',
+            'hotkey_name': 't2m3b2',
             'netuid': 17,
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
@@ -915,7 +916,7 @@ class ContinuousTrellisOrchestrator:
                 )
                 self.logger.info(f"✅ Wallet loaded: {self.wallet.hotkey.ss58_address}")
             
-            self.subtensor = bt.subtensor(network="test") #TODO
+            # self.subtensor = bt.subtensor(network="test") #TODO
             if self.subtensor is None:
                 self.subtensor = bt.subtensor(network="finney")
                 self.logger.info("✅ Subtensor connected")

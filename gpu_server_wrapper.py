@@ -143,6 +143,16 @@ class GPUServerManager:
         logger.info(f"   Server script: {server_script}")
         logger.info(f"   Output directory: {output_dir}")
     
+    def _check_port_available(self, port: int) -> bool:
+        """Check if a port is available for use"""
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(('127.0.0.1', port))
+                return True
+        except socket.error:
+            return False
+    
     def check_gpu_already_loaded(self, gpu_id: int) -> bool:
         """Check if GPU is already loaded and serving requests"""
         gpu_server = self.gpu_servers[gpu_id]
@@ -175,12 +185,22 @@ class GPUServerManager:
             self.stats['servers_already_loaded'] = self.stats.get('servers_already_loaded', 0) + 1
             return True
         
+        # Check port availability
+        if not self._check_port_available(gpu_server.port):
+            logger.error(f"❌ Port {gpu_server.port} already in use for GPU {gpu_id}")
+            gpu_server.status = "failed"
+            return False
+        
         try:
             logger.info(f"🚀 Starting server on GPU {gpu_id} (port {gpu_server.port})")
             
-            # Set environment variables
+            # Set environment variables with proper isolation
             env = os.environ.copy()
             env['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+            # Force PyTorch to only see this GPU
+            env['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+            # Clear any existing GPU memory environment vars
+            env.pop('CUDA_DEVICE_ORDER', None)
             
             # Start the server process
             cmd = [
@@ -1116,19 +1136,27 @@ class GPUServerManager:
         logger.info("🧹 Cleaning up GPU servers...")
         
         for gpu_id, gpu_server in self.gpu_servers.items():
-            if gpu_server.process:
+            if gpu_server.process and gpu_server.process.poll() is None:  # Check if process is still running
                 try:
-                    logger.info(f"   Stopping GPU {gpu_id} server (PID: {gpu_server.process.pid})")
+                    pid = gpu_server.process.pid
+                    logger.info(f"   Stopping GPU {gpu_id} server (PID: {pid})")
                     gpu_server.process.terminate()
                     gpu_server.process.wait(timeout=10)
                     gpu_server.status = "stopped"
                     logger.info(f"   ✅ GPU {gpu_id} server stopped")
                 except subprocess.TimeoutExpired:
                     logger.warning(f"   ⚠️ GPU {gpu_id} server didn't stop gracefully, killing...")
-                    gpu_server.process.kill()
-                    gpu_server.status = "killed"
+                    try:
+                        gpu_server.process.kill()
+                        gpu_server.process.wait(timeout=5)
+                        gpu_server.status = "killed"
+                    except Exception as kill_error:
+                        logger.error(f"   ❌ Failed to kill GPU {gpu_id} server: {kill_error}")
                 except Exception as e:
                     logger.error(f"   ❌ Error stopping GPU {gpu_id} server: {e}")
+            elif gpu_server.process:
+                logger.info(f"   GPU {gpu_id} server already stopped")
+                gpu_server.status = "stopped"
         
         logger.info("✅ Cleanup complete")
 

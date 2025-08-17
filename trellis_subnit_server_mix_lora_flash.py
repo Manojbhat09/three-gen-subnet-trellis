@@ -46,6 +46,9 @@ import subprocess
 import queue
 import multiprocessing
 import imageio
+import socket
+import json
+from multiprocessing.connection import Client
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import Response, JSONResponse
@@ -67,7 +70,7 @@ torch.backends.cudnn.benchmark = False       # Disable for reproducibility
 torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
-# os.environ['ATTN_BACKEND'] = 'xformers'
+os.environ['ATTN_BACKEND'] = 'xformers'
 # export ATTN_BACKEND=xformers
 # export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
@@ -162,6 +165,7 @@ GENERATION_CONFIG = {
     'trellis_compile_dynamic': False,
     'trellis_compile_flow_models': False,
     # FLUX schnell mode (4-step fast inference)
+    'flux_use_schnell_socket': False,
     'flux_use_schnell': False,
     'flux_schnell_steps': 4,
     'flux_schnell_guidance': 0.0,
@@ -455,6 +459,53 @@ generation_job_status = {
     "error": None
 }
 
+class FluxSocketClient:
+    """Client for communicating with isolated FLUX inference server"""
+    
+    def __init__(self, socket_path="/home/mbhat/three-gen-subnet-trellis/inferences.sock"):
+        self.socket_path = socket_path
+        self.connection = None
+        
+    def _ensure_connection(self):
+        """Ensure socket connection is established"""
+        try:
+            if self.connection is None or hasattr(self.connection, 'closed') and self.connection.closed:
+                self.connection = Client(self.socket_path)
+        except Exception as e:
+            print(f"⚠️ Failed to connect to FLUX socket: {e}")
+            return False
+        return True
+    
+    def generate_image(self, prompt: str, seed: int, width: int = 1024, height: int = 1024, **kwargs) -> Optional[Image.Image]:
+        """Generate image via socket server"""
+        try:
+            if not self._ensure_connection():
+                return None
+                
+            # Prepare request - match TextToImageRequest format
+            request = {
+                "prompt": prompt,
+                "seed": seed,
+                "width": width,
+                "height": height
+                # Note: guidance_scale, num_inference_steps are fixed by the server
+                # guidance_scale=0.0, num_inference_steps=4
+            }
+            
+            # Send request
+            self.connection.send_bytes(json.dumps(request).encode('utf-8'))
+            
+            # Receive image data
+            image_data = self.connection.recv_bytes()
+            
+            # Convert to PIL Image
+            image = Image.open(io.BytesIO(image_data))
+            return image
+            
+        except Exception as e:
+            print(f"❌ Socket-based FLUX generation failed: {e}")
+            return None
+
 class TrellisGenerator:
     def __init__(self):
         # Initialize model instance variables
@@ -469,7 +520,7 @@ class TrellisGenerator:
         self.load_rembg = True
         self.metrics = GenerationMetrics()
         self.generation_lock = threading.Lock()
-        
+        self.flux_use_schnell_socket = False
         # Initialize asset manager
         self.asset_manager = AssetManager(GENERATION_CONFIG['output_dir'])
         
@@ -484,10 +535,32 @@ class TrellisGenerator:
                 print("⚠️ No HuggingFace token found in cache")
         except Exception as e:
             print(f"⚠️ Error getting token from cache: {e}")
-        
+        if GENERATION_CONFIG.get('flux_use_schnell_socket', False):
+            self._start_flux_server()        
         Path(GENERATION_CONFIG['output_dir']).mkdir(exist_ok=True)
         print("🔧 TRELLIS Generator initialized")
         self.ready = True
+        
+
+    def _start_flux_server(self):
+        """Start FLUX server as subprocess"""
+        try:
+            print("🚀 Starting FLUX server...")
+            flux_dir = os.path.join(os.path.dirname(__file__), "..", "test_schnell")
+            self.flux_process = subprocess.Popen(
+                ["uv", "run", "python", "main.py"],
+                cwd=flux_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            
+            # Wait for server to be ready
+            time.sleep(5)
+            print("✅ FLUX server started")
+            
+        except Exception as e:
+            print(f"❌ Failed to start FLUX server: {e}")
+            self.flux_process = None
 
     def _clear_gpu_memory(self):
         """Clear GPU memory cache aggressively"""
@@ -532,14 +605,42 @@ class TrellisGenerator:
             file_url = GENERATION_CONFIG['flux_model_url']
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
             # If schnell mode is enabled, prefer the schnell checkpoint for the base repo
-            if GENERATION_CONFIG.get('flux_use_schnell', False):
+            if GENERATION_CONFIG.get('flux_use_schnell', False) and not GENERATION_CONFIG.get('flux_use_schnell_socket', False):
                 try:
-                    single_file_base_model = "black-forest-labs/FLUX.1-schnell"
-                    # single_file_base_model = "manbeast3b/flux.1-schnell-full1"
+                    # single_file_base_model = "black-forest-labs/FLUX.1-schnell"
+                    single_file_base_model = "manbeast3b/flux.1-schnell-full1"
                     file_url = None
                     print("⚡ Using FLUX.1-schnell base model (schnell mode enabled)")
                 except Exception:
                     pass
+                    
+            if GENERATION_CONFIG.get('flux_use_schnell_socket', False):
+                # Try to use socket-based FLUX first
+                try:
+                    print("🔧 Initializing FLUX socket client...")
+                    self.flux_socket_client = FluxSocketClient()
+                    
+                    # Test connection with a simple generation
+                    test_image = self.flux_socket_client.generate_image(
+                        prompt="test", 
+                        seed=42, 
+                        width=512, 
+                        height=512
+                    )
+                    
+                    if test_image is not None:
+                        print("✅ FLUX socket client initialized successfully")
+                        self.flux_use_schnell_socket = True
+                        return
+                    else:
+                        print("⚠️ FLUX socket client failed, falling back to direct loading")
+                        self.flux_use_schnell_socket = False
+                        
+                except Exception as e:
+                    print(f"⚠️ FLUX socket client failed: {e}")
+                    self.flux_use_schnell_socket = False
+                
+
             
             # Load text encoder with 8-bit quantization
             print("Loading FLUX text encoder with 8-bit quantization...")
@@ -642,6 +743,21 @@ class TrellisGenerator:
                     print("✓ FLUX schnell warmup complete")
                 except Exception as we:
                     print(f"⚠️ FLUX schnell warmup skipped: {we}")
+
+            if GENERATION_CONFIG.get('flux_use_schnell_socket', False):
+                try:
+                    print("🔧 Warming up FLUX socket client...")
+                    for _ in range(2):
+                        gc.collect()
+                        with torch.no_grad():
+                            _ = self.flux_socket_client.generate_image(
+                                prompt="",
+                                width=1024,
+                                height=1024,
+                            )
+                        print("✓ FLUX socket client warmup complete")
+                except Exception as we:
+                    print(f"⚠️ FLUX socket client warmup skipped: {we}")
             
         except Exception as e:
             print(f"❌ FLUX model loading failed: {e}")
@@ -1321,15 +1437,23 @@ class TrellisGenerator:
                             effective_guidance_scale,
                             effective_steps
                         )
-                        image = self.flux_pipeline(
-                            prompt=enhanced_prompt,
-                            guidance_scale=effective_guidance_scale,
-                            num_inference_steps=effective_steps,
-                            width=1024,
-                            height=1024,
-                            generator=generator,
-                            **extra_kwargs,
-                        ).images[0]
+                        if GENERATION_CONFIG.get('flux_use_schnell_socket', False):
+                            image = self.flux_socket_client.generate_image(
+                                prompt=enhanced_prompt,
+                                seed=seed,
+                                width=1024,
+                                height=1024,
+                            )
+                        else:   
+                            image = self.flux_pipeline(
+                                prompt=enhanced_prompt,
+                                guidance_scale=effective_guidance_scale,
+                                num_inference_steps=effective_steps,
+                                width=1024,
+                                height=1024,
+                                generator=generator,
+                                **extra_kwargs,
+                            ).images[0]
                 
                 elif current_model == 'sdxl':
                     if self.sdxl_pipeline is None:
@@ -1513,37 +1637,37 @@ class TrellisGenerator:
                 gaussian_output = outputs['gaussian'][0]
                 
                 # Quality enhancement: Filter low-quality splats
-                print("   Enhancing quality by filtering low-quality splats...")
-                try:
-                    # Get splat data
-                    points = gaussian_output.points
-                    opacities = gaussian_output.opacities
-                    scales = gaussian_output.scales
+                # print("   Enhancing quality by filtering low-quality splats...")
+                # try:
+                #     # Get splat data
+                #     points = gaussian_output.points
+                #     opacities = gaussian_output.opacities
+                #     scales = gaussian_output.scales
                     
-                    # Filter out low-opacity and very small splats
-                    opacity_threshold = 0.01
-                    scale_threshold = 0.001
+                #     # Filter out low-opacity and very small splats
+                #     opacity_threshold = 0.01
+                #     scale_threshold = 0.001
                     
-                    # Create quality mask
-                    quality_mask = (opacities > opacity_threshold) & (torch.norm(scales, dim=1) > scale_threshold)
+                #     # Create quality mask
+                #     quality_mask = (opacities > opacity_threshold) & (torch.norm(scales, dim=1) > scale_threshold)
                     
-                    if quality_mask.sum() > 7000:  # Ensure minimum splat count
-                        # Apply filtering
-                        gaussian_output.points = points[quality_mask]
-                        gaussian_output.opacities = opacities[quality_mask]
-                        gaussian_output.scales = scales[quality_mask]
-                        gaussian_output.rotations = gaussian_output.rotations[quality_mask]
-                        gaussian_output.features_dc = gaussian_output.features_dc[quality_mask]
-                        gaussian_output.features_rest = gaussian_output.features_rest[quality_mask]
-                        gaussian_output.normals = gaussian_output.normals[quality_mask]
+                #     if quality_mask.sum() > 7000:  # Ensure minimum splat count
+                #         # Apply filtering
+                #         gaussian_output.points = points[quality_mask]
+                #         gaussian_output.opacities = opacities[quality_mask]
+                #         gaussian_output.scales = scales[quality_mask]
+                #         gaussian_output.rotations = gaussian_output.rotations[quality_mask]
+                #         gaussian_output.features_dc = gaussian_output.features_dc[quality_mask]
+                #         gaussian_output.features_rest = gaussian_output.features_rest[quality_mask]
+                #         gaussian_output.normals = gaussian_output.normals[quality_mask]
                         
-                        print(f"   Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,}")
-                    else:
-                        print(f"   Quality enhancement skipped: Too few splats would remain ({quality_mask.sum().item()})")
+                #         print(f"   Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,}")
+                #     else:
+                #         print(f"   Quality enhancement skipped: Too few splats would remain ({quality_mask.sum().item()})")
                         
-                except Exception as e:
-                    print(f"   Quality enhancement failed: {e}")
-                    print("   Continuing with original splats...")
+                # except Exception as e:
+                #     print(f"   Quality enhancement failed: {e}")
+                #     print("   Continuing with original splats...")
                 
                 # Save as PLY file
                 import io
