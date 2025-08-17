@@ -64,13 +64,18 @@ random.seed(seed)
 
 torch.backends.cudnn.deterministic = True    # For reproducibility with cuDNN
 torch.backends.cudnn.benchmark = False       # Disable for reproducibility
-torch.backends.cuda.matmul.allow_tf32 = True
+# torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
 # os.environ['ATTN_BACKEND'] = 'xformers'
 # export ATTN_BACKEND=xformers
 # export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.backends.cuda.matmul.allow_tf32 = False  # CRITICAL: Disable TF32
+torch.backends.cudnn.allow_tf32 = False        # CRITICAL: Disable TF32
+torch.use_deterministic_algorithms(True, warn_only=True)
 
 # Add TRELLIS to Python path
 import sys
@@ -153,8 +158,8 @@ GENERATION_CONFIG = {
     'hunyuan_pag_scale': 1.3,
     'hunyuan_width': 1024,
     'hunyuan_height': 1024,
-    # TRELLIS precision (use half-precision to reduce memory and speed up)
-    'trellis_use_fp16': True,
+    # TRELLIS precision (disabled for cross-GPU consistency)
+    'trellis_use_fp16': False,
     # TRELLIS torch.compile acceleration
     'trellis_compile': False,
     'trellis_compile_mode': 'reduce-overhead',  # options: 'reduce-overhead', 'max-autotune' (if supported)
@@ -332,19 +337,6 @@ HUNYUAN_LORAS = {
         'scale': 1.0
     }
 }
-
-from PIL import Image
-from rembg import remove, new_session
-
-class BackgroundRemover():
-    def __init__(self, session=None, putalpha=True):
-        self.session = new_session(session)
-        self.putalpha = putalpha
-
-    def __call__(self, image: Image.Image):
-        output = remove(image, session=self.session, bgcolor=[255, 255, 255, 0], putalpha=self.putalpha)
-        return output
-
 
 @dataclass
 class GenerationMetrics:
@@ -527,7 +519,7 @@ class TrellisGenerator:
         try:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
-            dtype = torch.bfloat16
+            dtype = torch.float32  # Force FP32 for cross-GPU consistency
             
             file_url = GENERATION_CONFIG['flux_model_url']
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
@@ -535,8 +527,6 @@ class TrellisGenerator:
             if GENERATION_CONFIG.get('flux_use_schnell', False):
                 try:
                     single_file_base_model = "black-forest-labs/FLUX.1-schnell"
-                    # single_file_base_model = "manbeast3b/flux.1-schnell-full1"
-                    file_url = None
                     print("⚡ Using FLUX.1-schnell base model (schnell mode enabled)")
                 except Exception:
                     pass
@@ -545,7 +535,7 @@ class TrellisGenerator:
             print("Loading FLUX text encoder with 8-bit quantization...")
             quantization_config_tf = BitsAndBytesConfigTF(
                 load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.bfloat16
+                bnb_8bit_compute_dtype=torch.float32
             )
             self.flux_text_encoder_2 = T5EncoderModel.from_pretrained(
                 # single_file_base_model,
@@ -561,7 +551,7 @@ class TrellisGenerator:
             # If a direct file is provided (e.g., .gguf/.safetensors/.ckpt or http URL), use from_single_file.
             # Otherwise, load from the base repo via from_pretrained.
             use_single_file = False
-            if file_url is not None and 'gguf' in file_url:
+            if 'gguf' in file_url:
                 use_single_file = True
                 file_url = file_url.replace("/resolve/main/", "/blob/main/").replace("?download=true", "")
             else:
@@ -584,42 +574,31 @@ class TrellisGenerator:
                     torch_dtype=dtype,
                     config=single_file_base_model
                 )
-                # Initialize pipeline
-                print("Initializing FLUX pipeline...")
-                self.flux_pipeline = FluxPipeline.from_pretrained(
-                    single_file_base_model, 
-                    transformer=self.flux_transformer, 
-                    text_encoder_2=self.flux_text_encoder_2, 
-                    torch_dtype=dtype, 
-                    token=huggingface_token
-                )
-
             else:
-                # print("Loading FLUX transformer from repo (no single file provided)...")
-                # self.flux_transformer = FluxTransformer2DModel.from_pretrained(
-                #     single_file_base_model,
-                #     subfolder="transformer",
-                #     torch_dtype=dtype,
-                #     token=huggingface_token
-                # )
-                # Initialize pipeline
-                print("Initializing FLUX pipeline...")
-                self.flux_pipeline = FluxPipeline.from_pretrained(
-                    single_file_base_model, 
-                    text_encoder_2=self.flux_text_encoder_2, 
-                    torch_dtype=dtype, 
+                print("Loading FLUX transformer from repo (no single file provided)...")
+                self.flux_transformer = FluxTransformer2DModel.from_pretrained(
+                    single_file_base_model,
+                    subfolder="transformer",
+                    torch_dtype=dtype,
                     token=huggingface_token
                 )
             
+            # Initialize pipeline
+            print("Initializing FLUX pipeline...")
+            self.flux_pipeline = FluxPipeline.from_pretrained(
+                single_file_base_model, 
+                transformer=self.flux_transformer, 
+                text_encoder_2=self.flux_text_encoder_2, 
+                torch_dtype=dtype, 
+                token=huggingface_token
+            )
             self.flux_pipeline.to("cuda")
 
             # from flux_caching import apply_cache_on_pipe
             # apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
-            self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
-            if GENERATION_CONFIG.get('flux_use_schnell', False):
-                self.flux_pipeline.transformer = torch.compile(self.flux_pipeline.transformer, mode="max-autotune", fullgraph=True)
-    
+            # self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
+
             # from torchao.quantization import quantize_, float8_dynamic_activation_float8_weight
             # quantize_(self.flux_pipeline.vae, float8_dynamic_activation_float8_weight())
             
@@ -688,9 +667,8 @@ class TrellisGenerator:
             # Load SDXL with optimizations
             self.sdxl_pipeline = StableDiffusionPipeline.from_pretrained(
                 GENERATION_CONFIG['sdxl_model_path'],
-                torch_dtype=torch.float16,
+                torch_dtype=torch.float32,
                 use_safetensors=True,
-                variant="fp16",
                 token=huggingface_token
             )
             
@@ -734,7 +712,7 @@ class TrellisGenerator:
             # Load SD1.5 with optimizations
             self.sd15_pipeline = StableDiffusionPipeline.from_pretrained(
                 GENERATION_CONFIG['sd15_model_path'],
-                torch_dtype=torch.float16,
+                torch_dtype=torch.float32,
                 use_safetensors=True,
                 token=huggingface_token
             )
@@ -821,7 +799,7 @@ class TrellisGenerator:
             try:
                 self.trellis_pipeline = TrellisImageTo3DPipeline.from_pretrained(
                     GENERATION_CONFIG['trellis_model_path'],
-                    torch_dtype=torch.float16 if use_fp16 else None
+                    torch_dtype=torch.float32  # Force FP32 for cross-GPU consistency
                 )
             except TypeError:
                 # Some implementations may not accept torch_dtype
@@ -829,29 +807,20 @@ class TrellisGenerator:
                     GENERATION_CONFIG['trellis_model_path']
                 )
 
-            # Move to device / dtype
+            # Move to device and ensure FP32 for consistency
             if torch.cuda.is_available():
-                if use_fp16:
-                    try:
-                        # Preferred path if pipeline supports dtype argument on to()
-                        self.trellis_pipeline.to("cuda", dtype=torch.float16)
-                    except Exception:
-                        # Fallback: move then cast if supported
-                        self.trellis_pipeline.cuda()
-                        if hasattr(self.trellis_pipeline, 'half'):
-                            try:
-                                self.trellis_pipeline.half()
-                            except Exception:
-                                pass
-                else:
-                    self.trellis_pipeline.cuda()
+                self.trellis_pipeline.to("cuda")
+                # Convert to FP32 if possible
+                try:
+                    self.trellis_pipeline.float()
+                except:
+                    print("⚠️ Could not convert TRELLIS pipeline to FP32, continuing...")
             else:
-                # CPU fallback; cast to fp16 if requested and supported (has limited effect on CPU)
-                if use_fp16 and hasattr(self.trellis_pipeline, 'to'):
-                    try:
-                        self.trellis_pipeline.to(dtype=torch.float16)
-                    except Exception:
-                        pass
+                self.trellis_pipeline.to("cpu")
+                try:
+                    self.trellis_pipeline.float()
+                except:
+                    print("⚠️ Could not convert TRELLIS pipeline to FP32, continuing...")
 
             # Optionally compile modules after the pipeline is loaded
             if GENERATION_CONFIG.get('trellis_compile', False) and hasattr(torch, 'compile'):
@@ -924,7 +893,7 @@ class TrellisGenerator:
         print("🔧 Loading background remover...")
         
         try:
-            # self.background_remover = BackgroundRemover(session="u2netp", putalpha=True)
+            # self.background_remover = BackgroundRemover(session=new_session("u2netp"), putalpha=True)
             self.background_remover = BackgroundRemover()
             print("✅ Background remover loaded successfully")
             
@@ -1115,7 +1084,7 @@ class TrellisGenerator:
         extra_kwargs: Dict[str, Any] = {}
         if GENERATION_CONFIG.get('flux_use_schnell', False):
             guidance_scale = GENERATION_CONFIG.get('flux_schnell_guidance', 0.0)
-            steps = GENERATION_CONFIG.get('flux_schnell_steps', 4)
+            # steps = GENERATION_CONFIG.get('flux_schnell_steps', 4)
             extra_kwargs['max_sequence_length'] = 256
         return guidance_scale, steps, extra_kwargs
 
@@ -1438,73 +1407,26 @@ class TrellisGenerator:
                 effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
                 effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
 
-                # Use autocast to reduce activation memory and speed up compute on CUDA
-                use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
-                if use_fp16:
-                    try:
-                        with torch.autocast(device_type="cuda", dtype=torch.float16):
-                            outputs = self.trellis_pipeline.run(
-                                image,
-                                seed=seed,
-                                formats=["gaussian"],
-                                preprocess_image=False,
-                                sparse_structure_sampler_params={
-                                    "steps": effective_ss_steps,
-                                    "cfg_strength": effective_ss_guidance,
-                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
-                                },
-                                slat_sampler_params={
-                                    "steps": effective_slat_steps,
-                                    "cfg_strength": effective_slat_guidance,
-                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
-                                },
-                            )
-                    except RuntimeError as e:
-                        # Some mesh decoding ops may not support fp16 (scatter/scatter_reduce dtype issues)
-                        if "scatter()" in str(e) or "scatter_reduce" in str(e):
-                            print("⚠️ FP16 mesh decode failed (scatter dtype mismatch). Retrying gaussian-only without autocast...")
-                            with torch.autocast(device_type="cuda", enabled=False):
-                                outputs = self.trellis_pipeline.run(
-                                    image,
-                                    seed=seed,
-                                    formats=["gaussian"],  # Avoid mesh path in fp16
-                                    preprocess_image=False,
-                                    sparse_structure_sampler_params={
-                                        "steps": effective_ss_steps,
-                                        "cfg_strength": effective_ss_guidance,
-                                        "cfg_interval": (0.3, 0.98),
-                                        "rescale_t": 3.0,
-                                    },
-                                    slat_sampler_params={
-                                        "steps": effective_slat_steps,
-                                        "cfg_strength": effective_slat_guidance,
-                                        "cfg_interval": (0.3, 0.98),
-                                        "rescale_t": 3.0,
-                                    },
-                                )
-                        else:
-                            raise
-                else:
-                    outputs = self.trellis_pipeline.run(
-                        image,
-                        seed=seed,
-                        formats=["gaussian", "mesh"],
-                        preprocess_image=False,
-                        sparse_structure_sampler_params={
-                            "steps": effective_ss_steps,
-                            "cfg_strength": effective_ss_guidance,
-                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                            "rescale_t": 3.0,  # Temperature rescaling for better quality
-                        },
-                        slat_sampler_params={
-                            "steps": effective_slat_steps,
-                            "cfg_strength": effective_slat_guidance,
-                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
-                            "rescale_t": 3.0,  # Temperature rescaling for better quality
-                        },
-                    )
+                # Use FP32 for cross-GPU consistency (A6000 vs RTX 6000 Ada compatibility)
+                print("🔧 Running TRELLIS in FP32 mode for cross-GPU consistency")
+                outputs = self.trellis_pipeline.run(
+                    image,
+                    seed=seed,
+                    formats=["gaussian", "mesh"],
+                    preprocess_image=False,
+                    sparse_structure_sampler_params={
+                        "steps": effective_ss_steps,
+                        "cfg_strength": effective_ss_guidance,
+                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                        "rescale_t": 3.0,  # Temperature rescaling for better quality
+                    },
+                    slat_sampler_params={
+                        "steps": effective_slat_steps,
+                        "cfg_strength": effective_slat_guidance,
+                        "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                        "rescale_t": 3.0,  # Temperature rescaling for better quality
+                    },
+                )
                 
                 print("✓ 3D model generated successfully")
                 

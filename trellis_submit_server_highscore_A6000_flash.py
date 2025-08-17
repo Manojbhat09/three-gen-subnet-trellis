@@ -123,6 +123,19 @@ GENERATION_CONFIG = {
     'centering_padding': 30,
 }
 
+from PIL import Image
+from rembg import remove, new_session
+
+class BackgroundRemover():
+    def __init__(self, session=None, putalpha=True):
+        self.session = new_session(session)
+        self.putalpha = putalpha
+
+    def __call__(self, image: Image.Image):
+        output = remove(image, session=self.session, bgcolor=[255, 255, 255, 0], putalpha=self.putalpha)
+        return output
+
+
 @dataclass
 class GenerationMetrics:
     total_generations: int = 0
@@ -427,7 +440,8 @@ class TrellisGenerator:
         print("🔧 Loading background remover...")
         
         try:
-            self.background_remover = BackgroundRemover()
+            # self.background_remover = BackgroundRemover()
+            self.background_remover = BackgroundRemover(session="u2netp", putalpha=True)
             print("✅ Background remover loaded successfully")
             
         except Exception as e:
@@ -632,18 +646,18 @@ class TrellisGenerator:
                     print("Step 1.3: Object centering disabled, skipping...")
                 
                 # Step 1.5: Remove background from image
-                # print("Step 1.5: Removing background from image...")
-                # self._load_background_remover()
+                print("Step 1.5: Removing background from image...")
+                self._load_background_remover()
                 
-                # try:
-                #     image_no_bg = self.background_remover(image)
-                #     print("✓ Background removed successfully")
-                #     # Save the background-removed image as well
-                #     generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
-                #     image = image_no_bg  # Use the cleaned image for TRELLIS
-                # except Exception as e:
-                #     print(f"⚠️ Background removal failed: {e}")
-                #     print("   Continuing with original image...")
+                try:
+                    image_no_bg = self.background_remover(image)
+                    print("✓ Background removed successfully")
+                    # Save the background-removed image as well
+                    generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
+                    image = image_no_bg  # Use the cleaned image for TRELLIS
+                except Exception as e:
+                    print(f"⚠️ Background removal failed: {e}")
+                    print("   Continuing with original image...")
                 
                 # # Unload background remover
                 # self._unload_background_remover()

@@ -72,6 +72,19 @@ Options:
   --reproducibility-similarity <f>
                           Set minimum similarity threshold for reproducibility optimization (default 0.3).
   --quiet-optimize        Reduce optimization logging verbosity.
+  --lora <name>           Specify LoRA to use for generation (default: baolei).
+                          Options: default, patched_realism, tf2_style, cartoon_3d, game_assets, 
+                          sd15_game_icon, cinema, isometric_3d, baolei, live_3d, necklace
+  --num-inference-steps <n>
+                          Number of inference steps for generation.
+  --guidance-scale <f>    Guidance scale for generation.
+  --ss-sampling-steps <n> SS sampling steps for TRELLIS generation.
+  --slat-sampling-steps <n>
+                          SLAT sampling steps for TRELLIS generation.
+  --slat-guidance-strength <f>
+                          SLAT guidance strength for TRELLIS generation.
+  --ss-guidance-strength <f>
+                          SS guidance strength for TRELLIS generation.
   --help                  Show this help message.
 EOF
 }
@@ -87,6 +100,13 @@ main() {
   local repro=true
   local quiet_optimize=false
   local repro_similarity=""
+  local lora="baolei"
+  local num_inference_steps=""
+  local guidance_scale=""
+  local ss_sampling_steps=""
+  local slat_sampling_steps=""
+  local slat_guidance_strength=""
+  local ss_guidance_strength=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -103,6 +123,13 @@ main() {
       --no-reproducibility) repro=false; shift ;;
       --reproducibility-similarity) repro_similarity="$2"; shift 2 ;;
       --quiet-optimize) quiet_optimize=true; shift ;;
+      --lora) lora="$2"; shift 2 ;;
+      --num-inference-steps) num_inference_steps="$2"; shift 2 ;;
+      --guidance-scale) guidance_scale="$2"; shift 2 ;;
+      --ss-sampling-steps) ss_sampling_steps="$2"; shift 2 ;;
+      --slat-sampling-steps) slat_sampling_steps="$2"; shift 2 ;;
+      --slat-guidance-strength) slat_guidance_strength="$2"; shift 2 ;;
+      --ss-guidance-strength) ss_guidance_strength="$2"; shift 2 ;;
       --help) show_usage; exit 0 ;;
       *) print_error "Unknown option: $1"; show_usage; exit 1 ;;
     esac
@@ -133,8 +160,19 @@ main() {
     [ "$repro" = false ] && script_args+=(--no-reproducibility)
     [ "$quiet_optimize" = true ] && script_args+=(--quiet-optimize)
     [ -n "$repro_similarity" ] && script_args+=(--reproducibility-similarity "$repro_similarity")
+    
+    # LoRA and generation parameters (only add --lora if not default)
+    if [ "$lora" != "default" ]; then
+        script_args+=(--lora "$lora")
+    fi
+    [ -n "$num_inference_steps" ] && script_args+=(--num-inference-steps "$num_inference_steps")
+    [ -n "$guidance_scale" ] && script_args+=(--guidance-scale "$guidance_scale")
+    [ -n "$ss_sampling_steps" ] && script_args+=(--ss-sampling-steps "$ss_sampling_steps")
+    [ -n "$slat_sampling_steps" ] && script_args+=(--slat-sampling-steps "$slat_sampling_steps")
+    [ -n "$slat_guidance_strength" ] && script_args+=(--slat-guidance-strength "$slat_guidance_strength")
+    [ -n "$ss_guidance_strength" ] && script_args+=(--ss-guidance-strength "$ss_guidance_strength")
 
-    python3 continuous_trellis_orchestrator_lora_test.py --validators "${VALIDATORS:-79}" "${script_args[@]}"
+    python3 continuous_trellis_orchestrator_lora_test_mod.py --validators "${VALIDATORS:-79}" "${script_args[@]}"
   fi
 
   print_success "--- Test Mining Finished ---"

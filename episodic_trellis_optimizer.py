@@ -83,7 +83,7 @@ class EpisodicTrellisOptimizer:
         # Initialize RL agent with episodic memory
         self.rl_agent = RLLoopAgent(
             memory_file=str(self.log_dir / "rl_memory.json"),
-            trellis_server_url=trellis_server_url
+            trellis_server_url_w_port=trellis_server_url
         )
         
         # Override RL parameters for episodic settings

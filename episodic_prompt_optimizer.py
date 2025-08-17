@@ -303,7 +303,7 @@ class EpisodicPromptOptimizer:
         # Initialize the RL optimizer with episodic memory
         self.optimizer = RLLoopAgent(
             memory_file=os.path.join(self.log_dir, "episodic_memory.json"),
-            trellis_server_url=server_url
+            trellis_server_url_w_port=server_url
         )
         
         # Override RL parameters to match episodic settings

@@ -11,6 +11,12 @@ import os
 # Fix CUDA deterministic behavior before any CUDA operations
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
+# Critical: Disable mixed precision for A6000 vs RTX 6000 Ada consistency
+import torch
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+torch.use_deterministic_algorithms(True, warn_only=True)
+
 import contextlib
 import base64
 import time
@@ -87,8 +93,9 @@ def load_validator_clip(device):
 
 def encode_text(model, tokenizer, device, text: str):
     tokens = tokenizer(text).to(device)
-    with torch.no_grad(), torch.amp.autocast(device.type):
-        feats = model.encode_text(tokens)
+    with torch.no_grad():
+        # Use FP32 for A6000 vs RTX 6000 Ada consistency
+        feats = model.encode_text(tokens).float()
         feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats
 
@@ -99,8 +106,9 @@ def encode_image(model, normalize, device, img: Image.Image, res: int = 224):
     t = t.unsqueeze(0).to(device)
     t = F.interpolate(t, size=(res, res), mode="bicubic", align_corners=False)
     t = normalize(t)
-    with torch.no_grad(), torch.amp.autocast(device.type):
-        feats = model.encode_image(t)
+    with torch.no_grad():
+        # Use FP32 for A6000 vs RTX 6000 Ada consistency
+        feats = model.encode_image(t).float()
         feats = feats / feats.norm(dim=-1, keepdim=True)
     return feats
 
@@ -138,9 +146,10 @@ def generate_and_get_ply_data(
     slat_sampling_steps: int = SLAT_SAMPLING_STEPS,
     slat_guidance_strength: float = SLAT_GUIDANCE_STRENGTH,
     ss_guidance_strength: float = SS_GUIDANCE_STRENGTH,
+    port: int = 8096,
 ) -> bytes:
     """Generate 3D model using TRELLIS and return compressed PLY data"""
-    url = f"http://127.0.0.1:8096/{endpoint}"
+    url = f"http://127.0.0.1:{port}/{endpoint}"
     
     import requests
     print(f"🎨 Generating 3D model for: '{prompt}'")
@@ -410,7 +419,7 @@ def main():
         print(f"🔧 Optimized Prompt: '{optimized_prompt}'")
         print(f"   (Using optimized prompt for generation, original prompt for validation)")
     else:
-        print(f"🔧 Using same prompt for generation and validation")
+        print(f"�� Using same prompt for generation and validation")
     print(f"🔧 Using endpoint: {endpoint}")
     print(f"🔧 Using: decode_and_validate_txt (production function)")
     print(f"🎯 CLIP Model: convnext_large_d (production-accurate)")
@@ -431,6 +440,7 @@ def main():
                 slat_sampling_steps=slat_sampling_steps,
                 slat_guidance_strength=slat_guidance_strength,
                 ss_guidance_strength=ss_guidance_strength,
+                port=args.port,
             )
             # Step 2: CLIP scoring for image endpoint
             print(f"🔍 Phase 2: Computing CLIP alignment (text–text and text–image)")
@@ -482,6 +492,7 @@ def main():
                 slat_sampling_steps=slat_sampling_steps,
                 slat_guidance_strength=slat_guidance_strength,
                 ss_guidance_strength=ss_guidance_strength,
+                port=args.port,
             )
             # Step 2: Validate using production logic against original prompt
             print(f"🔍 Phase 2: Running production-accurate validation")

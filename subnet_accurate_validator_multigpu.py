@@ -138,9 +138,10 @@ def generate_and_get_ply_data(
     slat_sampling_steps: int = SLAT_SAMPLING_STEPS,
     slat_guidance_strength: float = SLAT_GUIDANCE_STRENGTH,
     ss_guidance_strength: float = SS_GUIDANCE_STRENGTH,
+    port: int = 8096,
 ) -> bytes:
     """Generate 3D model using TRELLIS and return compressed PLY data"""
-    url = f"http://127.0.0.1:8096/{endpoint}"
+    url = f"http://127.0.0.1:{port}/{endpoint}"
     
     import requests
     print(f"🎨 Generating 3D model for: '{prompt}'")
@@ -221,14 +222,26 @@ def validate_with_production_logic(ply_data: bytes, prompt: str) -> dict:
         print(f"   Computing CLIP scores against: '{prompt}'")
         
         # Run the exact production validation function
-        validation_result: ValidationResultData = decode_and_validate_txt(
-            request=request_data,
-            ply_data_loader=ply_data_loader,
-            renderer=renderer,
-            zstd_decompressor=zstd_decompressor,
-            validator=validator,
-            include_time_stat=True
-        )
+        try:
+            print(f"   Calling decode_and_validate_txt with:")
+            print(f"   - request: {type(request_data)} ")
+            print(f"   - ply_data_loader: {type(ply_data_loader)}")
+            print(f"   - renderer: {type(renderer)}")
+            print(f"   - validator: {type(validator)}")
+            
+            validation_result: ValidationResultData = decode_and_validate_txt(
+                request=request_data,
+                ply_data_loader=ply_data_loader,
+                renderer=renderer,
+                zstd_decompressor=zstd_decompressor,
+                validator=validator,
+                include_time_stat=True
+            )
+        except Exception as inner_e:
+            print(f"   Inner error details: {inner_e}")
+            import traceback
+            traceback.print_exc()
+            raise inner_e
         
         print(f"✅ Production validation completed")
         
@@ -431,6 +444,7 @@ def main():
                 slat_sampling_steps=slat_sampling_steps,
                 slat_guidance_strength=slat_guidance_strength,
                 ss_guidance_strength=ss_guidance_strength,
+                port=args.port,
             )
             # Step 2: CLIP scoring for image endpoint
             print(f"🔍 Phase 2: Computing CLIP alignment (text–text and text–image)")
@@ -482,6 +496,7 @@ def main():
                 slat_sampling_steps=slat_sampling_steps,
                 slat_guidance_strength=slat_guidance_strength,
                 ss_guidance_strength=ss_guidance_strength,
+                port=args.port,
             )
             # Step 2: Validate using production logic against original prompt
             print(f"🔍 Phase 2: Running production-accurate validation")

@@ -10,6 +10,9 @@ Features:
 - Comprehensive statistics and JSON logging
 - Always-on generation server integration
 - PRIORITY-BASED server coordination for time-critical tasks
+- VALIDATOR BLACKLISTING to skip problematic validators (e.g., UID 180 WC)
+- FULLY ASYNCHRONOUS operations for concurrent task pulling and processing
+- Configurable concurrency limits for optimal performance
 """
 
 import asyncio
@@ -27,6 +30,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any, Set
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
+from concurrent.futures import ThreadPoolExecutor
 
 # Import the prompt optimizer
 try:
@@ -43,7 +47,7 @@ except ImportError:
 # Import the organic LoRA router
 try:
     from final_organic_router import FinalOrganicRouter
-    ORGANIC_LORA_ROUTER_AVAILABLE = False
+    ORGANIC_LORA_ROUTER_AVAILABLE = True
     print("✅ Using organic LoRA router with 100% pattern learning accuracy")
 except ImportError:
     ORGANIC_LORA_ROUTER_AVAILABLE = False
@@ -735,6 +739,12 @@ class ContinuousTrellisOrchestrator:
         self.running = False
         self.start_time = time.time()
         
+        # Asynchronous task management
+        self.task_queue = asyncio.Queue()
+        self.processing_tasks = set()  # Track currently processing tasks
+        self.task_semaphore = asyncio.Semaphore(self.config.get('max_concurrent_tasks', 5))
+        self.pull_semaphore = asyncio.Semaphore(self.config.get('max_concurrent_pulls', 10))
+        
         # Initialize organic LoRA router
         if ORGANIC_LORA_ROUTER_AVAILABLE:
             self.lora_router = FinalOrganicRouter()
@@ -792,6 +802,9 @@ class ContinuousTrellisOrchestrator:
             'server_status_check_errors': 0, # Track server status check errors
             'lora_routing_decisions': 0,    # Track LoRA routing decisions
             'lora_routing_accuracy': 0.0,   # Track LoRA routing accuracy
+            'concurrent_tasks_processed': 0, # Track async task processing
+            'concurrent_pulls_executed': 0,  # Track concurrent validator pulls
+            'blacklisted_validators_skipped': 0, # Track blacklisted validator skips
         }
         
         self.logger.info("🎯 Continuous TRELLIS Orchestrator initialized")
@@ -832,6 +845,10 @@ class ContinuousTrellisOrchestrator:
             'min_validator_stake': 1000.0,  # Minimum stake required for a validator to be considered
             'min_validator_trust': 0.0,     # Minimum trust score
             'max_validators': 50,           # Maximum number of validators to track
+            
+            # Validator blacklisting
+            'validator_blacklist': [180],   # UIDs to blacklist (e.g., 180 is a WC)
+            'enable_validator_blacklisting': True,
             
             # Server settings
             'generation_server_url': 'http://localhost:8096',
@@ -877,6 +894,11 @@ class ContinuousTrellisOrchestrator:
             'priority_access_max_wait': 60, # Max seconds to wait for priority access
             'priority_access_check_interval': 1, # Seconds between status checks
             'priority_access_timeout': 30, # Max seconds to wait for priority access
+            
+            # Asynchronous operation settings
+            'max_concurrent_tasks': 5,      # Maximum number of concurrent task processing
+            'max_concurrent_pulls': 10,     # Maximum number of concurrent validator pulls
+            'enable_concurrent_processing': True,  # Enable fully asynchronous operations
         }
     
     def _setup_bittensor(self) -> bool:
@@ -992,11 +1014,18 @@ class ContinuousTrellisOrchestrator:
                         inactive_count += 1
             
             active_validators = len([v for v in self.validators.values() if v.is_active])
+            blacklisted_validators = len([v for v in self.validators.values() if v.is_active and self.is_validator_blacklisted(v.uid)])
             
             self.logger.info(f"✅ Validator refresh complete:")
             self.logger.info(f"   Active validators: {active_validators}")
+            self.logger.info(f"   Blacklisted validators: {blacklisted_validators}")
             self.logger.info(f"   Inactive validators: {inactive_count}")
             self.logger.info(f"   Total eligible validators found: {len(eligible_validators)}")
+            
+            # Log blacklisted validators if any
+            if blacklisted_validators > 0:
+                blacklisted_uids = [v.uid for v in self.validators.values() if v.is_active and self.is_validator_blacklisted(v.uid)]
+                self.logger.info(f"   🚫 Blacklisted UIDs: {blacklisted_uids}")
             
             # Log top validators by stake
             top_validators = sorted(
@@ -1013,12 +1042,30 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Validator refresh failed: {e}")
             traceback.print_exc()
     
+    def is_validator_blacklisted(self, validator_uid: int) -> bool:
+        """Check if a validator is blacklisted"""
+        if not self.config.get('enable_validator_blacklisting', True):
+            return False
+        
+        blacklist = self.config.get('validator_blacklist', [])
+        is_blacklisted = validator_uid in blacklist
+        
+        if is_blacklisted:
+            self.logger.debug(f"🚫 Validator UID {validator_uid} is blacklisted - skipping")
+            self.stats['blacklisted_validators_skipped'] += 1
+        
+        return is_blacklisted
+    
     def is_validator_available(self, validator: ValidatorState) -> bool:
         """Check if validator is available for task pulling"""
         current_time = time.time()
         
         # Check if validator is active
         if not validator.is_active:
+            return False
+        
+        # Check if validator is blacklisted
+        if self.is_validator_blacklisted(validator.uid):
             return False
         
         # Check cooldown
@@ -1263,16 +1310,15 @@ class ContinuousTrellisOrchestrator:
                         result = self.prompt_optimizer.optimize_with_examples(task.prompt)
                         optimized_prompt = result
                         confidence = 0.8
-                        
+                    
                         if self.config.get('log_optimization_details', True):
                             self.logger.info(f"🚀 Traditional optimization applied:")
                             self.logger.info(f"   Original: {task.prompt}")
                             self.logger.info(f"   Optimized: {optimized_prompt}")
                             self.logger.info(f"   Confidence: {confidence:.1%}")
-                        
+                    
                         self.stats['prompts_optimized'] += 1
                         self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
-                
                 else:
                     # Fallback to original optimizer
                     optimization_result = self.prompt_optimizer.optimize_prompt(
@@ -1648,6 +1694,88 @@ class ContinuousTrellisOrchestrator:
             self.db.save_task(task)
             return False
     
+    async def async_process_task(self, task: TaskRecord) -> bool:
+        """Asynchronously process a single task with semaphore control"""
+        async with self.task_semaphore:
+            task_id = f"{task.task_id}_{task.validator_uid}"
+            
+            # Add to processing set
+            self.processing_tasks.add(task_id)
+            
+            try:
+                self.logger.info(f"🔄 [ASYNC] Starting task {task_id} ({len(self.processing_tasks)} concurrent)")
+                result = await self.process_task(task)
+                self.logger.info(f"✅ [ASYNC] Completed task {task_id}")
+                self.stats['concurrent_tasks_processed'] += 1
+                return result
+            except Exception as e:
+                self.logger.error(f"❌ [ASYNC] Failed task {task_id}: {e}")
+                return False
+            finally:
+                # Remove from processing set
+                self.processing_tasks.discard(task_id)
+    
+    async def async_pull_from_validator(self, validator: ValidatorState) -> Optional[TaskRecord]:
+        """Asynchronously pull task from validator with semaphore control"""
+        async with self.pull_semaphore:
+            try:
+                return await self.pull_task_from_validator(validator)
+            except Exception as e:
+                self.logger.error(f"❌ [ASYNC] Pull failed from UID {validator.uid}: {e}")
+                return None
+    
+    async def task_processor_worker(self):
+        """Worker that processes tasks from the queue"""
+        while self.running:
+            try:
+                # Wait for a task with timeout
+                task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
+                
+                # Process the task asynchronously
+                asyncio.create_task(self.async_process_task(task))
+                
+                # Mark task as done in queue
+                self.task_queue.task_done()
+                
+            except asyncio.TimeoutError:
+                # No task available, continue
+                continue
+            except Exception as e:
+                self.logger.error(f"❌ Task processor worker error: {e}")
+                await asyncio.sleep(1)
+    
+    async def concurrent_validator_pulls(self) -> List[TaskRecord]:
+        """Pull tasks from all available validators concurrently"""
+        available_validators = [v for v in self.validators.values() if self.is_validator_available(v)]
+        
+        if not available_validators:
+            return []
+        
+        self.logger.debug(f"🔄 [ASYNC] Pulling from {len(available_validators)} validators concurrently")
+        
+        # Create pull tasks for all available validators
+        pull_tasks = [
+            self.async_pull_from_validator(validator)
+            for validator in available_validators
+        ]
+        
+        # Execute all pulls concurrently
+        results = await asyncio.gather(*pull_tasks, return_exceptions=True)
+        
+        # Filter out None results and exceptions
+        new_tasks = []
+        for result in results:
+            if isinstance(result, TaskRecord):
+                new_tasks.append(result)
+            elif isinstance(result, Exception):
+                self.logger.error(f"❌ [ASYNC] Pull exception: {result}")
+        
+        if new_tasks:
+            self.logger.info(f"✅ [ASYNC] Pulled {len(new_tasks)} new tasks from {len(available_validators)} validators")
+        
+        self.stats['concurrent_pulls_executed'] += 1
+        return new_tasks
+    
     async def idle_validation_cycle(self):
         """Perform validation on recent unvalidated generations during idle time"""
         self.logger.info("🔍 Running idle validation cycle...")
@@ -1774,6 +1902,17 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Server unavailable skips: {self.stats.get('server_unavailable_skips', 0)}")
         self.logger.info(f"Server status check errors: {self.stats.get('server_status_check_errors', 0)}")
         
+        # Async operations statistics
+        self.logger.info(f"Concurrent tasks processed: {self.stats.get('concurrent_tasks_processed', 0)}")
+        self.logger.info(f"Concurrent pulls executed: {self.stats.get('concurrent_pulls_executed', 0)}")
+        self.logger.info(f"Currently processing tasks: {len(self.processing_tasks)}")
+        
+        # Validator blacklisting statistics
+        self.logger.info(f"Blacklisted validators skipped: {self.stats.get('blacklisted_validators_skipped', 0)}")
+        blacklist = self.config.get('validator_blacklist', [])
+        if blacklist:
+            self.logger.info(f"Current blacklist: {blacklist}")
+        
         if uptime_hours > 0:
             self.logger.info(f"Tasks/hour: {self.stats['tasks_processed'] / uptime_hours:.1f}")
             self.logger.info(f"Rewards/hour: {self.stats['total_rewards'] / uptime_hours:.6f} TAO")
@@ -1806,8 +1945,8 @@ class ContinuousTrellisOrchestrator:
         self.logger.info("="*60)
     
     async def continuous_mining_loop(self):
-        """Main continuous mining loop"""
-        self.logger.info("🚀 Starting continuous TRELLIS mining...")
+        """Main continuous mining loop with full async support"""
+        self.logger.info("🚀 Starting continuous TRELLIS mining with async operations...")
         
         # Setup Bittensor
         if not self._setup_bittensor():
@@ -1830,6 +1969,21 @@ class ContinuousTrellisOrchestrator:
         last_idle_validation = 0
         last_validator_refresh = 0
         
+        # Check if async processing is enabled
+        use_async = self.config.get('enable_concurrent_processing', True)
+        if use_async:
+            self.logger.info("🔄 Async processing ENABLED - using concurrent operations")
+            # Start task processor workers
+            worker_tasks = []
+            num_workers = min(3, self.config.get('max_concurrent_tasks', 5))
+            for i in range(num_workers):
+                worker_task = asyncio.create_task(self.task_processor_worker())
+                worker_tasks.append(worker_task)
+            self.logger.info(f"   Started {num_workers} task processor workers")
+        else:
+            self.logger.info("🔄 Async processing DISABLED - using sequential operations")
+            worker_tasks = []
+        
         try:
             while self.running:
                 current_time = time.time()
@@ -1839,18 +1993,27 @@ class ContinuousTrellisOrchestrator:
                     self.refresh_validators()
                     last_validator_refresh = current_time
                 
-                # Pull tasks from all available validators
-                new_task_found = False
-                
-                for validator in self.validators.values():
-                    if not self.running:
-                        break
+                if use_async:
+                    # ASYNC MODE: Pull from all validators concurrently
+                    new_tasks = await self.concurrent_validator_pulls()
                     
-                    task = await self.pull_task_from_validator(validator)
-                    if task:
-                        new_task_found = True
-                        # Process task immediately
-                        await self.process_task(task)
+                    # Add all new tasks to the queue for asynchronous processing
+                    for task in new_tasks:
+                        await self.task_queue.put(task)
+                        self.logger.debug(f"📥 [ASYNC] Queued task {task.task_id} from UID {task.validator_uid}")
+                else:
+                    # SEQUENTIAL MODE: Original behavior
+                    new_task_found = False
+                    
+                    for validator in self.validators.values():
+                        if not self.running:
+                            break
+                        
+                        task = await self.pull_task_from_validator(validator)
+                        if task:
+                            new_task_found = True
+                            # Process task immediately
+                            await self.process_task(task)
                 
                 # If no new tasks, do idle validation
                 # if not new_task_found and current_time - last_idle_validation > self.config['idle_validation_interval']:
@@ -1868,8 +2031,9 @@ class ContinuousTrellisOrchestrator:
                     self.db.cleanup_old_prompts()
                     last_cleanup = current_time
                 
-                # Wait before next cycle
-                await asyncio.sleep(2)  # Short sleep between cycles
+                # Wait before next cycle (shorter for async mode)
+                sleep_time = 1 if use_async else 2
+                await asyncio.sleep(sleep_time)
         
         except KeyboardInterrupt:
             self.logger.info("🛑 Mining interrupted by user")
@@ -1878,6 +2042,16 @@ class ContinuousTrellisOrchestrator:
             traceback.print_exc()
         finally:
             self.running = False
+            
+            # Cancel worker tasks
+            for worker_task in worker_tasks:
+                worker_task.cancel()
+            
+            # Wait for any remaining tasks to complete
+            if use_async and not self.task_queue.empty():
+                self.logger.info("⏳ Waiting for remaining tasks to complete...")
+                await self.task_queue.join()
+            
             self.print_status()
             self.save_statistics()
             self.logger.info("🏁 Continuous mining stopped")
@@ -1914,6 +2088,15 @@ async def main():
     # Determinism arguments
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
     parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
+    
+    # Async operations arguments
+    parser.add_argument("--no-async", action="store_true", help="Disable concurrent processing (use sequential mode)")
+    parser.add_argument("--max-concurrent-tasks", type=int, default=5, help="Maximum number of concurrent tasks (default: 5)")
+    parser.add_argument("--max-concurrent-pulls", type=int, default=10, help="Maximum number of concurrent validator pulls (default: 10)")
+    
+    # Validator blacklisting arguments  
+    parser.add_argument("--blacklist", type=int, nargs="*", default=[180], help="Validator UIDs to blacklist (default: [180])")
+    parser.add_argument("--no-blacklist", action="store_true", help="Disable validator blacklisting")
     
     args = parser.parse_args()
     
@@ -1954,6 +2137,18 @@ async def main():
     if args.variable_seeds:
         config['use_fixed_seed'] = False
     config['fixed_seed_value'] = args.seed
+    
+    # Async operations configuration
+    if args.no_async:
+        config['enable_concurrent_processing'] = False
+    config['max_concurrent_tasks'] = args.max_concurrent_tasks
+    config['max_concurrent_pulls'] = args.max_concurrent_pulls
+    
+    # Validator blacklisting configuration
+    if args.no_blacklist:
+        config['enable_validator_blacklisting'] = False
+    if args.blacklist is not None:
+        config['validator_blacklist'] = args.blacklist
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)

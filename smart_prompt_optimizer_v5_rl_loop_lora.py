@@ -87,7 +87,7 @@ class RLLoopAgent:
     def __init__(self, ollama_url: str = "http://localhost:11434",
                  memory_file: str = "rl_loop_memory.json",
                  api_base_url: str = "https://openrouter.ai/api/v1",
-                 trellis_server_url: str = "http://localhost:8096",
+                 trellis_server_url_w_port: str = "http://localhost:8096",
                  endpoint: str = "generate/"):
         self.ollama_url = ollama_url
         self.model = None  # Will be set based on user input
@@ -98,7 +98,7 @@ class RLLoopAgent:
         self.api_key = None
         self.site_url = "http://localhost"
         self.app_name = "RL Prompt Optimizer"
-        self.trellis_server_url = trellis_server_url
+        self.trellis_server_url_w_port = trellis_server_url_w_port
         self._choose_llm_provider()
         self.endpoint = endpoint
         # RL Loop parameters (improved)
@@ -274,7 +274,7 @@ class RLLoopAgent:
             self.logger.info(f"      🔧 Using endpoint: {endpoint}")
             self.endpoint = endpoint
         try:
-            server_status_url = self.trellis_server_url.rstrip('/') + '/job/status/'
+            server_status_url = self.trellis_server_url_w_port.rstrip('/') + '/job/status/'
             resp = requests.get(server_status_url, timeout=5)
             if resp.status_code == 200:
                 status_json = resp.json()
@@ -765,7 +765,7 @@ OPTIMIZATION: {{
     def _clear_trellis_gpu_cache(self):
         """Send a request to the TRELLIS server to clear GPU cache."""
         try:
-            url = f"{self.trellis_server_url}/clear_cache/"
+            url = f"{self.trellis_server_url_w_port}/clear_cache/"
             resp = requests.post(url, timeout=10)
             if resp.status_code == 200:
                 self.logger.info(f"[TRELLIS] GPU cache cleared: {resp.json()}")
@@ -803,12 +803,31 @@ OPTIMIZATION: {{
                         torch.cuda.empty_cache()
                         time.sleep(2)  # Brief pause for memory cleanup
                 return 0.0
-            with open("subnet_validation_results.json", 'r') as f:
-                data = json.load(f)
-                score = data.get("validation_engine_score", 0.0)
-                if score == 0.0 and torch.cuda.is_available():
-                    self.logger.warning(f"   🔧 Score 0.0 - clearing CUDA cache")
-                    torch.cuda.empty_cache()
+            # Try to read from the port-specific file first, then fallback to generic file
+            validation_files = [
+                f"subnet_validation_results_{self.trellis_server_url_w_port.split(':')[-1]}.json",
+                "subnet_validation_results.json"
+            ]
+            
+            data = None
+            for validation_file in validation_files:
+                try:
+                    with open(validation_file, 'r') as f:
+                        data = json.load(f)
+                        self.logger.info(f"      📄 Reading validation results from: {validation_file}")
+                        break
+                except FileNotFoundError:
+                    self.logger.debug(f"      📄 Validation file not found: {validation_file}")
+                    continue
+            
+            if data is None:
+                self.logger.warning(f"   ❌ No validation results file found")
+                return 0.0
+                
+            score = data.get("validation_engine_score", 0.0)
+            if score == 0.0 and torch.cuda.is_available():
+                self.logger.warning(f"   🔧 Score 0.0 - clearing CUDA cache")
+                torch.cuda.empty_cache()
         except Exception as e:
             self.logger.error(f"      ❌ Validation error: {e}")
             return 0.0
