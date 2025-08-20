@@ -16,6 +16,9 @@ curl "http://localhost:8096/assets/"
 
 # Download compressed PLY file
 curl "http://localhost:8096/assets/gaussian_splatting_ply" -o model.ply.spz
+
+ython test_reproducibility_quality.py "stone-etched armor with leafy pattern" --port 8099 --endpoint "generate/" --min-similarity 0.3 --log-count 7 --ss_steps 12 --slat_steps 12 --slat_guidance  3.5 --ss_guidance 7.5
+
 """
 
 import os
@@ -85,10 +88,11 @@ HUNYUAN3D_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Hunyu
 sys.path.append(HUNYUAN3D_PATH)
 
 # Import TRELLIS components
-from diffusers import FluxTransformer2DModel, FluxPipeline, BitsAndBytesConfig, GGUFQuantizationConfig, StableDiffusionPipeline
+from diffusers import FluxTransformer2DModel, FluxPipeline, BitsAndBytesConfig, GGUFQuantizationConfig, StableDiffusionPipeline, AutoencoderTiny, DiffusionPipeline
 from transformers import T5EncoderModel, BitsAndBytesConfig as BitsAndBytesConfigTF
 from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
+from huggingface_hub.constants import HF_HUB_CACHE
 
 # Import background removal
 from rembg import new_session, remove
@@ -107,6 +111,70 @@ from patcher import patch_final_layer_adaLN
 # NUM_INFERENCE_STEPS = 8
 NUM_INFERENCE_STEPS = 7
 MAX_SEED = np.iinfo(np.int32).max
+
+# # Configuration
+# GENERATION_CONFIG = {
+#     'output_dir': './trellis_submit_outputs',
+#     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+#     # 'num_inference_steps_t2i': 8,
+#     'num_inference_steps_t2i': 7,
+#     'flux_model_url': "https://huggingface.co/gokaygokay/flux-game/blob/main/hyperflux_00001_.q8_0.gguf",
+#     # 'flux_model_url': "black-forest-labs/FLUX.1-dev",
+#     'flux_base_model': "camenduru/FLUX.1-dev-diffusers",
+#     # 'flux_base_model': "black-forest-labs/FLUX.1-dev",
+#     'sdxl_model_path': "stabilityai/stable-diffusion-xl-base-1.0",
+#     'sd15_model_path': "runwayml/stable-diffusion-v1-5",
+#     'hunyuan_model_path': "Tencent-Hunyuan/HunyuanDiT-v1.1-Diffusers-Distilled",
+#     'trellis_model_path': 'cavargas10/TRELLIS',
+#     'save_intermediate_outputs': True,
+#     'save_preview': False,
+#     'auto_compress_ply': True,
+#     # Model selection
+#     'current_model': 'flux',  # 'flux', 'sdxl', or 'sd15'
+#     # TRELLIS specific settings - OPTIMIZED FOR MAXIMUM QUALITY
+#     # 'guidance_scale': 4.0,  # Increased from 3.5 for better quality
+#     'guidance_scale': 3.5,  # Increased from 3.5 for better quality
+#     'ss_guidance_strength': 9.5,  # Increased from 8.5 for stronger structure guidance
+#     # 'ss_sampling_steps': 30,  # Increased from 23 for more refinement
+#     'ss_sampling_steps': 30,  # Increased from 23 for more refinement
+#     # 'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
+#     'slat_guidance_strength': 4.0,  # Increased from 4.0 for better detail preservation
+#     # 'slat_sampling_steps': 30,  # Increased from 24 for more refinement
+#     'slat_sampling_steps': 36,  # Increased from 24 for more refinement
+#     # Memory management
+#     'enable_memory_efficient_attention': True,
+#     'enable_cpu_offload': True,
+#     'max_memory_usage_gb': 20,
+#     'validation_server_url': 'http://127.0.0.1:10006',
+#     'auto_validate_generations': True,
+#     'validation_timeout': 120,
+#     # Object centering settings
+#     'enable_object_centering': True,
+#     'centering_white_threshold': 240,
+#     'centering_padding': 30,
+#     # LoRA configuration
+#     'current_lora': None,
+#     'lora_scale': 1.0,
+#     # HunyuanDiT specific settings
+#     'hunyuan_num_inference_steps': 25,
+#     'hunyuan_pag_scale': 1.3,
+#     'hunyuan_width': 1024,
+#     'hunyuan_height': 1024,
+#     # TRELLIS precision (use half-precision to reduce memory and speed up)
+#     'trellis_use_fp16': True,
+#     # TRELLIS torch.compile acceleration
+#     'trellis_compile': False,
+#     'trellis_compile_mode': 'reduce-overhead',  # options: 'reduce-overhead', 'max-autotune' (if supported)
+#     # 'trellis_compile_mode': 'max-autotune',
+#     'trellis_compile_dynamic': False,
+#     'trellis_compile_flow_models': False,
+#     # FLUX schnell mode (4-step fast inference)
+#     'flux_use_schnell_socket': True,
+#     'flux_use_schnell': False,
+#     'flux_schnell_steps': 4,
+#     'flux_schnell_guidance': 0.0,
+# }
+
 
 # Configuration
 GENERATION_CONFIG = {
@@ -130,11 +198,11 @@ GENERATION_CONFIG = {
     # TRELLIS specific settings - OPTIMIZED FOR MAXIMUM QUALITY
     # 'guidance_scale': 4.0,  # Increased from 3.5 for better quality
     'guidance_scale': 3.5,  # Increased from 3.5 for better quality
-    'ss_guidance_strength': 9.5,  # Increased from 8.5 for stronger structure guidance
+    'ss_guidance_strength': 7.5,  # Increased from 8.5 for stronger structure guidance
     # 'ss_sampling_steps': 30,  # Increased from 23 for more refinement
     'ss_sampling_steps': 21,  # Increased from 23 for more refinement
     # 'slat_guidance_strength': 5.0,  # Increased from 4.0 for better detail preservation
-    'slat_guidance_strength': 4.0,  # Increased from 4.0 for better detail preservation
+    'slat_guidance_strength': 3.5,  # Increased from 4.0 for better detail preservation
     # 'slat_sampling_steps': 30,  # Increased from 24 for more refinement
     'slat_sampling_steps': 24,  # Increased from 24 for more refinement
     # Memory management
@@ -164,9 +232,8 @@ GENERATION_CONFIG = {
     # 'trellis_compile_mode': 'max-autotune',
     'trellis_compile_dynamic': False,
     'trellis_compile_flow_models': False,
-    # FLUX schnell mode (4-step fast inference)
     'flux_use_schnell_socket': False,
-    'flux_use_schnell': False,
+    'flux_use_schnell': True,
     'flux_schnell_steps': 4,
     'flux_schnell_guidance': 0.0,
 }
@@ -241,7 +308,7 @@ FLUX_LORAS = {
     },
     'cinema': {
         'name': 'Cinema Style',
-        'path': '/home/mbhat/three-gen-subnet-trellis/LORAS/everyday_000002000.safetensors',
+        'path': '/home/mbhat/three-gen-subnet-trellis/LORA/everyday_000002000.safetensors',
         'trigger_prefix': 'c1n3ma,',
         'scale': 1.0,
         'description': 'Cinema style LoRA for FLUX'
@@ -462,7 +529,7 @@ generation_job_status = {
 class FluxSocketClient:
     """Client for communicating with isolated FLUX inference server"""
     
-    def __init__(self, socket_path="/home/mbhat/three-gen-subnet-trellis/inferences.sock"):
+    def __init__(self, socket_path="/home/mbhat/three-gen-subnet-trellis/newcomer20_accurate/inferences.sock"):
         self.socket_path = socket_path
         self.connection = None
         
@@ -523,6 +590,8 @@ class TrellisGenerator:
         self.flux_use_schnell_socket = False
         # Initialize asset manager
         self.asset_manager = AssetManager(GENERATION_CONFIG['output_dir'])
+        
+
         
         # Get HuggingFace token
         try:
@@ -604,7 +673,7 @@ class TrellisGenerator:
             
             file_url = GENERATION_CONFIG['flux_model_url']
             single_file_base_model = GENERATION_CONFIG['flux_base_model']
-            # If schnell mode is enabled, prefer the schnell checkpoint for the base repo
+            # If schnell mode is enabled, prefer the schnell checHF_HUB_CACHEkpoint for the base repo
             if GENERATION_CONFIG.get('flux_use_schnell', False) and not GENERATION_CONFIG.get('flux_use_schnell_socket', False):
                 try:
                     # single_file_base_model = "black-forest-labs/FLUX.1-schnell"
@@ -665,8 +734,7 @@ class TrellisGenerator:
             if file_url is not None and 'gguf' in file_url:
                 use_single_file = True
                 file_url = file_url.replace("/resolve/main/", "/blob/main/").replace("?download=true", "")
-            else:
-                if isinstance(file_url, str):
+            elif isinstance(file_url, str):
                     lower_url = file_url.lower()
                     if lower_url.startswith("http://") or lower_url.startswith("https://"):
                         use_single_file = True
@@ -705,21 +773,46 @@ class TrellisGenerator:
                 # )
                 # Initialize pipeline
                 print("Initializing FLUX pipeline...")
-                self.flux_pipeline = FluxPipeline.from_pretrained(
-                    single_file_base_model, 
-                    text_encoder_2=self.flux_text_encoder_2, 
-                    torch_dtype=dtype, 
-                    token=huggingface_token
+                # self.flux_pipeline = FluxPipeline.from_pretrained(
+                #     "manbeast3b/flux.1-schnell-full1",
+                #     text_encoder_2=self.flux_text_encoder_2, 
+                #     torch_dtype=dtype, 
+                #     token=huggingface_token
+                # )
+                # vae=AutoencoderTiny.from_pretrained(
+                #     "RobertML/FLUX.1-schnell-vae_e3m2",
+                #     revision="da0d2cd7815792fb40d084dbd8ed32b63f153d8d",
+                #     torch_dtype=torch.bfloat16
+                # )
+                # transformer_path = os.path.join(
+                #     HF_HUB_CACHE,
+                #     "models--RobertML--FLUX.1-schnell-int8wo/snapshots/307e0777d92df966a3c0f99f31a6ee8957a9857a"
+                # )
+                # transformer=FluxTransformer2DModel.from_pretrained(
+                #     # transformer_path,
+                #     "RobertML/FLUX.1-schnell-int8wo",  # model repo id
+                #     revision="307e0777d92df966a3c0f99f31a6ee8957a9857a",
+                #     torch_dtype=torch.bfloat16,
+                #     use_safetensors=False, 
+                #     # local_files_only=True
+                # )
+                self.flux_pipeline = DiffusionPipeline.from_pretrained(
+                    "black-forest-labs/FLUX.1-schnell",
+                    # vae=vae,
+                    revision="741f7c3ce8b383c54771c7003378a50191e9efe9",
+                    # transformer=transformer,
+                    text_encoder_2=self.flux_text_encoder_2,
+                    torch_dtype=torch.bfloat16,
                 )
-            
+                        
             self.flux_pipeline.to("cuda")
 
             # from flux_caching import apply_cache_on_pipe
             # apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
             self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
-            if GENERATION_CONFIG.get('flux_use_schnell', False):
-                self.flux_pipeline.transformer = torch.compile(self.flux_pipeline.transformer, mode="max-autotune", fullgraph=True)
+            # if GENERATION_CONFIG.get('flux_use_schnell', False):
+            # self.flux_pipeline.transformer = torch.compile(self.flux_pipeline.transformer, mode="max-autotune")
     
             # from torchao.quantization import quantize_, float8_dynamic_activation_float8_weight
             # quantize_(self.flux_pipeline.vae, float8_dynamic_activation_float8_weight())
@@ -1221,6 +1314,8 @@ class TrellisGenerator:
             }
             for key, config in lora_configs.items()
         }
+    
+
 
     def _resolve_flux_inference_params(self, guidance_scale: float, steps: int) -> Tuple[float, int, Dict[str, Any]]:
         """Apply schnell overrides for FLUX if enabled.
@@ -1764,6 +1859,386 @@ class TrellisGenerator:
                 
                 return None
 
+    def generate_3d_model_image(self, prompt: str, seed: int = 42, num_inference_steps: Optional[int] = None, guidance_scale: Optional[float] = None, ss_sampling_steps: Optional[int] = None, slat_sampling_steps: Optional[int] = None, slat_guidance_strength: Optional[float] = None, ss_guidance_strength: Optional[float] = None) -> Optional[Tuple[bytes, Optional[bytes]]]:
+        """Generate 3D model from text prompt using FLUX + TRELLIS pipeline"""
+        
+        job_id = f"gen_{int(time.time())}_{seed}"
+        generation_job_status.update({
+            "current_job_id": job_id,
+            "status": "processing",
+            "prompt": prompt,
+            "seed": seed,
+            "start_time": time.time(),
+            "end_time": None,
+            "ply_path": None,
+            "error": None
+        })
+
+        with self.generation_lock:
+            start_time = time.time()
+            
+            try:
+                print(f"🎯 Starting TRELLIS generation for: '{prompt}' (seed: {seed})")
+                
+                # Initialize asset manager for this generation
+                generation_asset = self.asset_manager.create_asset(prompt, seed)
+                
+                # Step 1: Generate image with selected model
+                current_model = GENERATION_CONFIG.get('current_model', 'flux')
+                print(f"Step 1: Generating image with {current_model.upper()}...")
+                
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                # Enhanced prompt with LoRA trigger prefix if applicable
+                enhanced_prompt = prompt
+                current_lora = GENERATION_CONFIG.get('current_lora')
+                
+                if current_model == 'flux':
+                    if self.flux_pipeline is None:
+                        self._load_flux_models()
+                    
+                    if current_lora and current_lora in FLUX_LORAS:
+                        lora_config = FLUX_LORAS[current_lora]
+                        trigger_prefix = lora_config.get('trigger_prefix', '')
+                        if trigger_prefix:
+                            enhanced_prompt = f"{trigger_prefix} {prompt}"
+                            print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    generator = torch.Generator(device=device).manual_seed(seed)
+                    with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else GENERATION_CONFIG['guidance_scale']
+                        effective_steps = num_inference_steps if num_inference_steps is not None else NUM_INFERENCE_STEPS
+                        effective_guidance_scale, effective_steps, extra_kwargs = self._resolve_flux_inference_params(
+                            effective_guidance_scale,
+                            effective_steps
+                        )
+                        if GENERATION_CONFIG.get('flux_use_schnell_socket', False):
+                            image = self.flux_socket_client.generate_image(
+                                prompt=enhanced_prompt,
+                                seed=seed,
+                                width=1024,
+                                height=1024,
+                            )
+                        else:   
+                            image = self.flux_pipeline(
+                                prompt=enhanced_prompt,
+                                guidance_scale=effective_guidance_scale,
+                                num_inference_steps=effective_steps,
+                                width=1024,
+                                height=1024,
+                                generator=generator,
+                                **extra_kwargs,
+                            ).images[0]
+                
+                elif current_model == 'sdxl':
+                    if self.sdxl_pipeline is None:
+                        self._load_sdxl_pipeline()
+                    
+                    if current_lora and current_lora in SDXL_LORAS:
+                        lora_config = SDXL_LORAS[current_lora]
+                        trigger_prefix = lora_config.get('trigger_prefix', '')
+                        if trigger_prefix:
+                            enhanced_prompt = f"{trigger_prefix} {prompt}"
+                            print(f"🎨 Applied SDXL LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    generator = torch.Generator(device=device).manual_seed(seed)
+                    with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else 7.5
+                        effective_steps = num_inference_steps if num_inference_steps is not None else 25
+                        image = self.sdxl_pipeline(
+                            prompt=enhanced_prompt,
+                            guidance_scale=effective_guidance_scale,
+                            num_inference_steps=effective_steps,
+                            width=1024,
+                            height=1024,
+                            generator=generator,
+                        ).images[0]
+                
+                elif current_model == 'sd15':
+                    if self.sd15_pipeline is None:
+                        self._load_sd15_pipeline()
+                    
+                    if current_lora and current_lora in SD15_LORAS:
+                        lora_config = SD15_LORAS[current_lora]
+                        trigger_prefix = lora_config.get('trigger_prefix', '')
+                        if trigger_prefix:
+                            enhanced_prompt = f"{trigger_prefix} {prompt}"
+                            print(f"🎨 Applied SD1.5 LoRA trigger prefix: '{trigger_prefix}'")
+                    
+                    generator = torch.Generator(device=device).manual_seed(seed)
+                    with torch.no_grad():
+                        effective_guidance_scale = guidance_scale if guidance_scale is not None else 7.5
+                        effective_steps = num_inference_steps if num_inference_steps is not None else 25
+                        image = self.sd15_pipeline(
+                            prompt=enhanced_prompt,
+                            guidance_scale=effective_guidance_scale,
+                            num_inference_steps=effective_steps,
+                            width=512,
+                            height=512,
+                            generator=generator,
+                        ).images[0]
+                
+                else:
+                    raise ValueError(f"Unknown model type: {current_model}")
+                
+                print(f"✓ {current_model.upper()} image generated successfully")
+                generation_asset.add_asset(AssetType.FLUX_IMAGE, image)  # Keep same asset type for compatibility
+                
+                # Unload FLUX models
+                # self._unload_flux_models()
+                
+                # # Step 1.3: Center object in image before background removal
+                # if GENERATION_CONFIG.get('enable_object_centering', True):
+                #     print("Step 1.3: Centering object in image...")
+                #     try:
+                #         centered_image = self.center_object_in_image(
+                #             image, 
+                #             white_threshold=GENERATION_CONFIG.get('centering_white_threshold', 240),
+                #             padding=GENERATION_CONFIG.get('centering_padding', 40)
+                #         )
+                #         print("✓ Object centered successfully")
+                #         image = centered_image  # Use the centered image for next steps
+                #         generation_asset.add_asset(AssetType.FLUX_IMAGE, centered_image)  # Update asset with centered version
+                #     except Exception as e:
+                #         print(f"⚠️ Object centering failed: {e}")
+                #         print("   Continuing with original image...")
+                # else:
+                #     print("Step 1.3: Object centering disabled, skipping...")
+                
+                # Step 1.5: Remove background from image
+                print("Step 1.5: Removing background from image...")
+                if self.background_remover is None:
+                    self._load_background_remover()
+                
+                try:
+                    image_no_bg = self.background_remover(image)
+                    print("✓ Background removed successfully")
+                    # Save the background-removed image as well
+                    generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)  # Replace original with cleaned version
+                    image = image_no_bg  # Use the cleaned image for TRELLIS
+                except Exception as e:
+                    print(f"⚠️ Background removal failed: {e}")
+                    print("   Continuing with original image...")
+                
+                # Unload background remover
+                # self._unload_background_remover()
+                
+                # Step 2: Generate 3D model with TRELLIS
+                print("Step 2: Generating 3D model with TRELLIS...")
+                if self.trellis_pipeline is None:   
+                    self._load_trellis_pipeline()
+                    if self.trellis_pipeline is None:
+                        raise RuntimeError("TRELLIS pipeline failed to load; cannot generate 3D model.")
+                
+                # Enhanced TRELLIS parameters for maximum quality
+                # Resolve TRELLIS quality parameters with overrides
+                effective_ss_steps = ss_sampling_steps if ss_sampling_steps is not None else GENERATION_CONFIG['ss_sampling_steps']
+                effective_slat_steps = slat_sampling_steps if slat_sampling_steps is not None else GENERATION_CONFIG['slat_sampling_steps']
+                effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
+                effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
+
+                # Use autocast to reduce activation memory and speed up compute on CUDA
+                use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+                if use_fp16:
+                    try:
+                        with torch.autocast(device_type="cuda", dtype=torch.float16):
+                            outputs = self.trellis_pipeline.run(
+                                image,
+                                seed=seed,
+                                formats=["gaussian"],
+                                preprocess_image=False,
+                                sparse_structure_sampler_params={
+                                    "steps": effective_ss_steps,
+                                    "cfg_strength": effective_ss_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                                slat_sampler_params={
+                                    "steps": effective_slat_steps,
+                                    "cfg_strength": effective_slat_guidance,
+                                    "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                                    "rescale_t": 3.0,  # Temperature rescaling for better quality
+                                },
+                            )
+                    except RuntimeError as e:
+                        # Some mesh decoding ops may not support fp16 (scatter/scatter_reduce dtype issues)
+                        if "scatter()" in str(e) or "scatter_reduce" in str(e):
+                            print("⚠️ FP16 mesh decode failed (scatter dtype mismatch). Retrying gaussian-only without autocast...")
+                            with torch.autocast(device_type="cuda", enabled=False):
+                                outputs = self.trellis_pipeline.run(
+                                    image,
+                                    seed=seed,
+                                    formats=["gaussian"],  # Avoid mesh path in fp16
+                                    preprocess_image=False,
+                                    sparse_structure_sampler_params={
+                                        "steps": effective_ss_steps,
+                                        "cfg_strength": effective_ss_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                    slat_sampler_params={
+                                        "steps": effective_slat_steps,
+                                        "cfg_strength": effective_slat_guidance,
+                                        "cfg_interval": (0.3, 0.98),
+                                        "rescale_t": 3.0,
+                                    },
+                                )
+                        else:
+                            raise
+                else:
+                    outputs = self.trellis_pipeline.run(
+                        image,
+                        seed=seed,
+                        formats=["gaussian", "mesh"],
+                        preprocess_image=False,
+                        sparse_structure_sampler_params={
+                            "steps": effective_ss_steps,
+                            "cfg_strength": effective_ss_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                        slat_sampler_params={
+                            "steps": effective_slat_steps,
+                            "cfg_strength": effective_slat_guidance,
+                            "cfg_interval": (0.3, 0.98),  # Enhanced guidance scheduling
+                            "rescale_t": 3.0,  # Temperature rescaling for better quality
+                        },
+                    )
+                
+                print("✓ 3D model generated successfully")
+                
+                # Step 3: Extract and enhance Gaussian Splatting PLY
+                print("Step 3: Extracting and enhancing Gaussian Splatting PLY...")
+                gaussian_output = outputs['gaussian'][0]
+                
+                # Quality enhancement: Filter low-quality splats
+                # print("   Enhancing quality by filtering low-quality splats...")
+                # try:
+                #     # Get splat data
+                #     points = gaussian_output.points
+                #     opacities = gaussian_output.opacities
+                #     scales = gaussian_output.scales
+                    
+                #     # Filter out low-opacity and very small splats
+                #     opacity_threshold = 0.01
+                #     scale_threshold = 0.001
+                    
+                #     # Create quality mask
+                #     quality_mask = (opacities > opacity_threshold) & (torch.norm(scales, dim=1) > scale_threshold)
+                    
+                #     if quality_mask.sum() > 7000:  # Ensure minimum splat count
+                #         # Apply filtering
+                #         gaussian_output.points = points[quality_mask]
+                #         gaussian_output.opacities = opacities[quality_mask]
+                #         gaussian_output.scales = scales[quality_mask]
+                #         gaussian_output.rotations = gaussian_output.rotations[quality_mask]
+                #         gaussian_output.features_dc = gaussian_output.features_dc[quality_mask]
+                #         gaussian_output.features_rest = gaussian_output.features_rest[quality_mask]
+                #         gaussian_output.normals = gaussian_output.normals[quality_mask]
+                        
+                #         print(f"   Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,}")
+                #     else:
+                #         print(f"   Quality enhancement skipped: Too few splats would remain ({quality_mask.sum().item()})")
+                        
+                # except Exception as e:
+                #     print(f"   Quality enhancement failed: {e}")
+                #     print("   Continuing with original splats...")
+                
+                # Save as PLY file
+                import io
+                ply_buffer = io.BytesIO()
+                gaussian_output.save_ply(ply_buffer)
+                ply_data = ply_buffer.getvalue()
+                
+                print(f"✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
+                generation_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
+                
+                # Step 4: Generate preview video (optional)
+                if GENERATION_CONFIG.get('save_intermediate_outputs', False) and GENERATION_CONFIG.get('save_preview', False):
+                    print("Step 4: Generating preview video...")
+                    try:
+                        video = render_utils.render_video(outputs['gaussian'][0], num_frames=120)['color']
+                        video_geo = render_utils.render_video(outputs['mesh'][0], num_frames=120)['normal']
+                        combined_video = [np.concatenate([video[i], video_geo[i]], axis=1) for i in range(len(video))]
+                        generation_asset.add_asset(AssetType.PREVIEW_VIDEO, combined_video)
+                        print("✓ Preview video generated")
+                    except Exception as e:
+                        print(f"⚠️ Preview video generation failed: {e}")
+                
+                # Step 5: Compress PLY if enabled
+                compressed_data = None
+                if GENERATION_CONFIG.get('auto_compress_ply', True):
+                    print("Step 5: Compressing PLY with SPZ...")
+                    try:
+                        import pyspz
+                        compressed_data = pyspz.compress(ply_data, workers=-1)
+                        print(f"🗜️ SPZ Compression successful:")
+                        print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                        print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                        print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                        print(f"   Space saved: {(len(ply_data)-len(compressed_data))/1024/1024:.1f} MB")
+                        
+                        generation_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
+                    except Exception as e:
+                        print(f"⚠️ SPZ compression failed: {e}")
+                        compressed_data = None
+                
+                # Unload TRELLIS pipeline
+                # self._unload_trellis_pipeline()
+                
+                generation_time = time.time() - start_time
+                
+                # Update metrics
+                self.metrics.total_generations += 1
+                self.metrics.successful_generations += 1
+                self.metrics.last_generation_time = generation_time
+                self.metrics.average_generation_time = (
+                    (self.metrics.average_generation_time * (self.metrics.successful_generations - 1) + generation_time) 
+                    / self.metrics.successful_generations
+                )
+                
+                print(f"🎉 TRELLIS generation completed in {generation_time:.2f}s")
+                
+                # Save metadata
+                if GENERATION_CONFIG.get('save_intermediate_outputs', False):
+                    metadata_path = generation_asset.asset_directory / "metadata.json"
+                    with open(metadata_path, 'w') as f:
+                        json.dump({
+                            **generation_asset.metadata,
+                            "generation_time": generation_time,
+                            "ply_size_bytes": len(ply_data),
+                            "compressed_size_bytes": len(compressed_data) if compressed_data else None,
+                            "compression_ratio": len(compressed_data)/len(ply_data) if compressed_data else None,
+                        }, f, indent=2)
+                    print(f"💾 Metadata saved: {metadata_path}")
+
+                generation_job_status.update({
+                    "status": "completed",
+                    "end_time": time.time(),
+                    "ply_path": f"generated_model_{seed}.ply"
+                })
+                            
+                return ply_data, compressed_data, image
+                
+            except Exception as e:
+                self.metrics.total_generations += 1
+                self.metrics.failed_generations += 1
+                print(f"❌ TRELLIS generation failed: {e}")
+                traceback.print_exc()
+                
+                # Cleanup on failure
+                self._unload_flux_models()
+                self._unload_trellis_pipeline()
+                self._unload_background_remover()
+                
+                generation_job_status.update({
+                    "status": "failed",
+                    "end_time": time.time(),
+                    "error": str(e)
+                })
+                
+                return None
+
     def get_status(self) -> Dict[str, Any]:
         """Get server status and metrics"""
         return {
@@ -1794,8 +2269,7 @@ class TrellisGenerator:
                 "last_validation_score": self.metrics.last_validation_score,
             },
             "config": GENERATION_CONFIG,
-            "gpu_memory": self._clear_gpu_memory() if torch.cuda.is_available() else 0,
-            "ready":self.ready
+            "ready": self.ready # Removed gpu_memory call
         }
 
     def submit_for_validation(self, prompt: str, ply_data: bytes) -> Dict[str, Any]:
@@ -1850,7 +2324,7 @@ class TrellisGenerator:
                     }
                 }
             else:
-                print(f"⚠️ Validation request failed: {response.status_code}")
+                print(f"❌ Validation request failed: {response.status_code}")
                 self.metrics.validation_submissions += 1
                 return {
                     "status": "error", 
@@ -1921,6 +2395,8 @@ async def generate_3d_model_endpoint(
     if seed is None:
         #seed = random.randint(0, MAX_SEED)
         seed = 42
+
+    generator._unload_lora()
     
     # Generate model
     result = generator.generate_3d_model(
@@ -1996,8 +2472,12 @@ async def validate_generation(
         else:
             raise HTTPException(status_code=400, detail="Manual PLY upload not implemented")
         
-        # Submit for validation
-        validation_results = generator.submit_for_validation(prompt, ply_data)
+        # Submit for validation in a separate thread to avoid blocking the event loop
+        validation_results = await asyncio.to_thread(
+            generator.submit_for_validation,
+            prompt,
+            ply_data
+        )
         
         return JSONResponse(content={
             "status": "success",
@@ -3838,6 +4318,8 @@ async def generate_image_endpoint(
             # Generate image with FLUX
             print(f"🎨 Generating image with FLUX for: '{prompt}' (seed: {seed})")
             
+            generator._unload_lora()
+
             with torch.no_grad():
                 # Apply schnell overrides if enabled
                 eff_guidance = guidance_scale
@@ -4180,6 +4662,892 @@ async def clip_feedback_loop_endpoint(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"CLIP feedback loop failed: {str(e)}")
 
+
+
+# New endpoint that returns both PLY and image data
+@app.post("/generate_both/")
+async def generate_both_ply_and_image(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate both 3D model (PLY) and image in a single request"""
+    try:
+        # Handle seed
+        if seed is None:
+            seed = 42
+        
+        # unloading lora
+        if hasattr(generator, '_unload_lora'):
+            generator._unload_lora()
+
+        print(f"🎯 Generating both PLY and image for: '{prompt}' (seed: {seed})")
+        
+        # Use the generate_3d_model_image method which returns both
+        result = generator.generate_3d_model_image(
+            prompt,
+            seed,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
+        
+        if result is None:
+            raise HTTPException(status_code=500, detail="Generation failed")
+        
+        ply_data, compressed_data, image = result
+        
+        # Convert PIL Image to base64 for JSON response
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format='PNG')
+        image_data = img_buffer.getvalue()
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Prepare response data
+        response_data = {
+            "status": "success",
+            "prompt": prompt,
+            "seed": seed,
+            "image": image_base64,
+            "image_size_bytes": len(image_data),
+            "ply_size_bytes": len(ply_data),
+            "model_format": "gaussian_splatting_ply",
+            "pipeline": "flux_trellis"
+        }
+        
+        # Always send compressed PLY when available (more efficient)
+        if compressed_data:
+            compressed_base64 = base64.b64encode(compressed_data).decode('utf-8')
+            response_data.update({
+                "compressed_ply": compressed_base64,
+                "compressed_size_bytes": len(compressed_data),
+                "compression_ratio": len(ply_data) / len(compressed_data)
+            })
+        else:
+            # Fallback to uncompressed PLY only if compression failed
+            ply_base64 = base64.b64encode(ply_data).decode('utf-8')
+            response_data["ply_data"] = ply_base64
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Generate both failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+# LoRA-specific generate_both endpoints
+@app.post("/generate_both/cinema/")
+async def generate_both_with_cinema_lora(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    num_inference_steps: Optional[int] = Form(NUM_INFERENCE_STEPS),
+    guidance_scale: Optional[float] = Form(GENERATION_CONFIG['guidance_scale']),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate both PLY and image using Cinema Style LoRA"""
+    try:
+        # Switch to FLUX model first
+        GENERATION_CONFIG['current_model'] = 'flux'
+        
+        # Load the LoRA
+        success = generator._load_lora('cinema')
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to load Cinema Style LoRA")
+        
+        # Apply LoRA trigger prefix
+        lora_config = FLUX_LORAS['cinema']
+        trigger_prefix = lora_config.get('trigger_prefix', '')
+        enhanced_prompt = prompt
+        if trigger_prefix:
+            enhanced_prompt = f"{trigger_prefix} {prompt}"
+            print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
+        
+        # Handle seed
+        if seed is None:
+            seed = 42
+        
+        print(f"🎯 Generating both PLY and image with Cinema LoRA for: '{enhanced_prompt}' (seed: {seed})")
+        
+        # Use the generate_3d_model_image method which returns both
+        result = generator.generate_3d_model_image(
+            enhanced_prompt,
+            seed,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            ss_sampling_steps=ss_sampling_steps,
+            slat_sampling_steps=slat_sampling_steps,
+            slat_guidance_strength=slat_guidance_strength,
+            ss_guidance_strength=ss_guidance_strength
+        )
+        
+        if result is None:
+            raise HTTPException(status_code=500, detail="Generation failed")
+        
+        ply_data, compressed_data, image = result
+        
+        # Convert PIL Image to base64 for JSON response
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format='PNG')
+        image_data = img_buffer.getvalue()
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Prepare response data
+        response_data = {
+            "status": "success",
+            "prompt": prompt,
+            "enhanced_prompt": enhanced_prompt,
+            "seed": seed,
+            "image": image_base64,
+            "image_size_bytes": len(image_data),
+            "ply_size_bytes": len(ply_data),
+            "model_format": "gaussian_splatting_ply",
+            "pipeline": "flux_trellis",
+            "lora": "cinema"
+        }
+        
+        # Always send compressed PLY when available (more efficient)
+        if compressed_data:
+            compressed_base64 = base64.b64encode(compressed_data).decode('utf-8')
+            response_data.update({
+                "compressed_ply": compressed_base64,
+                "compressed_size_bytes": len(compressed_data),
+                "compression_ratio": len(ply_data) / len(compressed_data)
+            })
+        else:
+            # Fallback to uncompressed PLY only if compression failed
+            ply_base64 = base64.b64encode(ply_data).decode('utf-8')
+            response_data["ply_data"] = ply_base64
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ Generate both with Cinema LoRA failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+
+@app.post("/clip_score/")
+async def compute_clip_score(
+    prompt: str = Form(...),
+    image_data: str = Form(...)  # Base64 encoded image
+):
+    """Compute CLIP alignment score between prompt and image"""
+    try:
+        # Get the preloaded CLIP analyzer
+        clip_analyzer = generator.get_clip_analyzer()
+        if clip_analyzer is None:
+            raise HTTPException(status_code=500, detail="CLIP model not available")
+        
+        # Decode base64 image
+        try:
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            # Ensure image is RGB for CLIP processing
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid image data: {str(e)}")
+        
+        # Compute CLIP score
+        clip_score = clip_analyzer.compute_clip_alignment_score(prompt, image)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "prompt": prompt,
+            "image_size": image.size,
+            "clip_score": clip_score,
+            "normalized_score": clip_score / 0.35  # Normalize to 0-1 range
+        })
+        
+    except Exception as e:
+        print(f"❌ CLIP scoring failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+# FLUX Socket Inference Endpoint
+@app.post("/generate_flux_socket/")
+async def generate_flux_socket_image(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    width: Optional[int] = Form(1024),
+    height: Optional[int] = Form(1024)
+):
+    """Generate image using FLUX socket server (newcomer20_accurate)"""
+    
+    # Handle seed
+    if seed is None:
+        seed = random.randint(0, 2**31 - 1)
+    
+    try:
+        # Ensure FLUX socket client is available
+        if not hasattr(generator, 'flux_socket_client') or generator.flux_socket_client is None:
+            # Initialize socket client
+            generator.flux_socket_client = FluxSocketClient()
+            generator.flux_use_schnell_socket = True
+        
+        print(f"🎨 Generating FLUX socket image for: '{prompt}' (seed: {seed}, size: {width}x{height})")
+        
+        # Generate image via socket
+        image = generator.flux_socket_client.generate_image(
+            prompt=prompt,
+            seed=seed,
+            width=width,
+            height=height
+        )
+        
+        if image is None:
+            raise HTTPException(status_code=500, detail="FLUX socket generation failed")
+        
+        # Convert PIL Image to bytes
+        img_buffer = io.BytesIO()
+        image.save(img_buffer, format='PNG')
+        image_data = img_buffer.getvalue()
+        
+        # Encode as base64 for JSON response
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        return JSONResponse(content={
+            "status": "success",
+            "prompt": prompt,
+            "seed": seed,
+            "width": width,
+            "height": height,
+            "image": image_base64,
+            "image_size_bytes": len(image_data),
+            "pipeline": "flux_socket",
+            "server": "newcomer20_accurate"
+        })
+        
+    except Exception as e:
+        print(f"❌ FLUX socket generation failed: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"FLUX socket generation failed: {str(e)}")
+
+# FLUX Socket + TRELLIS 3D Generation Endpoint
+@app.post("/generate_flux_socket_3d/")
+async def generate_flux_socket_3d_model(
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    width: Optional[int] = Form(1024),
+    height: Optional[int] = Form(1024),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using FLUX socket + TRELLIS pipeline"""
+    
+    # Handle seed
+    if seed is None:
+        seed = 42
+    
+    try:
+        print(f"🎯 Starting FLUX socket + TRELLIS generation for: '{prompt}' (seed: {seed})")
+        
+        # Ensure FLUX socket client is available
+        if not hasattr(generator, 'flux_socket_client') or generator.flux_socket_client is None:
+            # Initialize socket client
+            generator.flux_socket_client = FluxSocketClient()
+            generator.flux_use_schnell_socket = True
+        
+        # Initialize asset manager for this generation
+        generation_asset = generator.asset_manager.create_asset(prompt, seed)
+        
+        # Step 1: Generate image with FLUX socket
+        print("Step 1: Generating image with FLUX socket...")
+        
+        image = generator.flux_socket_client.generate_image(
+            prompt=prompt,
+            seed=seed,
+            width=width,
+            height=height
+        )
+        
+        if image is None:
+            raise HTTPException(status_code=500, detail="FLUX socket image generation failed")
+        
+        print("✓ FLUX socket image generated successfully")
+        generation_asset.add_asset(AssetType.FLUX_IMAGE, image)
+        
+        # Step 2: Remove background from image
+        print("Step 2: Removing background from image...")
+        if generator.background_remover is None:
+            generator._load_background_remover()
+        
+        try:
+            image_no_bg = generator.background_remover(image)
+            print("✓ Background removed successfully")
+            generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)
+            image = image_no_bg  # Use the cleaned image for TRELLIS
+        except Exception as e:
+            print(f"⚠️ Background removal failed: {e}")
+            print("   Continuing with original image...")
+        
+        # Step 3: Generate 3D model with TRELLIS
+        print("Step 3: Generating 3D model with TRELLIS...")
+        if generator.trellis_pipeline is None:   
+            generator._load_trellis_pipeline()
+            if generator.trellis_pipeline is None:
+                raise RuntimeError("TRELLIS pipeline failed to load; cannot generate 3D model.")
+        
+        # Resolve TRELLIS quality parameters
+        effective_ss_steps = ss_sampling_steps if ss_sampling_steps is not None else GENERATION_CONFIG['ss_sampling_steps']
+        effective_slat_steps = slat_sampling_steps if slat_sampling_steps is not None else GENERATION_CONFIG['slat_sampling_steps']
+        effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
+        effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
+
+        # Use autocast for fp16
+        use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+        if use_fp16:
+            try:
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    outputs = generator.trellis_pipeline.run(
+                        image,
+                        seed=seed,
+                        formats=["gaussian"],
+                        preprocess_image=False,
+                        sparse_structure_sampler_params={
+                            "steps": effective_ss_steps,
+                            "cfg_strength": effective_ss_guidance,
+                            "cfg_interval": (0.3, 0.98),
+                            "rescale_t": 3.0,
+                        },
+                        slat_sampler_params={
+                            "steps": effective_slat_steps,
+                            "cfg_strength": effective_slat_guidance,
+                            "cfg_interval": (0.3, 0.98),
+                            "rescale_t": 3.0,
+                        },
+                    )
+            except RuntimeError as e:
+                if "scatter()" in str(e) or "scatter_reduce" in str(e):
+                    print("⚠️ FP16 mesh decode failed. Retrying without autocast...")
+                    with torch.autocast(device_type="cuda", enabled=False):
+                        outputs = generator.trellis_pipeline.run(
+                            image,
+                            seed=seed,
+                            formats=["gaussian"],
+                            preprocess_image=False,
+                            sparse_structure_sampler_params={
+                                "steps": effective_ss_steps,
+                                "cfg_strength": effective_ss_guidance,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            slat_sampler_params={
+                                "steps": effective_slat_steps,
+                                "cfg_strength": effective_slat_guidance,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                        )
+                else:
+                    raise
+        else:
+            outputs = generator.trellis_pipeline.run(
+                image,
+                seed=seed,
+                formats=["gaussian", "mesh"],
+                preprocess_image=False,
+                sparse_structure_sampler_params={
+                    "steps": effective_ss_steps,
+                    "cfg_strength": effective_ss_guidance,
+                    "cfg_interval": (0.3, 0.98),
+                    "rescale_t": 3.0,
+                },
+                slat_sampler_params={
+                    "steps": effective_slat_steps,
+                    "cfg_strength": effective_slat_guidance,
+                    "cfg_interval": (0.3, 0.98),
+                    "rescale_t": 3.0,
+                },
+            )
+        
+        print("✓ 3D model generated successfully")
+        
+        # Step 4: Extract Gaussian Splatting PLY
+        print("Step 4: Extracting Gaussian Splatting PLY...")
+        gaussian_output = outputs['gaussian'][0]
+        
+        # Save as PLY file
+        import io
+        ply_buffer = io.BytesIO()
+        gaussian_output.save_ply(ply_buffer)
+        ply_data = ply_buffer.getvalue()
+        
+        print(f"✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
+        generation_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
+        
+        # Step 5: Compress PLY if enabled
+        compressed_data = None
+        if GENERATION_CONFIG.get('auto_compress_ply', True):
+            print("Step 5: Compressing PLY with SPZ...")
+            try:
+                import pyspz
+                compressed_data = pyspz.compress(ply_data, workers=-1)
+                print(f"🗜️ SPZ Compression successful:")
+                print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                
+                generation_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
+            except Exception as e:
+                print(f"⚠️ SPZ compression failed: {e}")
+                compressed_data = None
+        
+        # Prepare response data
+        response_data = {
+            "status": "success",
+            "prompt": prompt,
+            "seed": seed,
+            "width": width,
+            "height": height,
+            "ply_size_bytes": len(ply_data),
+            "model_format": "gaussian_splatting_ply",
+            "pipeline": "flux_socket_trellis",
+            "server": "newcomer20_accurate"
+        }
+        
+        # Return compressed PLY if requested and available
+        if return_compressed and compressed_data:
+            compressed_base64 = base64.b64encode(compressed_data).decode('utf-8')
+            response_data.update({
+                "compressed_ply": compressed_base64,
+                "compressed_size_bytes": len(compressed_data),
+                "compression_ratio": len(ply_data) / len(compressed_data)
+            })
+        else:
+            # Fallback to uncompressed PLY
+            ply_base64 = base64.b64encode(ply_data).decode('utf-8')
+            response_data["ply_data"] = ply_base64
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ FLUX socket + TRELLIS generation failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+# Start FLUX Socket Server
+@app.post("/start_flux_server/")
+async def start_flux_server():
+    """Start the FLUX socket server (newcomer20_accurate)"""
+    try:
+        print("🚀 Starting FLUX socket server...")
+        
+        # Path to the newcomer20_accurate directory
+        flux_dir = os.path.join(os.path.dirname(__file__), "newcomer20_accurate")
+        
+        if not os.path.exists(flux_dir):
+            return JSONResponse(content={
+                "status": "error",
+                "message": f"FLUX directory not found: {flux_dir}"
+            }, status_code=404)
+        
+        # Start the server process
+        flux_process = subprocess.Popen(
+            ["uv", "run", "python", "src/main.py"],
+            cwd=flux_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        # Wait for server to be ready
+        time.sleep(5)
+        
+        # Test connection
+        try:
+            test_client = FluxSocketClient()
+            test_image = test_client.generate_image(
+                prompt="test", 
+                seed=42, 
+                width=512, 
+                height=512
+            )
+            
+            if test_image is not None:
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": "FLUX socket server started successfully",
+                    "process_id": flux_process.pid,
+                    "socket_path": test_client.socket_path,
+                    "test_connection": "successful"
+                })
+            else:
+                return JSONResponse(content={
+                    "status": "warning",
+                    "message": "FLUX server started but connection test failed",
+                    "process_id": flux_process.pid,
+                    "socket_path": test_client.socket_path
+                })
+                
+        except Exception as e:
+            return JSONResponse(content={
+                "status": "warning",
+                "message": f"FLUX server started but connection test failed: {str(e)}",
+                "process_id": flux_process.pid,
+                "socket_path": "/home/mbhat/three-gen-subnet-trellis/newcomer20_accurate/inferences.sock"
+            })
+            
+    except Exception as e:
+        print(f"❌ Failed to start FLUX server: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"Failed to start FLUX server: {str(e)}"
+        }, status_code=500)
+
+# Check FLUX Server Status
+@app.get("/flux_server_status/")
+async def get_flux_server_status():
+    """Check if the FLUX socket server is running and accessible"""
+    try:
+        # Try to connect to the socket
+        test_client = FluxSocketClient()
+        
+        # Test with a simple generation
+        test_image = test_client.generate_image(
+            prompt="test", 
+            seed=42, 
+            width=512, 
+            height=512
+        )
+        
+        if test_image is not None:
+            return JSONResponse(content={
+                "status": "running",
+                "message": "FLUX socket server is running and accessible",
+                "socket_path": test_client.socket_path,
+                "test_connection": "successful",
+                "image_size": test_image.size
+            })
+        else:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "FLUX socket server is not responding",
+                "socket_path": test_client.socket_path,
+                "test_connection": "failed"
+            })
+            
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"FLUX socket server connection failed: {str(e)}",
+            "socket_path": "/home/mbhat/three-gen-subnet-trellis/newcomer20_accurate/inferences.sock"
+        })
+
+# Test FLUX Socket Connection
+@app.post("/test_flux_socket/")
+async def test_flux_socket_connection(
+    prompt: str = Form("test connection"),
+    seed: Optional[int] = Form(42),
+    width: Optional[int] = Form(512),
+    height: Optional[int] = Form(512)
+):
+    """Test FLUX socket connection with a simple image generation"""
+    try:
+        print(f"🧪 Testing FLUX socket connection...")
+        
+        # Initialize socket client
+        test_client = FluxSocketClient()
+        
+        # Test generation
+        test_image = test_client.generate_image(
+            prompt=prompt,
+            seed=seed,
+            width=width,
+            height=height
+        )
+        
+        if test_image is not None:
+            # Convert to base64 for response
+            img_buffer = io.BytesIO()
+            test_image.save(img_buffer, format='PNG')
+            image_data = img_buffer.getvalue()
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
+            return JSONResponse(content={
+                "status": "success",
+                "message": "FLUX socket connection test successful",
+                "prompt": prompt,
+                "seed": seed,
+                "width": width,
+                "height": height,
+                "image": image_base64,
+                "image_size": test_image.size,
+                "image_size_bytes": len(image_data),
+                "socket_path": test_client.socket_path
+            })
+        else:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "FLUX socket generation failed during test",
+                "socket_path": test_client.socket_path
+            })
+            
+    except Exception as e:
+        print(f"❌ FLUX socket test failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"FLUX socket test failed: {str(e)}"
+        }, status_code=500)
+
+# FLUX Socket + TRELLIS with LoRA Support
+@app.post("/generate_flux_socket_3d_lora/{lora_key}")
+async def generate_flux_socket_3d_model_with_lora(
+    lora_key: str,
+    prompt: str = Form(...), 
+    seed: Optional[int] = Form(None),
+    return_compressed: Optional[bool] = Form(True),
+    width: Optional[int] = Form(1024),
+    height: Optional[int] = Form(1024),
+    ss_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['ss_sampling_steps']),
+    slat_sampling_steps: Optional[int] = Form(GENERATION_CONFIG['slat_sampling_steps']),
+    slat_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['slat_guidance_strength']),
+    ss_guidance_strength: Optional[float] = Form(GENERATION_CONFIG['ss_guidance_strength'])
+):
+    """Generate 3D model using FLUX socket + TRELLIS with specific LoRA"""
+    
+    # Handle seed
+    if seed is None:
+        seed = 42
+    
+    try:
+        # Validate LoRA key
+        if lora_key not in FLUX_LORAS:
+            raise HTTPException(status_code=400, detail=f"Invalid LoRA key: {lora_key}")
+        
+        lora_config = FLUX_LORAS[lora_key]
+        print(f"🎨 Using FLUX LoRA: {lora_config['name']}")
+        
+        # Apply LoRA trigger prefix
+        trigger_prefix = lora_config.get('trigger_prefix', '')
+        enhanced_prompt = prompt
+        if trigger_prefix:
+            enhanced_prompt = f"{trigger_prefix} {prompt}"
+            print(f"🎨 Applied FLUX LoRA trigger prefix: '{trigger_prefix}'")
+        
+        print(f"🎯 Starting FLUX socket + TRELLIS generation with {lora_key} LoRA for: '{enhanced_prompt}' (seed: {seed})")
+        
+        # Ensure FLUX socket client is available
+        if not hasattr(generator, 'flux_socket_client') or generator.flux_socket_client is None:
+            # Initialize socket client
+            generator.flux_socket_client = FluxSocketClient()
+            generator.flux_use_schnell_socket = True
+        
+        # Initialize asset manager for this generation
+        generation_asset = generator.asset_manager.create_asset(enhanced_prompt, seed)
+        
+        # Step 1: Generate image with FLUX socket
+        print("Step 1: Generating image with FLUX socket...")
+        
+        image = generator.flux_socket_client.generate_image(
+            prompt=enhanced_prompt,
+            seed=seed,
+            width=width,
+            height=height
+        )
+        
+        if image is None:
+            raise HTTPException(status_code=500, detail="FLUX socket image generation failed")
+        
+        print("✓ FLUX socket image generated successfully")
+        generation_asset.add_asset(AssetType.FLUX_IMAGE, image)
+        
+        # Step 2: Remove background from image
+        print("Step 2: Removing background from image...")
+        if generator.background_remover is None:
+            generator._load_background_remover()
+        
+        try:
+            image_no_bg = generator.background_remover(image)
+            print("✓ Background removed successfully")
+            generation_asset.add_asset(AssetType.FLUX_IMAGE, image_no_bg)
+            image = image_no_bg  # Use the cleaned image for TRELLIS
+        except Exception as e:
+            print(f"⚠️ Background removal failed: {e}")
+            print("   Continuing with original image...")
+        
+        # Step 3: Generate 3D model with TRELLIS
+        print("Step 3: Generating 3D model with TRELLIS...")
+        if generator.trellis_pipeline is None:   
+            generator._load_trellis_pipeline()
+            if generator.trellis_pipeline is None:
+                raise RuntimeError("TRELLIS pipeline failed to load; cannot generate 3D model.")
+        
+        # Resolve TRELLIS quality parameters
+        effective_ss_steps = ss_sampling_steps if ss_sampling_steps is not None else GENERATION_CONFIG['ss_sampling_steps']
+        effective_slat_steps = slat_sampling_steps if slat_sampling_steps is not None else GENERATION_CONFIG['slat_sampling_steps']
+        effective_slat_guidance = slat_guidance_strength if slat_guidance_strength is not None else GENERATION_CONFIG['slat_guidance_strength']
+        effective_ss_guidance = ss_guidance_strength if ss_guidance_strength is not None else GENERATION_CONFIG['ss_guidance_strength']
+
+        # Use autocast for fp16
+        use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+        if use_fp16:
+            try:
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    outputs = generator.trellis_pipeline.run(
+                        image,
+                        seed=seed,
+                        formats=["gaussian"],
+                        preprocess_image=False,
+                        sparse_structure_sampler_params={
+                            "steps": effective_ss_steps,
+                            "cfg_strength": effective_ss_guidance,
+                            "cfg_interval": (0.3, 0.98),
+                            "rescale_t": 3.0,
+                        },
+                        slat_sampler_params={
+                            "steps": effective_slat_steps,
+                            "cfg_strength": effective_slat_guidance,
+                            "cfg_interval": (0.3, 0.98),
+                            "rescale_t": 3.0,
+                        },
+                    )
+            except RuntimeError as e:
+                if "scatter()" in str(e) or "scatter_reduce" in str(e):
+                    print("⚠️ FP16 mesh decode failed. Retrying without autocast...")
+                    with torch.autocast(device_type="cuda", enabled=False):
+                        outputs = generator.trellis_pipeline.run(
+                            image,
+                            seed=seed,
+                            formats=["gaussian"],
+                            preprocess_image=False,
+                            sparse_structure_sampler_params={
+                                "steps": effective_ss_steps,
+                                "cfg_strength": effective_ss_guidance,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            slat_sampler_params={
+                                "steps": effective_slat_steps,
+                                "cfg_strength": effective_slat_guidance,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                        )
+                else:
+                    raise
+        else:
+            outputs = generator.trellis_pipeline.run(
+                image,
+                seed=seed,
+                formats=["gaussian", "mesh"],
+                preprocess_image=False,
+                sparse_structure_sampler_params={
+                    "steps": effective_ss_steps,
+                    "cfg_strength": effective_ss_guidance,
+                    "cfg_interval": (0.3, 0.98),
+                    "rescale_t": 3.0,
+                },
+                slat_sampler_params={
+                    "steps": effective_slat_steps,
+                    "cfg_strength": effective_slat_guidance,
+                    "cfg_interval": (0.3, 0.98),
+                    "rescale_t": 3.0,
+                },
+            )
+        
+        print("✓ 3D model generated successfully")
+        
+        # Step 4: Extract Gaussian Splatting PLY
+        print("Step 4: Extracting Gaussian Splatting PLY...")
+        gaussian_output = outputs['gaussian'][0]
+        
+        # Save as PLY file
+        import io
+        ply_buffer = io.BytesIO()
+        gaussian_output.save_ply(ply_buffer)
+        ply_data = ply_buffer.getvalue()
+        
+        print(f"✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
+        generation_asset.add_asset(AssetType.GAUSSIAN_SPLATTING_PLY, ply_data)
+        
+        # Step 5: Compress PLY if enabled
+        compressed_data = None
+        if GENERATION_CONFIG.get('auto_compress_ply', True):
+            print("Step 5: Compressing PLY with SPZ...")
+            try:
+                import pyspz
+                compressed_data = pyspz.compress(ply_data, workers=-1)
+                print(f"🗜️ SPZ Compression successful:")
+                print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
+                print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                
+                generation_asset.add_asset(AssetType.COMPRESSED_PLY, compressed_data)
+            except Exception as e:
+                print(f"⚠️ SPZ compression failed: {e}")
+                compressed_data = None
+        
+        # Prepare response data
+        response_data = {
+            "status": "success",
+            "prompt": prompt,
+            "enhanced_prompt": enhanced_prompt,
+            "seed": seed,
+            "width": width,
+            "height": height,
+            "lora": lora_key,
+            "lora_name": lora_config['name'],
+            "ply_size_bytes": len(ply_data),
+            "model_format": "gaussian_splatting_ply",
+            "pipeline": "flux_socket_trellis_lora",
+            "server": "newcomer20_accurate"
+        }
+        
+        # Return compressed PLY if requested and available
+        if return_compressed and compressed_data:
+            compressed_base64 = base64.b64encode(compressed_data).decode('utf-8')
+            response_data.update({
+                "compressed_ply": compressed_base64,
+                "compressed_size_bytes": len(compressed_data),
+                "compression_ratio": len(ply_data) / len(compressed_data)
+            })
+        else:
+            # Fallback to uncompressed PLY
+            ply_base64 = base64.b64encode(ply_data).decode('utf-8')
+            response_data["ply_data"] = ply_base64
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"❌ FLUX socket + TRELLIS generation with LoRA failed: {e}")
+        traceback.print_exc()
+        return JSONResponse(content={
+            "status": "error",
+            "message": str(e)
+        }, status_code=500)
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
@@ -4206,3 +5574,4 @@ if __name__ == "__main__":
         workers=args.workers,
         log_level="info"
     ) 
+

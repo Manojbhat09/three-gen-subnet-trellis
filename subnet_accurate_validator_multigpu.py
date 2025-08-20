@@ -38,9 +38,9 @@ _SERVER_DEFAULTS = _fetch_generation_defaults()
 NUM_INFERENCE_STEPS = int(_SERVER_DEFAULTS.get('num_inference_steps_t2i', 7))
 GUIDANCE_SCALE = float(_SERVER_DEFAULTS.get('guidance_scale', 3.5))
 # Defaults for TRELLIS quality params
-SS_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('ss_sampling_steps', 30))
-SLAT_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('slat_sampling_steps', 30))
-SLAT_GUIDANCE_STRENGTH = float(_SERVER_DEFAULTS.get('slat_guidance_strength', 5.0))
+SS_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('ss_sampling_steps', 21))
+SLAT_SAMPLING_STEPS = int(_SERVER_DEFAULTS.get('slat_sampling_steps', 24))
+SLAT_GUIDANCE_STRENGTH = float(_SERVER_DEFAULTS.get('slat_guidance_strength', 4.0))
 SS_GUIDANCE_STRENGTH = float(_SERVER_DEFAULTS.get('ss_guidance_strength', 9.5))
 # Use package imports directly; no sys.path modifications needed
 
@@ -405,6 +405,7 @@ def main():
     parser.add_argument("--slat_guidance", dest="slat_guidance_strength", type=float, default=SLAT_GUIDANCE_STRENGTH, help=f"SLAT guidance strength (default from server: {SLAT_GUIDANCE_STRENGTH})")
     parser.add_argument("--ss_guidance", dest="ss_guidance_strength", type=float, default=SS_GUIDANCE_STRENGTH, help=f"Sparse-structure guidance strength (default from server: {SS_GUIDANCE_STRENGTH})")
     parser.add_argument("--port", type=int, nargs="?", default=8096, help="Port to use for generation (default from server: 8096)")
+    parser.add_argument("--pre-generated-ply", type=str, help="Path to pre-generated PLY file (skips generation)")
     args = parser.parse_args()
 
     original_prompt = args.original_prompt
@@ -435,17 +436,25 @@ def main():
         print(f"🎨 Phase 1: Generating with TRELLIS")
         print(f"   Using prompt for generation: '{optimized_prompt}'")
         if 'image' in endpoint:
-            resp_bytes = generate_and_get_ply_data(
-                optimized_prompt,
-                endpoint,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale,
-                ss_sampling_steps=ss_sampling_steps,
-                slat_sampling_steps=slat_sampling_steps,
-                slat_guidance_strength=slat_guidance_strength,
-                ss_guidance_strength=ss_guidance_strength,
-                port=args.port,
-            )
+            # Check if we have pre-generated PLY data
+            if args.pre_generated_ply and Path(args.pre_generated_ply).exists():
+                print(f"📁 Using pre-generated PLY file: {args.pre_generated_ply}")
+                with open(args.pre_generated_ply, 'rb') as f:
+                    resp_bytes = f.read()
+                print(f"📦 Loaded PLY data: {len(resp_bytes):,} bytes")
+            else:
+                # Generate PLY data normally
+                resp_bytes = generate_and_get_ply_data(
+                    optimized_prompt,
+                    endpoint,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    ss_sampling_steps=ss_sampling_steps,
+                    slat_sampling_steps=slat_sampling_steps,
+                    slat_guidance_strength=slat_guidance_strength,
+                    ss_guidance_strength=ss_guidance_strength,
+                    port=args.port,
+                )
             # Step 2: CLIP scoring for image endpoint
             print(f"🔍 Phase 2: Computing CLIP alignment (text–text and text–image)")
             try:
@@ -487,17 +496,25 @@ def main():
                 json.dump(results_with_prompts, f, indent=2)
             print(f"💾 Results saved to {output_file}")
         else:
-            ply_data = generate_and_get_ply_data(
-                optimized_prompt,
-                endpoint,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale,
-                ss_sampling_steps=ss_sampling_steps,
-                slat_sampling_steps=slat_sampling_steps,
-                slat_guidance_strength=slat_guidance_strength,
-                ss_guidance_strength=ss_guidance_strength,
-                port=args.port,
-            )
+            # Check if we have pre-generated PLY data
+            if args.pre_generated_ply and Path(args.pre_generated_ply).exists():
+                print(f"📁 Using pre-generated PLY file: {args.pre_generated_ply}")
+                with open(args.pre_generated_ply, 'rb') as f:
+                    ply_data = f.read()
+                print(f"📦 Loaded PLY data: {len(ply_data):,} bytes")
+            else:
+                # Generate PLY data normally
+                ply_data = generate_and_get_ply_data(
+                    optimized_prompt,
+                    endpoint,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    ss_sampling_steps=ss_sampling_steps,
+                    slat_sampling_steps=slat_sampling_steps,
+                    slat_guidance_strength=slat_guidance_strength,
+                    ss_guidance_strength=ss_guidance_strength,
+                    port=args.port,
+                )
             # Step 2: Validate using production logic against original prompt
             print(f"🔍 Phase 2: Running production-accurate validation")
             print(f"   Computing scores against original prompt: '{original_prompt}'")

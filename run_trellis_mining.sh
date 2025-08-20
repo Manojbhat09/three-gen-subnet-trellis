@@ -2,14 +2,16 @@
 
 # Unified TRELLIS Mining Runner
 # Purpose: Single entrypoint to run either one-shot, continuous, or simulation TRELLIS mining
-
+# CUDA_VISIBLE_DEVICES=4./run_trellis_mining.sh --continuous --harvest --submit --vllm --vllm-url http://localhost:9001 --vllm-model llama-3-2-8b-it --generation-server http://localhost:8097
+# CUDA_VISIBLE_DEVICES=4 ./run_trellis_mining.sh --continuous --harvest --submit --vllm --vllm-url http://localhost:9001 --vllm-model llama-3-2-3b-it --generation-server http://localhost:8097 
+# CUDA_VISIBLE_DEVICES=6 python run_episodic_optimization.py   --episodes 2   --target 0.95   --max-rounds 15   --log-dir episodic_logs_first   --endpoint "generate/cinema/"  --port 8099 --vllm --vllm-url http://localhost:9002 --vllm-model llama-3-2-3b-it --reverse
 set -e
 
 # --- Configuration ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TRELLIS_SERVER_PORT=8096
+TRELLIS_SERVER_PORT=8099
 VALIDATION_SERVER_PORT=10006
-OUTPUT_DIR="./trellis_mining_outputs" # Unified output directory
+OUTPUT_DIR="./trellis_mining_outputs_other" # Unified output directory
 DB_FILE="trellis_mining_tasks.db"     # Unified database file
 
 # --- Colors ---
@@ -108,6 +110,13 @@ Options:
   --variable-seeds        Use prompt-hash based seeds (default: fixed seed 42).
   --seed INT              Fixed seed to use when not using variable seeds (default: 42).
   
+  --ollama-url URL       URL for the Ollama API server (default: http://localhost:11434)
+  --vllm                 Use vLLM instead of Ollama
+  --vllm-url URL         URL for the vLLM server (default: http://localhost:9000)
+  --vllm-model MODEL     vLLM model name (default: llama-3-2-3b-it)
+  --generation-server URL URL for the TRELLIS generation server (default: http://localhost:8097)
+  --trellis-server-port PORT Port for the TRELLIS server (default: 8097)
+  
   --help                  Show this help message.
 
 Database:
@@ -120,11 +129,32 @@ Examples:
   # Run in continuous mining mode (recommended for production):
   $0 --continuous --start-server
 
+  # Run in continuous mining mode with custom Ollama server:
+  $0 --continuous --start-server --ollama-url http://localhost:11300
+
+  # Run in continuous mining mode with vLLM:
+  $0 --continuous --start-server --vllm --vllm-url http://localhost:9000 --vllm-model llama-3-2-3b-it
+
+  # Run in continuous mining mode with custom generation server:
+  $0 --continuous --start-server --generation-server http://localhost:8098
+
+  # Run in continuous mining mode with vLLM and custom generation server:
+  $0 --continuous --start-server --vllm --vllm-url http://localhost:9000 --vllm-model llama-3-2-3b-it --generation-server http://localhost:8098
+
+  # Run in continuous mining mode with custom TRELLIS server port:
+  $0 --continuous --start-server --trellis-server-port 8098
+
   # Run simulation with prompts from file:
   $0 --simulate --promptfile episodic_test_prompts.py --start-server
 
   # Run simulation with custom optimization settings:
   $0 --simulate --promptfile episodic_test_prompts.py --aggressive-optimize --variable-seeds
+
+  # Run simulation with custom Ollama server:
+  $0 --simulate --promptfile episodic_test_prompts.py --ollama-url http://localhost:11300
+
+  # Run simulation with vLLM:
+  $0 --simulate --promptfile episodic_test_prompts.py --vllm --vllm-url http://localhost:9000 --vllm-model llama-3-2-3b-it
 
   # Run a simple test without harvesting or submitting:
   $0 --no-harvest --no-submit
@@ -157,15 +187,40 @@ main() {
             --max-tasks) max_tasks="$2"; shift 2 ;;
             --start-server) start_server=true; shift ;;
             --promptfile) promptfile="$2"; shift 2 ;;
+            --ollama-url) OLLAMA_URL="$2"; shift 2 ;;
+            --vllm) VLLM_ENABLED=true; shift ;;
+            --vllm-url) VLLM_URL="$2"; shift 2 ;;
+            --vllm-model) VLLM_MODEL="$2"; shift 2 ;;
+            --generation-server) GENERATION_SERVER_URL="$2"; shift 2 ;;
+            --trellis-server-port) TRELLIS_SERVER_PORT="$2"; shift 2 ;;
             --help) show_usage; exit 0 ;;
             *) print_error "Unknown option: $1"; show_usage; exit 1 ;;
         esac
     done
 
+    # Set default Ollama URL if not provided
+    OLLAMA_URL=${OLLAMA_URL:-"http://localhost:11434"}
+
+    # Set default vLLM settings if not provided
+    VLLM_ENABLED=${VLLM_ENABLED:-false}
+    VLLM_URL=${VLLM_URL:-"http://localhost:9000"}
+    VLLM_MODEL=${VLLM_MODEL:-"llama-3-2-3b-it"}
+    GENERATION_SERVER_URL=${GENERATION_SERVER_URL:-"http://localhost:8097"}
+
     # Print header
     print_status "--- UNIFIED TRELLIS MINING RUNNER ---"
     print_status "Mode: $mode"
     print_status "Database: $DB_FILE"
+    print_status "TRELLIS Server Port: $TRELLIS_SERVER_PORT"
+    print_status "Generation Server: $GENERATION_SERVER_URL"
+    if [ "$VLLM_ENABLED" = true ]; then
+        print_status "LLM Provider: vLLM"
+        print_status "vLLM URL: $VLLM_URL"
+        print_status "vLLM Model: $VLLM_MODEL"
+    else
+        print_status "LLM Provider: Ollama"
+        print_status "Ollama URL: $OLLAMA_URL"
+    fi
     print_status "-------------------------------------"
     
     # Validate simulation mode requirements
@@ -205,14 +260,40 @@ main() {
         [ "$submit" = false ] && script_args+=(--no-submit)
         [ "$validate" = false ] && script_args+=(--no-validate)
         
+        # Add vLLM arguments if enabled
+        if [ "$VLLM_ENABLED" = true ]; then
+            script_args+=(--vllm --vllm-url "$VLLM_URL" --vllm-model "$VLLM_MODEL")
+        else
+            script_args+=(--ollama-url "$OLLAMA_URL")
+        fi
+        
+        # Add generation server argument
+        script_args+=(--generation-server "$GENERATION_SERVER_URL")
+        
         # python3 continuous_trellis_orchestrator.py "${script_args[@]}"
         # python3 continuous_trellis_orchestrator_lora_mod.py --max-concurrent-tasks 2 --max-concurrent-pulls 2 --no-lora-routing --blacklist "${script_args[@]}"
-        python3 continuous_trellis_orchestrator_lora.py  "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 15 --disable-task-tracking  --no-skip-duplicates "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_lora_working_cooldown.py --activate-learning --only-log-learning 15 --disable-task-tracking  --no-skip-duplicates "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_lora_working_multi.py "${script_args[@]}"
+        # python3 continuous_trellis_orchestrator_lora.py "${script_args[@]}"
+        # --no-cooldown
+        # python3 continuous_trellis_orchestrator_lora_working_cooldown.py --activate-learning --only-log-learning 15 --disable-task-tracking  --no-skip-duplicates  "${script_args[@]}"
+        python3 continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates "${script_args[@]}"
         
     elif [ "$mode" == "simulation" ]; then
         print_status "Starting SIMULATION orchestrator..."
         local script_args=("--promptfile" "$promptfile")
         [ "$validate" = false ] && script_args+=(--no-validate)
+        
+        # Add vLLM arguments if enabled
+        if [ "$VLLM_ENABLED" = true ]; then
+            script_args+=(--vllm --vllm-url "$VLLM_URL" --vllm-model "$VLLM_MODEL")
+        else
+            script_args+=(--ollama-url "$OLLAMA_URL")
+        fi
+        
+        # Add generation server argument
+        script_args+=(--generation-server "$GENERATION_SERVER_URL")
         
         # Pass through any optimization arguments that were provided
         # Note: These would need to be passed as additional arguments to the script

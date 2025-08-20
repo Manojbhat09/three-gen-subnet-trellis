@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""
+Enhanced Task Pull Test Script
+Tests if we can pull tasks from validators using Bittensor wallet and hotkey.
+Can read configuration from JSON file.
+"""
+
+import asyncio
+import bittensor as bt
+import time
+import json
+import os
+import sys
+from typing import List, Dict, Any, Optional
+from pathlib import Path
+
+class EnhancedTaskPuller:
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.wallet_name = config.get('wallet_name', 'test2m3b2')
+        self.hotkey_name = config.get('hotkey_name', 't2m3b2')
+        self.netuid = config.get('netuid', 17)
+        self.min_stake = config.get('min_stake', 1000.0)
+        self.min_trust = config.get('min_trust', 0.0)
+        self.max_validators = config.get('max_validators_to_test', 3)
+        self.query_timeout = config.get('query_timeout', 60)
+        self.delay_between_pulls = config.get('delay_between_pulls', 2)
+        
+        # Bittensor components
+        self.wallet = None
+        self.subtensor = None
+        self.dendrite = None
+        self.metagraph = None
+        
+        print(f"🔧 Initializing Enhanced Task Puller")
+        print(f"   Wallet: {self.wallet_name}")
+        print(f"   Hotkey: {self.hotkey_name}")
+        print(f"   NetUID: {self.netuid}")
+        print(f"   Min stake: {self.min_stake} TAO")
+        print(f"   Min trust: {self.min_trust}")
+        print(f"   Max validators to test: {self.max_validators}")
+    
+    def setup_bittensor(self) -> bool:
+        """Setup Bittensor components"""
+        try:
+            print("\n🔧 Setting up Bittensor components...")
+            
+            # Setup wallet
+            print("   Loading wallet...")
+            self.wallet = bt.wallet(
+                name=self.wallet_name,
+                hotkey=self.hotkey_name
+            )
+            print(f"   ✅ Wallet loaded: {self.wallet.hotkey.ss58_address}")
+            
+            # Setup subtensor
+            print("   Connecting to subtensor...")
+            self.subtensor = bt.subtensor(network="finney")
+            print("   ✅ Subtensor connected")
+            
+            # Setup dendrite
+            print("   Initializing dendrite...")
+            self.dendrite = bt.dendrite(wallet=self.wallet)
+            print("   ✅ Dendrite initialized")
+            
+            # Setup metagraph
+            print("   Loading metagraph...")
+            self.metagraph = self.subtensor.metagraph(self.netuid)
+            print(f"   ✅ Metagraph loaded (netuid: {self.netuid})")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Bittensor setup failed: {e}")
+            return False
+    
+    def get_eligible_validators(self) -> List[Dict[str, Any]]:
+        """Get list of eligible validators"""
+        try:
+            print(f"\n🔍 Scanning for eligible validators...")
+            print(f"   Min stake: {self.min_stake} TAO")
+            print(f"   Min trust: {self.min_trust}")
+            print(f"   Max validators: {self.max_validators}")
+            
+            eligible_validators = []
+            
+            for uid, neuron in enumerate(self.metagraph.neurons):
+                # Check if this is a valid validator
+                if not neuron.validator_permit:
+                    continue
+                
+                stake = float(neuron.stake)
+                trust = float(neuron.trust)
+                consensus = float(neuron.consensus)
+                
+                # Apply filtering criteria
+                if stake < self.min_stake:
+                    continue
+                
+                if trust < self.min_trust:
+                    continue
+                
+                eligible_validators.append({
+                    'uid': uid,
+                    'stake': stake,
+                    'trust': trust,
+                    'consensus': consensus,
+                    'hotkey': neuron.hotkey,
+                    'score': stake * trust * consensus
+                })
+            
+            # Sort by score and take top validators
+            eligible_validators.sort(key=lambda x: x['score'], reverse=True)
+            eligible_validators = eligible_validators[:self.max_validators]
+            
+            print(f"✅ Found {len(eligible_validators)} eligible validators")
+            for i, validator in enumerate(eligible_validators, 1):
+                print(f"   {i:2d}. UID {validator['uid']:3d}: {validator['stake']:8.1f} TAO, trust: {validator['trust']:.3f}")
+            
+            return eligible_validators
+            
+        except Exception as e:
+            print(f"❌ Failed to get eligible validators: {e}")
+            return []
+    
+    async def pull_task_from_validator(self, validator: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Pull task from a specific validator"""
+        try:
+            uid = validator['uid']
+            print(f"📡 Attempting to pull task from UID {uid}...")
+            
+            # Import protocol
+            try:
+                from neurons.common.protocol import PullTask
+            except ImportError as e:
+                print(f"❌ Failed to import protocol: {e}")
+                print("   Make sure you're running this from the correct directory with the neurons module")
+                return None
+            
+            # Create task pull request
+            synapse = PullTask()
+            synapse.timeout = self.query_timeout
+            
+            # Get neuron info
+            if uid >= len(self.metagraph.neurons):
+                print(f"❌ UID {uid} not found in metagraph")
+                return None
+            
+            neuron = self.metagraph.neurons[uid]
+            
+            start_time = time.time()
+            
+            # Query the validator
+            print(f"   Sending request to validator...")
+            response = await self.dendrite.forward(
+                axons=[neuron.axon_info],
+                synapse=synapse,
+                timeout=self.query_timeout
+            )
+            
+            query_time = time.time() - start_time
+            
+            if response and len(response) > 0:
+                resp = response[0]
+                
+                if hasattr(resp, 'task') and resp.task and resp.task.prompt:
+                    print(f"✅ SUCCESS! Got task from UID {uid}")
+                    print(f"   Task ID: {resp.task.id}")
+                    print(f"   Prompt: '{resp.task.prompt}'")
+                    print(f"   Query time: {query_time:.2f}s")
+                    
+                    # Check for additional fields
+                    if hasattr(resp, 'validation_threshold'):
+                        print(f"   Validation threshold: {resp.validation_threshold}")
+                    if hasattr(resp, 'cooldown_until'):
+                        print(f"   Cooldown until: {resp.cooldown_until}")
+                    
+                    return {
+                        'task_id': resp.task.id,
+                        'prompt': resp.task.prompt,
+                        'validator_uid': uid,
+                        'query_time': query_time,
+                        'validation_threshold': getattr(resp, 'validation_threshold', None),
+                        'cooldown_until': getattr(resp, 'cooldown_until', None)
+                    }
+                else:
+                    print(f"⚠️ No task received from UID {uid}")
+                    if hasattr(resp, 'task'):
+                        print(f"   Task object exists but no prompt: {resp.task}")
+                    return None
+            else:
+                print(f"❌ No response from UID {uid}")
+                return None
+        
+        except asyncio.TimeoutError:
+            print(f"⏰ Timeout waiting for response from UID {uid}")
+            return None
+        except Exception as e:
+            print(f"❌ Error pulling from UID {uid}: {e}")
+            return None
+    
+    async def test_task_pulling(self):
+        """Test task pulling from multiple validators"""
+        print(f"\n🚀 Starting task pulling test...")
+        print(f"   Testing up to {self.max_validators} validators")
+        
+        # Get eligible validators
+        validators = self.get_eligible_validators()
+        
+        if not validators:
+            print("❌ No eligible validators found")
+            return
+        
+        # Test each validator
+        successful_pulls = 0
+        total_tested = 0
+        results = []
+        
+        for i, validator in enumerate(validators, 1):
+            print(f"\n--- Testing Validator {i}/{len(validators)} ---")
+            
+            total_tested += 1
+            result = await self.pull_task_from_validator(validator)
+            
+            if result:
+                successful_pulls += 1
+                results.append(result)
+                print(f"✅ Task pull SUCCESSFUL from UID {validator['uid']}")
+            else:
+                print(f"❌ Task pull FAILED from UID {validator['uid']}")
+            
+            # Small delay between pulls
+            if i < len(validators):
+                print(f"   Waiting {self.delay_between_pulls} seconds before next validator...")
+                await asyncio.sleep(self.delay_between_pulls)
+        
+        # Summary
+        print(f"\n📊 TEST SUMMARY")
+        print(f"=" * 50)
+        print(f"Total validators tested: {total_tested}")
+        print(f"Successful task pulls: {successful_pulls}")
+        print(f"Failed task pulls: {total_tested - successful_pulls}")
+        print(f"Success rate: {(successful_pulls / total_tested * 100):.1f}%")
+        
+        if successful_pulls > 0:
+            print(f"✅ Task pulling is WORKING! You can successfully pull tasks.")
+            print(f"\n📝 Successfully pulled tasks:")
+            for i, result in enumerate(results, 1):
+                print(f"   {i}. UID {result['validator_uid']}: '{result['prompt'][:50]}...'")
+        else:
+            print(f"❌ Task pulling is NOT working. Check your setup and network connection.")
+        
+        return results
+
+def load_config(config_file: str = "test_config.json") -> Dict[str, Any]:
+    """Load configuration from JSON file"""
+    try:
+        if not Path(config_file).exists():
+            print(f"⚠️ Config file {config_file} not found, using defaults")
+            return {}
+        
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+        
+        print(f"✅ Loaded configuration from {config_file}")
+        return config
+        
+    except Exception as e:
+        print(f"⚠️ Failed to load config file: {e}, using defaults")
+        return {}
+
+async def main():
+    """Main function"""
+    print("🧪 ENHANCED TASK PULL TEST")
+    print("=" * 50)
+    
+    # Load configuration
+    config = load_config()
+    
+    # Create task puller
+    puller = EnhancedTaskPuller(config)
+    
+    # Setup Bittensor
+    if not puller.setup_bittensor():
+        print("❌ Failed to setup Bittensor. Exiting.")
+        return
+    
+    # Test task pulling
+    results = await puller.test_task_pulling()
+    
+    print(f"\n🏁 Test completed!")
+    
+    # Save results to file if any
+    if results:
+        timestamp = int(time.time())
+        results_file = f"task_pull_results_{timestamp}.json"
+        try:
+            with open(results_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"💾 Results saved to {results_file}")
+        except Exception as e:
+            print(f"⚠️ Failed to save results: {e}")
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🛑 Test interrupted by user")
+    except Exception as e:
+        print(f"\n❌ Test failed with error: {e}")
+        import traceback
+        traceback.print_exc()

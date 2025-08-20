@@ -29,18 +29,56 @@ class LLMPromptOptimizer:
     Optimizes prompts using a local LLM based on learned patterns.
     """
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "llama3.2:3b"):
+    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "llama3.2:3b", 
+                 use_vllm: bool = False, vllm_url: str = "http://localhost:9000", vllm_model: str = "llama-3-2-3b-it"):
         """
         Initializes the optimizer.
 
         Args:
             ollama_url: The URL for the Ollama API server.
             model: The name of the Ollama model to use.
+            use_vllm: Whether to use vLLM instead of Ollama.
+            vllm_url: The URL for the vLLM server.
+            vllm_model: The name of the vLLM model to use.
         """
         self.ollama_url = ollama_url
         self.model = model
-        print(f"✅ Initialized Optimizer with model: {self.model} at {self.ollama_url}")
-        self._check_ollama_connection()
+        self.use_vllm = use_vllm
+        self.vllm_url = vllm_url
+        self.vllm_model = vllm_model
+        
+        # Print LLM provider configuration prominently
+        print("\n" + "="*60)
+        print("🤖 LLM PROMPT OPTIMIZER - PROVIDER CONFIGURATION")
+        print("="*60)
+        if self.use_vllm:
+            print(f"✅ Using vLLM: {self.vllm_url}")
+            print(f"   Model: {self.vllm_model}")
+            print(f"   Status: ACTIVE")
+        else:
+            print(f"✅ Using Ollama: {self.ollama_url}")
+            print(f"   Model: {self.model}")
+            print(f"   Status: ACTIVE")
+        print("="*60)
+        
+        if self.use_vllm:
+            print(f"✅ Initialized Optimizer with vLLM model: {self.vllm_model} at {self.vllm_url}")
+            self._check_vllm_connection()
+        else:
+            print(f"✅ Initialized Optimizer with Ollama model: {self.model} at {self.ollama_url}")
+            self._check_ollama_connection()
+
+    def _check_vllm_connection(self):
+        """Checks if the vLLM server is running and accessible."""
+        try:
+            response = requests.get(f"{self.vllm_url}/health")
+            response.raise_for_status()
+            print("✅ vLLM server connection successful.")
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Error connecting to vLLM at {self.vllm_url}: {e}")
+            print("Please ensure the vLLM server is running and accessible.")
+            sys.exit(1)
 
     def _check_ollama_connection(self):
         """Checks if the Ollama server is running and the model is available."""
@@ -61,6 +99,50 @@ class LLMPromptOptimizer:
             print("Please ensure the Ollama application is running and accessible.")
             sys.exit(1)
 
+    def _query_vllm(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Sends a query to the vLLM API and gets the response.
+
+        Args:
+            system_prompt: The system-level instructions for the model.
+            user_prompt: The user's original prompt to be optimized.
+
+        Returns:
+            The optimized prompt string from the model's response.
+        """
+        print("\n⏳ Querying the vLLM... (This may take a moment)")
+        print(f"   🤖 [vLLM] Server: {self.vllm_url}")
+        print(f"   🤖 [vLLM] Model: {self.vllm_model}")
+        full_prompt = f"{system_prompt}\n\nORIGINAL PROMPT:\n`{user_prompt}`\n\nOPTIMIZED PROMPT:"
+
+        try:
+            print(f"   📤 [vLLM] Sending request to {self.vllm_url}...")
+            response = requests.post(
+                f"{self.vllm_url}/v1/chat/completions",
+                json={
+                    "model": self.vllm_model,
+                    "messages": [{"role": "user", "content": full_prompt}],
+                    "stream": False,
+                    "temperature": 0.7,
+                    "max_tokens": 256,  # Limit output length
+                    "top_p": 0.9
+                },
+                timeout=120
+            )
+            response.raise_for_status()
+            response_text = response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            print(f"   📥 [vLLM] Response received: {len(response_text)} characters")
+            
+            # Clean the output to be just the prompt
+            # The model might add extra conversational text or formatting
+            cleaned_prompt = self._clean_response(response_text)
+
+            return cleaned_prompt
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Error during vLLM API call: {e}")
+            return f"Error: Could not generate prompt. {e}"
+
     def _query_ollama(self, system_prompt: str, user_prompt: str) -> str:
         """
         Sends a query to the Ollama API and gets the response.
@@ -73,9 +155,12 @@ class LLMPromptOptimizer:
             The optimized prompt string from the model's response.
         """
         print("\n⏳ Querying the LLM... (This may take a moment)")
+        print(f"   🤖 [Ollama] Server: {self.ollama_url}")
+        print(f"   🤖 [Ollama] Model: {self.model}")
         full_prompt = f"{system_prompt}\n\nORIGINAL PROMPT:\n`{user_prompt}`\n\nOPTIMIZED PROMPT:"
 
         try:
+            print(f"   📤 [Ollama] Sending request to {self.ollama_url}...")
             response = requests.post(
                 f"{self.ollama_url}/api/generate",
                 json={
@@ -92,6 +177,7 @@ class LLMPromptOptimizer:
             )
             response.raise_for_status()
             response_text = response.json().get("response", "").strip()
+            print(f"   📥 [Ollama] Response received: {len(response_text)} characters")
             
             # Clean the output to be just the prompt
             # The model might add extra conversational text or formatting
@@ -102,6 +188,15 @@ class LLMPromptOptimizer:
         except requests.exceptions.RequestException as e:
             print(f"❌ Error during Ollama API call: {e}")
             return f"Error: Could not generate prompt. {e}"
+
+    def _query_llm(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Generic method to query the appropriate LLM based on configuration.
+        """
+        if self.use_vllm:
+            return self._query_vllm(system_prompt, user_prompt)
+        else:
+            return self._query_ollama(system_prompt, user_prompt)
             
     def _clean_response(self, response_text: str) -> str:
         """
@@ -131,6 +226,10 @@ class LLMPromptOptimizer:
             The optimized prompt.
         """
         print("\n🚀 Using Method 1: Strategy-Based Prompting")
+        if self.use_vllm:
+            print(f"   🤖 [vLLM] Provider: {self.vllm_url} | Model: {self.vllm_model}")
+        else:
+            print(f"   🤖 [Ollama] Provider: {self.ollama_url} | Model: {self.model}")
         system_prompt = """
 You are an expert prompt engineer for a 3D model generator. Your task is to take a simple user prompt and rewrite it to be more descriptive, evocative, and detailed.
 
@@ -147,7 +246,7 @@ Your final output must start with `wbgmsst,` and end with `, white background`. 
         print("\n--- System Prompt (Method 1) ---")
         print(system_prompt)
         print("---------------------------------")
-        return self._query_ollama(system_prompt, original_prompt)
+        return self._query_llm(system_prompt, original_prompt)
 
     def optimize_with_examples(self, original_prompt: str) -> str:
         """
@@ -160,6 +259,10 @@ Your final output must start with `wbgmsst,` and end with `, white background`. 
             The optimized prompt.
         """
         print("\n🚀 Using Method 2: Example-Based (Few-Shot) Prompting")
+        if self.use_vllm:
+            print(f"   🤖 [vLLM] Provider: {self.vllm_url} | Model: {self.vllm_model}")
+        else:
+            print(f"   🤖 [Ollama] Provider: {self.ollama_url} | Model: {self.model}")
 
 
         # v0
@@ -283,7 +386,7 @@ Your final output must start with `wbgmsst,` and end with `, white background`. 
 # ### Strategic Approach: Adapt to Category Reliability
 # First, mentally identify the prompt's category based on the 3D model's known strengths and weaknesses. Your strategy **MUST** adapt.
 
-# -   **High-Reliability Categories (Creatures, Robots, Statues, Weapons, Tools):** Be ambitious. These subjects are robust. The best strategy is **Conceptual Elevation**. Create a rich, imaginative, non-literal scene. The artistic contrast between the object and its environment is what generates the highest scores.
+# -   **High-Reliability Categories (Creatures, Robots, Statues, Weapons, Tools, Instruments):** Be ambitious. These subjects are robust. The best strategy is **Conceptual Elevation**. Create a rich, imaginative, non-literal scene. The artistic contrast between the object and its environment is what generates the highest scores.
 # -   **Low-Reliability Categories (Gems, Jewelry, Food, Delicate Items):** Be focused and precise. These subjects can fail easily if the prompt is too complex. The best strategy is **Object-Focus**. Pour all detail into the object itself—its material, texture, and light interaction. Keep the surrounding context simple and supportive (e.g., 'on a velvet cushion,' 'surrounded by a soft glow') rather than a full-blown scene.
 
 # ### The Prompting Toolkit (Principles to Apply)
@@ -450,7 +553,7 @@ Your strategy must adapt based on the 3D model's known strengths:
 
 ### Final Instruction
 Your entire response must be **only** the final, optimized prompt.
--   **End with:** `, 3D front view, white background`
+-   **End with:** `, front view, white background`
 -   **No explanations.**
 
 Process the following `ORIGINAL PROMPT` according to these instructions.
@@ -501,7 +604,7 @@ Process the following `ORIGINAL PROMPT` according to these instructions.
         print("\n--- System Prompt (Method 2) ---")
         print("NOTE: The example-based prompt is very long and is not fully displayed here.")
         print("---------------------------------")
-        return self._query_ollama(system_prompt, original_prompt)
+        return self._query_llm(system_prompt, original_prompt)
 
 
 def main():
@@ -536,10 +639,47 @@ def main():
         default="http://localhost:11434",
         help="The URL of the Ollama server (default: http://localhost:11434)"
     )
+    parser.add_argument(
+        "--vllm",
+        action="store_true",
+        help="Use vLLM instead of Ollama"
+    )
+    parser.add_argument(
+        "--vllm-url",
+        type=str,
+        default="http://localhost:9000",
+        help="The URL of the vLLM server (default: http://localhost:9000)"
+    )
+    parser.add_argument(
+        "--vllm-model",
+        type=str,
+        default="llama-3-2-3b-it",
+        help="The name of the vLLM model to use (default: llama-3-2-3b-it)"
+    )
 
     args = parser.parse_args()
 
-    optimizer = LLMPromptOptimizer(ollama_url=args.url, model=args.model)
+    # Print configuration before creating optimizer
+    print("🤖 LLM PROMPT OPTIMIZER - CONFIGURATION")
+    print("="*50)
+    if args.vllm:
+        print(f"✅ Provider: vLLM")
+        print(f"✅ Server: {args.vllm_url}")
+        print(f"✅ Model: {args.vllm_model}")
+    else:
+        print(f"✅ Provider: Ollama")
+        print(f"✅ Server: {args.url}")
+        print(f"✅ Model: {args.model}")
+    print(f"✅ Method: {args.method}")
+    print("="*50)
+
+    optimizer = LLMPromptOptimizer(
+        ollama_url=args.url, 
+        model=args.model,
+        use_vllm=args.vllm,
+        vllm_url=args.vllm_url,
+        vllm_model=args.vllm_model
+    )
 
     if args.method == 1:
         optimized_prompt = optimizer.optimize_with_strategies(args.prompt)

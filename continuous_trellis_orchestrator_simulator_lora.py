@@ -619,7 +619,7 @@ class ContinuousTrellisSimulator:
             # Step 2: Enhanced optimization with CLIP feedback loops, LoRA routing and reproducibility
             # optimization_result = self.optimize_prompt_for_generation(task)
             
-            manual_optimized_prompt = f"{task.prompt}, front view, accurate, complete, white background"
+            manual_optimized_prompt = f"{task.prompt}, ite background"
             optimization_result = {'optimized_prompt': manual_optimized_prompt, 'method': 'none', 'improvement': 0.0}
             
             # Extract optimized prompt and optimization details

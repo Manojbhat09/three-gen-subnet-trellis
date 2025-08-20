@@ -28,8 +28,8 @@ from difflib import SequenceMatcher
 # Import episodic test prompts
 from episodic_test_prompts import EPISODIC_TEST_PROMPTS
 
-# Assuming llm_prompt_optimizer.py is in the same directory
-from llm_prompt_optimizer import LLMPromptOptimizer
+# Import the vLLM-enabled version of LLMPromptOptimizer
+from llm_prompt_optimizer_v12_f1_lora import LLMPromptOptimizer
 
 def extract_true_prompt(original_prompt: str) -> str:
     """Extract the true prompt from a potentially modified original prompt string."""
@@ -45,10 +45,23 @@ def calculate_similarity(prompt1: str, prompt2: str) -> float:
 class LLMClosePromptReproducibility:
     """Manages the close prompt reproducibility system."""
 
-    def __init__(self, episodic_memory_file: str = "episodic_logs/episodic_memory.json"):
+    def __init__(self, episodic_memory_file: str = "episodic_logs/episodic_memory.json", 
+                 use_vllm: bool = True, vllm_url: str = "http://localhost:9000", 
+                 vllm_model: str = "llama-3-2-3b-it", ollama_url: str = "http://localhost:11434"):
         self.episodic_memory_file = episodic_memory_file
         self.gold_standard_results = self._load_episodic_memory()
-        self.optimizer = LLMPromptOptimizer()
+        
+        # Initialize optimizer with appropriate LLM provider
+        if use_vllm:
+            self.optimizer = LLMPromptOptimizer(
+                ollama_url=ollama_url,
+                model="llama3.2:3b",  # Default model for compatibility
+                use_vllm=True,
+                vllm_url=vllm_url,
+                vllm_model=vllm_model
+            )
+        else:
+            self.optimizer = LLMPromptOptimizer(ollama_url=ollama_url)
         
         # Cache for similarity calculations
         self.similarity_cache = {}
@@ -89,8 +102,24 @@ class LLMClosePromptReproducibility:
             with open(self.episodic_memory_file, 'r') as f:
                 episodic_data = json.load(f)
             
-            # Extract optimization sessions
-            optimization_sessions = episodic_data.get("optimization_sessions", [])
+            # Handle both old format (dict) and new format (list of sessions)
+            if isinstance(episodic_data, dict):
+                # Old format - single session
+                print(f"📚 Loading from old single-session memory format")
+                optimization_sessions = episodic_data.get("optimization_sessions", [])
+            elif isinstance(episodic_data, list):
+                # New format - multiple sessions
+                print(f"📚 Loading from new multi-session memory format ({len(episodic_data)} sessions)")
+                # Combine optimization sessions from all sessions
+                optimization_sessions = []
+                for session_data in episodic_data:
+                    if isinstance(session_data, dict):
+                        session_sessions = session_data.get("optimization_sessions", [])
+                        optimization_sessions.extend(session_sessions)
+                        print(f"   📖 Session {session_data.get('session_id', 'unknown')}: {len(session_sessions)} optimization sessions")
+            else:
+                print(f"❌ Error: Unknown episodic memory format: {type(episodic_data)}")
+                return {}
             
             # Convert to gold standard format
             gold_standard_results = {}
@@ -129,6 +158,120 @@ class LLMClosePromptReproducibility:
         except (json.JSONDecodeError, ValueError) as e:
             print(f"❌ Error parsing episodic memory file '{self.episodic_memory_file}': {e}")
             return {}
+
+    def _extract_components_by_pattern(self, text: str) -> Dict[str, Any]:
+        """Extract components using pattern matching when JSON parsing fails completely."""
+        print(f"  🔧 PATTERN MATCHING FALLBACK: Extracting components manually")
+        
+        # Initialize default structure
+        components = {
+            "core_subject": "",
+            "enhancements": {
+                "quality_adjectives": [],
+                "material_details": [],
+                "light_interaction": [],
+                "context": []
+            }
+        }
+        
+        # Try to extract core subject
+        core_patterns = [
+            r'core_subject:\s*([^,\n]+)',
+            r'"core_subject":\s*"([^"]+)"',
+            r'core_subject["\s]*:\s*([^,\n]+)'
+        ]
+        
+        for pattern in core_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                core_subject = match.group(1).strip()
+                # Clean up the extracted subject
+                core_subject = re.sub(r'[,\n\r\t]', ' ', core_subject).strip()
+                components["core_subject"] = core_subject
+                print(f"    🔍 Extracted core subject: '{core_subject}'")
+                break
+        
+        # If no core subject found, try to infer from the original prompt
+        if not components["core_subject"]:
+            # Look for the original prompt in the text
+            prompt_match = re.search(r'Generating 3D model:\s*[\'"]([^\'"]+)[\'"]', text)
+            if prompt_match:
+                components["core_subject"] = prompt_match.group(1).strip()
+                print(f"    🔍 Inferred core subject from prompt: '{components['core_subject']}'")
+            else:
+                components["core_subject"] = "unknown object"
+                print(f"    ⚠️ Could not extract core subject, using default")
+        
+        # Try to extract quality adjectives
+        adj_patterns = [
+            r'quality_adjectives:\s*\[([^\]]+)\]',
+            r'"quality_adjectives":\s*\[([^\]]+)\]',
+            r'quality_adjectives["\s]*:\s*\[([^\]]+)\]'
+        ]
+        
+        for pattern in adj_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                adj_text = match.group(1).strip()
+                # Split by comma and clean
+                adjectives = [adj.strip().strip('"\'') for adj in adj_text.split(',') if adj.strip()]
+                components["enhancements"]["quality_adjectives"] = adjectives
+                print(f"    🔍 Extracted quality adjectives: {adjectives}")
+                break
+        
+        # Try to extract material details
+        material_patterns = [
+            r'material_details:\s*\[([^\]]+)\]',
+            r'"material_details":\s*\[([^\]]+)\]',
+            r'material_details["\s]*:\s*\[([^\]]+)\]'
+        ]
+        
+        for pattern in material_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                material_text = match.group(1).strip()
+                # Split by comma and clean
+                materials = [mat.strip().strip('"\'') for mat in material_text.split(',') if mat.strip()]
+                components["enhancements"]["material_details"] = materials
+                print(f"    🔍 Extracted material details: {materials}")
+                break
+        
+        # Try to extract light interaction
+        light_patterns = [
+            r'light_interaction:\s*\[([^\]]+)\]',
+            r'"light_interaction":\s*\[([^\]]+)\]',
+            r'light_interaction["\s]*:\s*\[([^\]]+)\]'
+        ]
+        
+        for pattern in light_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                light_text = match.group(1).strip()
+                # Split by comma and clean
+                lights = [light.strip().strip('"\'') for light in light_text.split(',') if light.strip()]
+                components["enhancements"]["light_interaction"] = lights
+                print(f"    🔍 Extracted light interaction: {lights}")
+                break
+        
+        # Try to extract context
+        context_patterns = [
+            r'context:\s*\[([^\]]+)\]',
+            r'"context":\s*\[([^\]]+)\]',
+            r'context["\s]*:\s*\[([^\]]+)\]'
+        ]
+        
+        for pattern in context_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                context_text = match.group(1).strip()
+                # Split by comma and clean
+                contexts = [ctx.strip().strip('"\'') for ctx in context_text.split(',') if ctx.strip()]
+                components["enhancements"]["context"] = contexts
+                print(f"    🔍 Extracted context: {contexts}")
+                break
+        
+        print(f"    🔧 Pattern matching fallback completed")
+        return components
 
     def _extract_clean_json(self, text: str) -> Dict[str, Any]:
         """
@@ -175,7 +318,8 @@ class LLMClosePromptReproducibility:
                     raise json.JSONDecodeError("No JSON object found after fixing.", fixed_response, 0)
             except json.JSONDecodeError as fix_error:
                 print(f"  ❌ Failed to fix JSON formatting issues: {fix_error}")
-                return {"error": "Failed to extract patterns as valid JSON.", "raw_response": text[:200]}
+                # return {"error": "Failed to extract patterns as valid JSON.", "raw_response": text[:200]}
+                return self._extract_components_by_pattern(text)
 
     def extract_patterns(self, prompt_to_deconstruct: str) -> Dict[str, Any]:
         """Uses the LLM to extract patterns from a prompt."""
@@ -196,7 +340,7 @@ JSON Structure:
 }
 
 Example:
-PROMPT: `wbgmsst, a sturdy iron pickaxe weathered to a warm, honey-brown patina, its handle worn smooth, the teeth gleaming with a subtle sheen, white background`
+PROMPT: `a sturdy iron pickaxe weathered to a warm, honey-brown patina, its handle worn smooth, the teeth gleaming with a subtle sheen, white background`
 OUTPUT:
 {
   "core_subject": "sturdy iron pickaxe",
@@ -208,16 +352,18 @@ OUTPUT:
   }
 }
 """
-        # The _query_ollama function expects a user_prompt, so we pass the prompt there
-        response_str = self.optimizer._query_ollama(system_prompt, prompt_to_deconstruct)
-        
+        # The _query_llm function automatically chooses between vLLM and Ollama based on configuration
+        response_str = self.optimizer._query_llm(system_prompt, prompt_to_deconstruct)
+        print(f"  🔍 LLM response: '{response_str}...'")
         # Use the robust JSON cleaning method
-        return self._extract_clean_json(response_str)
+        cleaned = self._extract_clean_json(response_str)
+        print(f"  🔍 Cleaned JSON: '{cleaned}'")
+        return cleaned
 
-    def find_closest_gold_prompt(self, original_prompt: str, min_similarity: float = 0.3) -> Optional[Tuple[str, float, float]]:
+    def find_closest_gold_prompt(self, original_prompt: str, min_similarity: float = 0.3) -> Optional[Tuple[str, str, float, float]]:
         """
         Find the closest gold prompt to the original prompt.
-        Returns (gold_prompt, gold_score, similarity) or None if no close match found.
+        Returns (gold_original, gold_prompt, gold_score, similarity) or None if no close match found.
         """
         best_match = None
         best_similarity = 0.0
@@ -232,7 +378,7 @@ OUTPUT:
                 if best_run and "optimized_prompt" in best_run:
                     gold_prompt = best_run["optimized_prompt"]
                     gold_score = best_run["validation_results"]["validation_engine_score"]
-                    best_match = (gold_prompt, gold_score, similarity)
+                    best_match = (gold_original, gold_prompt, gold_score, similarity)
         
         return best_match
 
@@ -241,7 +387,8 @@ OUTPUT:
                                      similarity: float) -> Dict[str, Any]:
         """
         Intelligently merge components from original and gold prompts.
-        Higher similarity means more components from gold prompt are preserved.
+        ALWAYS preserve the original prompt's core subject and intent.
+        Use gold prompt components only as enhancements, not replacements.
         """
         merged_components = {
             "core_subject": "",
@@ -253,54 +400,54 @@ OUTPUT:
             }
         }
         
-        # Determine merge strategy based on similarity
-        if similarity >= 0.8:
-            # Very similar - use mostly gold components with some original elements
-            gold_weight = 0.8
-            original_weight = 0.2
-        elif similarity >= 0.6:
-            # Moderately similar - balanced merge
-            gold_weight = 0.6
-            original_weight = 0.4
-        else:
-            # Less similar - use more original components with gold enhancements
-            gold_weight = 0.4
-            original_weight = 0.6
+        # CRITICAL: Always preserve the original core subject
+        # The original prompt's intent should never be completely replaced
+        merged_components["core_subject"] = original_components.get("core_subject", "")
         
-        # Merge core subject
-        if similarity >= 0.7:
-            # Use gold core subject if very similar
-            merged_components["core_subject"] = gold_components.get("core_subject", original_components.get("core_subject", ""))
-        else:
-            # Keep original core subject
-            merged_components["core_subject"] = original_components.get("core_subject", "")
+        # DEBUG: Log what we're merging
+        print(f"    🔍 MERGING DEBUG:")
+        print(f"       Original core subject: '{original_components.get('core_subject', 'N/A')}'")
+        print(f"       Gold core subject: '{gold_components.get('core_subject', 'N/A')}'")
+        print(f"       Final core subject: '{merged_components['core_subject']}'")
         
-        # Merge enhancements
+        # Merge enhancements intelligently
         for enhancement_type in ["quality_adjectives", "material_details", "light_interaction", "context"]:
             original_items = original_components.get("enhancements", {}).get(enhancement_type, [])
             gold_items = gold_components.get("enhancements", {}).get(enhancement_type, [])
             
             merged_items = []
             
-            # Add gold items first (they're proven to work well)
-            for item in gold_items:
+            # Always start with original items (preserve intent)
+            for item in original_items:
                 if item not in merged_items:
                     merged_items.append(item)
             
-            # Add original items that don't conflict
-            for item in original_items:
+            # Add gold items that enhance without conflicting
+            for item in gold_items:
                 if item not in merged_items:
-                    # Check if this item conflicts with gold items
+                    # Check if this item conflicts with original items
                     conflicts = False
-                    for gold_item in gold_items:
-                        if self._items_conflict(item, gold_item):
+                    for original_item in original_items:
+                        if self._items_conflict(item, original_item):
                             conflicts = True
                             break
                     
+                    # Only add if it doesn't conflict and provides enhancement
                     if not conflicts:
                         merged_items.append(item)
             
             merged_components["enhancements"][enhancement_type] = merged_items
+            
+            # DEBUG: Log enhancement merging
+            print(f"       {enhancement_type}:")
+            print(f"         Original: {original_items}")
+            print(f"         Gold: {gold_items}")
+            print(f"         Merged: {merged_items}")
+        
+        print(f"    🔍 FINAL MERGED COMPONENTS:")
+        print(f"       Core subject: '{merged_components['core_subject']}'")
+        for enhancement_type, items in merged_components["enhancements"].items():
+            print(f"       {enhancement_type}: {items}")
         
         return merged_components
 
@@ -322,9 +469,20 @@ OUTPUT:
         
         return False
 
-    def reconstruct_prompt(self, components: Dict[str, Any]) -> str:
+    def reconstruct_prompt(self, components: Dict[str, Any], reference_original: str = None, reference_optimized: str = None, target_original: str = None) -> str:
         """Uses the LLM to reconstruct a prompt from merged components."""
         components_json = json.dumps(components, indent=2)
+        
+        # DEBUG: Show exactly what we're sending to the LLM
+        print(f"    🔧 RECONSTRUCTION DEBUG:")
+        print(f"       Sending to LLM:")
+        print(f"       Core subject: '{components.get('core_subject', 'N/A')}'")
+        print(f"       Quality adjectives: {components.get('enhancements', {}).get('quality_adjectives', [])}")
+        print(f"       Material details: {components.get('enhancements', {}).get('material_details', [])}")
+        print(f"       Light interaction: {components.get('enhancements', {}).get('light_interaction', [])}")
+        print(f"       Context: {components.get('enhancements', {}).get('context', [])}")
+        
+        # Create a much more explicit and structured system prompt with reference examples
         system_prompt = f"""
 You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D model prompt from a structured set of components.
 
@@ -335,7 +493,7 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
 4. Ensure the prompt flows naturally and maintains the quality of the original components.
 
 **Critical Constraints:**
-- The final output must start with `wbgmsst,` and end with `, white background`.
+- The final output must end with `, white background`.
 - Do not invent hyper-specific details the 3D model cannot render.
 - Provide only the final prompt without explanation.
 
@@ -344,8 +502,73 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
 
 **Reconstructed Prompt:**
 """
+        
+        # DEBUG: Show the full system prompt being sent to the LLM
+        print(f"       🔧 Full system prompt sent to LLM:")
+        # print(f"          {system_prompt[:200]}...")
+        # if len(system_prompt) > 200:
+        #     print(f"          ... (truncated, total length: {len(system_prompt)} chars)")
+        
         # We pass an empty user prompt as the full instructions are in the system prompt
-        return self.optimizer._query_ollama(system_prompt, "")
+        result = self.optimizer._query_llm(system_prompt, "")
+        
+        # DEBUG: Show what the LLM returned
+        print(f"       LLM returned: '{result}'")
+        
+        # ENHANCED VALIDATION: Check if the LLM followed instructions
+        core_subject = components.get('core_subject', '')
+        if core_subject:
+            # Check if core subject is preserved
+            if core_subject.lower() not in result.lower():
+                print(f"       ❌ LLM FAILED: Core subject '{core_subject}' not found in response")
+                print(f"       🔧 Using fallback construction...")
+                return self._construct_fallback_prompt(components)
+            
+            # Check if white background is added
+            if "white background" not in result.lower():
+                print(f"       ⚠️ LLM WARNING: Missing 'white background', adding it")
+                result = result.rstrip() + ", white background"
+                print(f"       🔧 Corrected prompt: '{result}'")
+        
+        return result
+    
+    def _construct_fallback_prompt(self, components: Dict[str, Any]) -> str:
+        """Construct a prompt manually when the LLM fails to follow instructions"""
+        print(f"       🔧 FALLBACK: Manual prompt construction")
+        
+        # Start with quality adjectives
+        parts = []
+        quality_adj = components.get('enhancements', {}).get('quality_adjectives', [])
+        if quality_adj:
+            parts.extend(quality_adj)
+        
+        # Add core subject
+        core_subject = components.get('core_subject', '')
+        parts.append(core_subject)
+        
+        # Add material details as descriptive phrases
+        material_details = components.get('enhancements', {}).get('material_details', [])
+        if material_details:
+            # Filter out materials that are already in the core subject
+            core_lower = core_subject.lower()
+            additional_materials = [mat for mat in material_details if mat.lower() not in core_lower]
+            if additional_materials:
+                parts.append(f"with {', '.join(additional_materials)} details")
+        
+        # Add light interaction
+        light_interaction = components.get('enhancements', {}).get('light_interaction', [])
+        if light_interaction:
+            parts.append(f"with {', '.join(light_interaction)} effects")
+        
+        # Add context
+        context = components.get('enhancements', {}).get('context', [])
+        if context:
+            parts.extend(context)
+        
+        # Construct final prompt
+        fallback_prompt = f"{' '.join(parts)}, white background"
+        print(f"       🔧 Fallback prompt: '{fallback_prompt}'")
+        return fallback_prompt
 
     def optimize_prompt_with_reproducibility(self, original_prompt: str, min_similarity: float = 0.3, run_validation: bool = True) -> Optional[Dict[str, Any]]:
         """
@@ -360,12 +583,13 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
             print(f"  ⚠️ No close gold prompt found (similarity threshold: {min_similarity})")
             return None
         
-        gold_prompt, gold_score, similarity = closest_match
+        gold_original, gold_prompt, gold_score, similarity = closest_match
         print(f"  🏆 Found close gold prompt (similarity: {similarity:.3f}, score: {gold_score:.4f})")
-        print(f"     Gold prompt: '{gold_prompt[:80]}...'")
+        print(f"     Gold original: '{gold_original[:80]}...'")
+        print(f"     Gold optimized: '{gold_prompt[:80]}...'")
         
         # Step 2: Extract components from original prompt
-        print("  📝 Extracting components from original prompt...")
+        print("  �� Extracting components from original prompt...")
         original_components = self.extract_patterns(original_prompt)
         if "error" in original_components:
             print(f"  ❌ Failed to extract components from original prompt")
@@ -384,7 +608,18 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
         
         # Step 5: Reconstruct the optimized prompt
         print("  🔧 Reconstructing optimized prompt...")
-        optimized_prompt = self.reconstruct_prompt(merged_components)
+        print(f"     Using reference examples:")
+        print(f"       Reference Original: '{gold_original[:60]}...'")
+        print(f"       Reference Optimized: '{gold_prompt[:60]}...'")
+        print(f"       Target Original: '{original_prompt[:60]}...'")
+        
+        # Pass reference examples to guide the reconstruction
+        optimized_prompt = self.reconstruct_prompt(
+            merged_components, 
+            reference_original=gold_original,  # The original prompt from the gold standard
+            reference_optimized=gold_prompt,   # The optimized version from the gold standard
+            target_original=original_prompt    # The prompt we're trying to enhance
+        )
         if "Error:" in optimized_prompt:
             print(f"  ❌ Failed to reconstruct prompt")
             return None
@@ -429,6 +664,7 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
         return {
             "original_prompt": original_prompt,
             "optimized_prompt": optimized_prompt,
+            "gold_original": gold_original,
             "gold_prompt": gold_prompt,
             "gold_score": gold_score,
             "optimized_score": optimized_score,
@@ -442,6 +678,66 @@ You are a prompt assembly agent. Your task is to reconstruct a high-quality 3D m
             "optimization_method": "reproducibility_merge",
             "status": status
         }
+
+    def update_gold_standard_results(self, enhanced_gold_prompts: Dict[str, Any]):
+        """
+        Update the gold standard results with enhanced data from the orchestrator.
+        This allows the reproducibility system to use optimized versions instead of just original prompts.
+        
+        Args:
+            enhanced_gold_prompts: Dictionary of enhanced gold prompts with optimized versions
+        """
+        if not enhanced_gold_prompts:
+            return
+        
+        print(f"🔄 Updating gold standard results with {len(enhanced_gold_prompts)} enhanced prompts...")
+        
+        # Convert enhanced format to the format expected by the reproducibility system
+        for prompt, data in enhanced_gold_prompts.items():
+            if 'optimized_prompt' in data and data['optimized_prompt'] != prompt:
+                # This prompt has an optimized version
+                optimized_prompt = data['optimized_prompt']
+                score = data.get('best_score', 0.0)
+                
+                # Create the method_2_hybrid_example structure
+                if prompt not in self.gold_standard_results:
+                    self.gold_standard_results[prompt] = {}
+                
+                self.gold_standard_results[prompt]["method_2_hybrid_example"] = {
+                    "optimized_prompt": optimized_prompt,
+                    "validation_results": {
+                        "validation_engine_score": score
+                    }
+                }
+                
+                # print(f"   ✅ Updated: '{prompt[:50]}...' → '{optimized_prompt[:50]}...' (score: {score:.4f})")
+        
+        print(f"🔄 Gold standard results updated: {len(self.gold_standard_results)} total prompts")
+    
+    def get_enhanced_gold_prompts(self) -> Dict[str, Any]:
+        """
+        Get enhanced gold prompts that include both original and optimized versions.
+        This method can be called by the orchestrator to get the current state.
+        """
+        enhanced_prompts = {}
+        
+        for prompt, data in self.gold_standard_results.items():
+            if 'method_2_hybrid_example' in data:
+                method_data = data['method_2_hybrid_example']
+                optimized_prompt = method_data.get('optimized_prompt', prompt)
+                score = method_data.get('validation_results', {}).get('validation_engine_score', 0.0)
+                
+                enhanced_prompts[prompt] = {
+                    'original_prompt': prompt,
+                    'optimized_prompt': optimized_prompt,
+                    'best_score': score,
+                    'source': 'reproducibility_system',
+                    'method': 'method_2_hybrid_example',
+                    'status': 'completed',
+                    'is_gold': score > 0.75
+                }
+        
+        return enhanced_prompts
 
 def main():
     """Test the reproducibility system with sample prompts."""
@@ -490,6 +786,7 @@ def main():
         if result:
             results.append(result)
             print(f"  ✅ Success: similarity={result['similarity']:.3f}, gold_score={result['gold_score']:.4f}")
+            print(f"     Gold original: '{result['gold_original'][:50]}...'")
         else:
             print(f"  ❌ Failed: no suitable gold prompt found")
     

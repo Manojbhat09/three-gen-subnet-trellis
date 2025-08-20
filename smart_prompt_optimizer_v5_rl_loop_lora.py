@@ -15,6 +15,8 @@ Revolutionary RL Loop:
 4. Updates strategy preferences based on scores
 5. Makes improved attempt using learned insights
 6. Repeats until convergence or max rounds
+
+front view, accurate, complete, white background
 """
 
 import json
@@ -88,17 +90,29 @@ class RLLoopAgent:
                  memory_file: str = "rl_loop_memory.json",
                  api_base_url: str = "https://openrouter.ai/api/v1",
                  trellis_server_url_w_port: str = "http://localhost:8096",
-                 endpoint: str = "generate/"):
+                 endpoint: str = "generate/",
+                 ollama_coordinator=None,  # New parameter
+                 port: int = 8096,  # Add port parameter
+                 use_vllm: bool = False,  # New parameter for vLLM
+                 vllm_url: str = "http://localhost:9000",  # New parameter for vLLM URL
+                 vllm_model: str = "llama-3-2-3b-it",  # New parameter for vLLM model
+                 disable_convergence: bool = False):  # New parameter to disable convergence
         self.ollama_url = ollama_url
         self.model = None  # Will be set based on user input
         self.memory_file = Path(memory_file)
         self.api_base_url = api_base_url
         self.use_openrouter = False
+        self.use_vllm = use_vllm  # Store vLLM preference
+        self.vllm_url = vllm_url  # Store vLLM URL
+        self.vllm_model = vllm_model  # Store vLLM model
+        self.disable_convergence = disable_convergence  # Store convergence preference
         self.provider = None
         self.api_key = None
         self.site_url = "http://localhost"
         self.app_name = "RL Prompt Optimizer"
         self.trellis_server_url_w_port = trellis_server_url_w_port
+        self.ollama_coordinator = ollama_coordinator  # Store coordinator reference
+        self.port = port  # Store port for validation calls
         self._choose_llm_provider()
         self.endpoint = endpoint
         # RL Loop parameters (improved)
@@ -124,20 +138,63 @@ class RLLoopAgent:
         self.logger = logging.getLogger(__name__)
         self._load_memory()
         self._initialize_strategies()
+        
+        # Print LLM provider information prominently
+        print("\n" + "="*60)
+        print("🤖 LLM PROVIDER CONFIGURATION")
+        print("="*60)
+        if self.use_vllm:
+            print(f"✅ Using vLLM: {self.vllm_url}")
+            print(f"   Model: {self.vllm_model}")
+            print(f"   Status: ACTIVE")
+        elif self.use_openrouter:
+            print(f"✅ Using OpenRouter: {self.api_base_url}")
+            print(f"   Model: {self.model}")
+            print(f"   Provider: {self.provider}")
+            print(f"   Status: ACTIVE")
+        else:
+            print(f"✅ Using Ollama: {self.ollama_url}")
+            print(f"   Model: {self.model}")
+            print(f"   Status: ACTIVE")
+        print("="*60)
+        
         self.logger.info(f"🔄 RL LOOP AGENT INITIALIZED (IMPROVED)")
         self.logger.info(f"   Strategy tracking: {len(self.strategy_performance)} strategies")
         self.logger.info(f"   Past sessions: {len(self.optimization_sessions)}")
         self.logger.info(f"   Exploration rate: {self.epsilon:.2f}")
         self.logger.info(f"   Max rounds per optimization: {self.max_optimization_rounds}")
         self.logger.info(f"   Min rounds before convergence: {self.min_rounds_before_convergence}")
-        self.logger.info(f"   Adaptive convergence: ENABLED")
+        self.logger.info(f"   Adaptive convergence: {'DISABLED - Force all rounds' if self.disable_convergence else 'ENABLED'}")
+        if self.use_vllm:
+            self.logger.info(f"   Using vLLM: {self.vllm_url} with model {self.vllm_model}")
+        elif self.use_openrouter:
+            self.logger.info(f"   Using OpenRouter: {self.api_base_url} with model {self.model}")
+        else:
+            self.logger.info(f"   Using Ollama: {self.ollama_url} with model {self.model}")
     
     def _choose_llm_provider(self):
+        # If vLLM is specified, skip the interactive choice
+        if self.use_vllm:
+            self.model = self.vllm_model
+            print(f"\n🚀 AUTO-CONFIGURED: Using vLLM model: {self.model} at {self.vllm_url}")
+            return
+            
         print("\nWhich LLM provider do you want to use?")
         print("1. Local Ollama (default: llama3.2:3b)")
         print("2. OpenRouter (cloud, supports many models)")
-        choice = input("Enter 1 for Ollama or 2 for OpenRouter: ").strip()
-        if choice == "2":
+        print("3. vLLM (fast local inference)")
+        choice = input("Enter 1 for Ollama, 2 for OpenRouter, or 3 for vLLM: ").strip()
+        if choice == "3":
+            self.use_vllm = True
+            self.vllm_url = input("Enter vLLM server URL (default: http://localhost:9000): ").strip()
+            if not self.vllm_url:
+                self.vllm_url = "http://localhost:9000"
+            self.vllm_model = input("Enter vLLM model name (default: llama-3-2-3b-it): ").strip()
+            if not self.vllm_model:
+                self.vllm_model = "llama-3-2-3b-it"
+            self.model = self.vllm_model
+            print(f"🚀 CONFIGURED: Using vLLM: {self.vllm_url} with model {self.vllm_model}")
+        elif choice == "2":
             self.use_openrouter = True
             self.api_key = os.getenv("OPENROUTER_API_KEY")
             if not self.api_key:
@@ -161,42 +218,26 @@ class RLLoopAgent:
             if not provider:
                 provider = "venice/fp8"
             self.provider = provider
-            print(f"Using OpenRouter model: {self.model} (provider: {self.provider})")
+            print(f"🚀 CONFIGURED: Using OpenRouter model: {self.model} (provider: {self.provider})")
         else:
             self.use_openrouter = False
             self.model = "llama3.2:3b"
-            print(f"Using local Ollama model: {self.model}")
+            print(f"🚀 CONFIGURED: Using local Ollama model: {self.model}")
 
     def _load_memory(self):
-        """Load RL loop memory"""
+        """Load RL loop memory from appended data"""
         if self.memory_file.exists():
             try:
                 with open(self.memory_file, 'r') as f:
                     data = json.load(f)
                 
-                # Load strategy performance
-                strategies_data = data.get('strategy_performance', {})
-                self.strategy_performance = {
-                    name: StrategyPerformance(**perf)
-                    for name, perf in strategies_data.items()
-                }
-                
-                # Load recent sessions with proper reconstruction
-                sessions_data = data.get('optimization_sessions', [])
-                self.optimization_sessions = []
-                for session_data in sessions_data[-50:]:
-                    # Reconstruct attempts properly
-                    attempts = []
-                    for attempt_data in session_data.get('attempts', []):
-                        attempt = OptimizationAttempt(**attempt_data)
-                        attempts.append(attempt)
-                    
-                    session_data['attempts'] = attempts
-                    session = RLOptimizationSession(**session_data)
-                    self.optimization_sessions.append(session)
-                
-                self.global_insights = data.get('global_insights', [])
-                self.epsilon = data.get('epsilon', self.epsilon)
+                # Handle both old format (dict) and new format (list of sessions)
+                if isinstance(data, dict):
+                    # Old format - convert to new format
+                    self._load_from_old_format(data)
+                else:
+                    # New format - load from most recent session
+                    self._load_from_new_format(data)
                 
                 self.logger.info(f"📚 Loaded RL memory: {len(self.strategy_performance)} strategies, {len(self.optimization_sessions)} sessions")
                 
@@ -274,7 +315,7 @@ class RLLoopAgent:
             self.logger.info(f"      🔧 Using endpoint: {endpoint}")
             self.endpoint = endpoint
         try:
-            server_status_url = self.trellis_server_url_w_port.rstrip('/') + '/job/status/'
+            server_status_url = f"http://127.0.0.1:{self.port}/job/status/"
             resp = requests.get(server_status_url, timeout=5)
             if resp.status_code == 200:
                 status_json = resp.json()
@@ -294,8 +335,16 @@ class RLLoopAgent:
         self.logger.info(f"   Max rounds: {self.max_optimization_rounds}")
         self.logger.info(f"   Min rounds before convergence: {self.min_rounds_before_convergence}")
         self.logger.info(f"   Target score: {self.min_score_threshold}")
+        if self.disable_convergence:
+            self.logger.info(f"   🚫 Convergence: DISABLED - will run for all {self.max_optimization_rounds} rounds")
+        else:
+            self.logger.info(f"   ✅ Convergence: ENABLED - may stop early on convergence")
         attempts: List[OptimizationAttempt] = []
-        best_prompt = f"{prompt}, white background"
+        # Only add "white background" if it's not already present
+        if "white background" not in prompt.lower():
+            best_prompt = f"{prompt}, white background"
+        else:
+            best_prompt = prompt
         best_score = 0.0
         initial_score = None
         convergence_achieved = False
@@ -404,7 +453,8 @@ class RLLoopAgent:
                 break  # Actually break when convergence is achieved
             
             # Add stuck detection - if score hasn't changed for 8 rounds, force stop
-            if len(attempts) >= 8:
+            # Only apply if convergence is enabled
+            if not self.disable_convergence and len(attempts) >= 8:
                 recent_scores = [a.validation_score or 0.0 for a in attempts[-8:]]
                 if all(abs(score - recent_scores[0]) < 0.001 for score in recent_scores):
                     convergence_achieved = True
@@ -461,6 +511,10 @@ class RLLoopAgent:
     
     def _should_converge(self, attempts: List[OptimizationAttempt], current_round: int) -> Tuple[bool, str]:
         """Improved convergence logic with minimum rounds and adaptive thresholds"""
+        # If convergence is disabled, never converge (force all rounds)
+        if self.disable_convergence:
+            return False, "Convergence disabled - forcing all rounds"
+            
         if current_round < self.min_rounds_before_convergence:
             return False, f"Below minimum rounds ({current_round}/{self.min_rounds_before_convergence})"
         if attempts and attempts[-1].validation_score and attempts[-1].validation_score >= self.min_score_threshold:
@@ -529,10 +583,48 @@ class RLLoopAgent:
                                  prompt_with_context=None) -> OptimizationAttempt:
         """Make a single optimization attempt with context from previous rounds, with retry-on-failure logic."""
         self.logger.info(f"      🎯 Strategy: {strategy} ({exploration_type})")
-        previous_context = self._build_previous_attempts_context(previous_attempts)
-        strategy_context = self._build_strategy_context(strategy)
-        system_prompt = f"""You are an RL agent learning to optimize prompts. This is round {round_num} of iterative optimization."""
-        system_prompt += f"""
+        
+        # Print LLM provider info for this round
+        if self.use_vllm:
+            print(f"      🤖 [ROUND {round_num}] Using vLLM: {self.vllm_url} | Model: {self.vllm_model}")
+        elif self.use_openrouter:
+            print(f"      🤖 [ROUND {round_num}] Using OpenRouter: {self.api_base_url} | Model: {self.model}")
+        else:
+            print(f"      🤖 [ROUND {round_num}] Using Ollama: {self.ollama_url} | Model: {self.model}")
+        
+        # Request Ollama access for this round if coordinator is available
+        ollama_request_id = None
+        if self.ollama_coordinator and not self.use_openrouter and not self.use_vllm:
+            try:
+                ollama_request_id = self.ollama_coordinator.request_access(
+                    priority=2,  # MEDIUM priority for RL optimization
+                    description=f"RL Round {round_num} - {strategy} ({exploration_type})"
+                )
+                
+                if not self.ollama_coordinator.wait_for_access(ollama_request_id):
+                    self.logger.warning(f"      ⏰ Ollama access timeout for round {round_num}, using fallback")
+                    # Continue with fallback prompt
+                    return OptimizationAttempt(
+                        attempt_number=round_num,
+                        strategy_used=strategy,
+                        exploration_type=exploration_type,
+                        optimized_prompt=f"{prompt}, front view, accurate, complete" + (", white background" if "white background" not in prompt.lower() else ""),
+                        predicted_confidence=0.5,
+                        validation_score=None,
+                        agent_reasoning="Fallback due to Ollama access timeout",
+                        timestamp=time.time()
+                    )
+                
+                self.logger.info(f"      ✅ Ollama access granted for round {round_num}")
+                
+            except Exception as e:
+                self.logger.warning(f"      ⚠️ Ollama coordination failed: {e}, proceeding without coordination")
+        
+        try:
+            previous_context = self._build_previous_attempts_context(previous_attempts)
+            strategy_context = self._build_strategy_context(strategy)
+            system_prompt = f"""You are an RL agent learning to optimize prompts. This is round {round_num} of iterative optimization."""
+            system_prompt += f"""
 
 ORIGINAL PROMPT: "{prompt}"
 STRATEGY: {strategy} ({exploration_type} mode)
@@ -558,9 +650,9 @@ Example:
 * **OPTIMIZED (Score: 0.8287):** `small wooden hammer with screws` # keep it simple for object-focused prompts 
 
 """
-        if prompt_with_context:
-            system_prompt += f"\n\n{prompt_with_context}"
-        system_prompt += """
+            if prompt_with_context:
+                system_prompt += f"\n\n{prompt_with_context}"
+            system_prompt += """
 RESPONSE FORMAT:
 REASONING: [Your reasoning considering previous attempts and scores]
 
@@ -571,45 +663,82 @@ OPTIMIZATION: {{
   "expected_score": [0.0-1.0],
   "learning_applied": ["insight1", "insight2"]
 }}"""
-        retries = 0
-        while retries < max_retries:
-            try:
-                response = self._query_llm(system_prompt) if self.use_openrouter else self._query_llama(system_prompt)
-                structured_output = self._parse_optimization_response(response, prompt)
-                return OptimizationAttempt(
-                    attempt_number=round_num,
-                    strategy_used=strategy,
-                    exploration_type=exploration_type,
-                    optimized_prompt=structured_output.get('optimized_prompt', f"{prompt}, front view, accurate, complete, white background"),
-                    predicted_confidence=structured_output.get('confidence', 0.5),
-                    validation_score=None,  # Will be filled later
-                    agent_reasoning=response,
-                    timestamp=time.time()
-                )
-            except Exception as e:
-                self.logger.error(f"      ❌ Optimization attempt failed: {e}")
-                # Check for transient errors (429, 500, etc.)
-                err_str = str(e)
-                if '429' in err_str or 'Too Many Requests' in err_str:
-                    wait_time = 30
-                elif '500' in err_str or 'Internal Server Error' in err_str:
-                    wait_time = 10
-                else:
-                    wait_time = 5
-                self.logger.info(f"      ⏳ Waiting {wait_time}s before retrying RL round (retry {retries+1}/{max_retries})")
-                time.sleep(wait_time)
-                retries += 1
-        self.logger.error(f"      ❌ All retries failed for RL round {round_num}. Skipping this round.")
-        return OptimizationAttempt(
-            attempt_number=round_num,
-            strategy_used=strategy,
-            exploration_type=exploration_type,
-            optimized_prompt=f"{prompt}, front view, accurate, complete, white background",
-            predicted_confidence=0.5,
-            validation_score=None,  
-            agent_reasoning=f"Fallback due to repeated error",
-            timestamp=time.time()
-        )
+            
+            retries = 0
+            while retries < max_retries:
+                try:
+                    self.logger.info(f"      🚀 Making LLM request for round {round_num}")
+                    # Choose the appropriate query method based on provider
+                    if self.use_vllm:
+                        print(f"      🚀 [vLLM] Sending request to {self.vllm_url}...")
+                        response = self._query_vllm(system_prompt)
+                    elif self.use_openrouter:
+                        print(f"      🚀 [OpenRouter] Sending request to {self.api_base_url}...")
+                        response = self._query_llm(system_prompt)
+                    else:
+                        print(f"      🚀 [Ollama] Sending request to {self.ollama_url}...")
+                        response = self._query_llama(system_prompt)
+                    self.logger.info(f"      ✅ LLM request completed for round {round_num}")
+                    structured_output = self._parse_optimization_response(response, prompt)
+                    
+                    # Release Ollama access immediately after use
+                    if ollama_request_id and self.ollama_coordinator:
+                        self.ollama_coordinator.release_access(ollama_request_id)
+                        self.logger.info(f"      🔓 Released Ollama access for round {round_num}")
+                    
+                    return OptimizationAttempt(
+                        attempt_number=round_num,
+                        strategy_used=strategy,
+                        exploration_type=exploration_type,
+                        optimized_prompt=structured_output.get('optimized_prompt', f"{prompt}, front view, accurate, complete" + (", white background" if "white background" not in prompt.lower() else "")),
+                        predicted_confidence=structured_output.get('confidence', 0.5),
+                        validation_score=None,  # Will be filled later
+                        agent_reasoning=response,
+                        timestamp=time.time()
+                    )
+                except Exception as e:
+                    self.logger.error(f"      ❌ Optimization attempt failed: {e}")
+                    # Check for transient errors (429, 500, etc.)
+                    err_str = str(e)
+                    if '429' in err_str or 'Too Many Requests' in err_str:
+                        wait_time = 30
+                    elif '500' in err_str or 'Internal Server Error' in err_str:
+                        wait_time = 10
+                    else:
+                        wait_time = 5
+                    self.logger.info(f"      ⏳ Waiting {wait_time}s before retrying RL round (retry {retries+1}/{max_retries})")
+                    time.sleep(wait_time)
+                    retries += 1
+            
+            self.logger.error(f"      ❌ All retries failed for RL round {round_num}. Skipping this round.")
+            return OptimizationAttempt(
+                attempt_number=round_num,
+                strategy_used=strategy,
+                exploration_type=exploration_type,
+                optimized_prompt=f"{prompt}, front view, accurate, complete" + (", white background" if "white background" not in prompt.lower() else ""),
+                predicted_confidence=0.5,
+                validation_score=None,  
+                agent_reasoning=f"Fallback due to repeated error",
+                timestamp=time.time()
+            )
+            
+        except Exception as e:
+            self.logger.error(f"      ❌ Unexpected error in optimization attempt: {e}")
+            # Release Ollama access on error
+            if ollama_request_id and self.ollama_coordinator:
+                self.ollama_coordinator.release_access(ollama_request_id)
+                self.logger.info(f"      🔓 Released Ollama access for round {round_num} (error case)")
+            
+            return OptimizationAttempt(
+                attempt_number=round_num,
+                strategy_used=strategy,
+                exploration_type=exploration_type,
+                optimized_prompt=f"{prompt}, front view, accurate, complete" + (", white background" if "white background" not in prompt.lower() else ""),
+                predicted_confidence=0.5,
+                validation_score=None,
+                agent_reasoning=f"Fallback due to error: {e}",
+                timestamp=time.time()
+            )
     
     def _build_previous_attempts_context(self, previous_attempts: List[OptimizationAttempt]) -> str:
         """Build context from previous optimization attempts"""
@@ -765,7 +894,7 @@ OPTIMIZATION: {{
     def _clear_trellis_gpu_cache(self):
         """Send a request to the TRELLIS server to clear GPU cache."""
         try:
-            url = f"{self.trellis_server_url_w_port}/clear_cache/"
+            url = f"http://127.0.0.1:{self.port}/clear_cache/"
             resp = requests.post(url, timeout=10)
             if resp.status_code == 200:
                 self.logger.info(f"[TRELLIS] GPU cache cleared: {resp.json()}")
@@ -786,13 +915,13 @@ OPTIMIZATION: {{
                 self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
-                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" \"{optimized_prompt}\" --endpoint \"{endpoint}\""
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" \"{optimized_prompt}\" --endpoint \"{endpoint}\" --port {self.port}"
                 ]
             else:
                 self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt}...'")
                 cmd = [
                     "bash", "-c",
-                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator.py \"{original_prompt}\" --endpoint \"{endpoint}\""
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" --endpoint \"{endpoint}\" --port {self.port}"
                 ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:
@@ -805,6 +934,7 @@ OPTIMIZATION: {{
                 return 0.0
             # Try to read from the port-specific file first, then fallback to generic file
             validation_files = [
+                f"subnet_validation_results_{self.port}.json",
                 f"subnet_validation_results_{self.trellis_server_url_w_port.split(':')[-1]}.json",
                 "subnet_validation_results.json"
             ]
@@ -858,9 +988,13 @@ OPTIMIZATION: {{
                 optimized_prompt = match.group(1).strip()
                 break
         
-        # Ensure proper format - only add suffix, no prefix
+        # Ensure proper format - only add suffix if not already present
         if not optimized_prompt.endswith('front view, accurate, complete, white background'):
-            optimized_prompt = optimized_prompt.rstrip(', ') + ", front view, accurate, complete, white background"
+            # Only add "white background" if it's not already present
+            if "white background" not in optimized_prompt.lower():
+                optimized_prompt = optimized_prompt.rstrip(', ') + ", front view, accurate, complete, white background"
+            else:
+                optimized_prompt = optimized_prompt.rstrip(', ') + ", front view, accurate, complete"
         
         # Extract confidence
         conf_match = re.search(r'confidence["\s:]*([0-9.]+)', response, re.IGNORECASE)
@@ -899,9 +1033,12 @@ OPTIMIZATION: {{
             "max_tokens": 350,
             "providers": [self.provider]
         }
-        response = requests.post(f"{self.api_base_url}/chat/completions", headers=headers, json=data, timeout=60)
+        print(f"      📤 [OpenRouter] Request sent to {self.api_base_url} | Model: {self.model}")
+        response = requests.post(f"{self.api_base_url}/chat/completions", headers=headers, json=data, timeout=120)
         response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"].strip()
+        content = response.json()["choices"][0]["message"]["content"].strip()
+        print(f"      📥 [OpenRouter] Response received: {len(content)} characters")
+        return content
 
     def _query_llama(self, prompt: str) -> str:
         """Query local Ollama LLM"""
@@ -915,14 +1052,47 @@ OPTIMIZATION: {{
                 "top_p": 0.9
             }
         }
-        response = requests.post(f"{self.ollama_url}/api/chat", json=data, timeout=60)
+        self.logger.info(f"      📤 Sending Ollama request to {self.ollama_url}")
+        self.logger.info(f"      📝 Prompt length: {len(prompt)} characters")
+        print(f"      📤 [Ollama] Request sent to {self.ollama_url} | Model: {self.model}")
+        response = requests.post(f"{self.ollama_url}/api/chat", json=data, timeout=120)
         response.raise_for_status()
-        return response.json()["message"]["content"].strip()
-    
+        content = response.json()["message"]["content"].strip()
+        self.logger.info(f"      📥 Received response: {len(content)} characters")
+        print(f"      📥 [Ollama] Response received: {len(content)} characters")
+        return content
+
+    def _query_vllm(self, prompt: str) -> str:
+        """Query vLLM server"""
+        data = {
+            "model": self.vllm_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "temperature": 0.7,
+            "max_tokens": 350,
+            "top_p": 0.9
+        }
+        self.logger.info(f"      📤 Sending vLLM request to {self.vllm_url}")
+        self.logger.info(f"      📝 Prompt length: {len(prompt)} characters")
+        print(f"      📤 [vLLM] Request sent to {self.vllm_url} | Model: {self.vllm_model}")
+        response = requests.post(f"{self.vllm_url}/v1/chat/completions", json=data, timeout=120)
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"].strip()
+        self.logger.info(f"      📥 Received response: {len(content)} characters")
+        print(f"      📥 [vLLM] Response received: {len(content)} characters")
+        return content
+
     def _save_memory(self):
-        """Save RL loop memory"""
+        """Save RL loop memory by appending to avoid conflicts with simultaneous runs"""
         try:
-            data = {
+            # Create a unique session identifier for this run
+            session_id = f"session_{int(time.time())}_{os.getpid()}"
+            
+            # Prepare the data to append
+            data_to_append = {
+                'session_id': session_id,
+                'timestamp': time.time(),
+                'pid': os.getpid(),
                 'strategy_performance': {
                     name: asdict(perf) for name, perf in self.strategy_performance.items()
                 },
@@ -934,11 +1104,108 @@ OPTIMIZATION: {{
                 'last_updated': time.time()
             }
             
-            with open(self.memory_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            # Append to memory file instead of overwriting
+            memory_file_path = str(self.memory_file)
+            
+            # Load existing data if file exists
+            existing_data = []
+            if os.path.exists(memory_file_path):
+                try:
+                    with open(memory_file_path, 'r') as f:
+                        existing_data = json.load(f)
+                        if not isinstance(existing_data, list):
+                            # If it's the old format, convert to new format
+                            existing_data = [existing_data]
+                except (json.JSONDecodeError, FileNotFoundError):
+                    existing_data = []
+            
+            # Append new session data
+            existing_data.append(data_to_append)
+            
+            # Keep only the last 10 sessions to prevent file from growing too large
+            if len(existing_data) > 10:
+                existing_data = existing_data[-10:]
+            
+            # Write back the combined data
+            with open(memory_file_path, 'w') as f:
+                json.dump(existing_data, f, indent=2)
+                
+            self.logger.info(f"📚 Appended memory for session {session_id} (PID: {os.getpid()})")
                 
         except Exception as e:
-            self.logger.warning(f"⚠️ Failed to save RL memory: {e}")
+            self.logger.warning(f"⚠️ Failed to append RL memory: {e}")
+    
+    def _load_from_old_format(self, data):
+        """Load memory from old single-session format"""
+        # Load strategy performance
+        strategies_data = data.get('strategy_performance', {})
+        self.strategy_performance = {
+            name: StrategyPerformance(**perf)
+            for name, perf in strategies_data.items()
+        }
+        
+        # Load recent sessions with proper reconstruction
+        sessions_data = data.get('optimization_sessions', [])
+        self.optimization_sessions = []
+        for session_data in sessions_data[-50:]:
+            # Reconstruct attempts properly
+            attempts = []
+            for attempt_data in session_data.get('attempts', []):
+                attempt = OptimizationAttempt(**attempt_data)
+                attempts.append(attempt)
+            
+            session_data['attempts'] = attempts
+            session = RLOptimizationSession(**session_data)
+            self.optimization_sessions.append(session)
+        
+        self.global_insights = data.get('global_insights', [])
+        self.epsilon = data.get('epsilon', self.epsilon)
+    
+    def _load_from_new_format(self, sessions_data):
+        """Load memory from new multi-session format"""
+        if not sessions_data:
+            self._initialize_fresh()
+            return
+        
+        # Find the most recent session for this PID, or the most recent overall
+        current_pid = os.getpid()
+        current_session = None
+        
+        # First try to find a session from the current PID
+        for session in reversed(sessions_data):
+            if session.get('pid') == current_pid:
+                current_session = session
+                break
+        
+        # If no session from current PID, use the most recent overall
+        if not current_session:
+            current_session = sessions_data[-1]
+        
+        # Load from the selected session
+        strategies_data = current_session.get('strategy_performance', {})
+        self.strategy_performance = {
+            name: StrategyPerformance(**perf)
+            for name, perf in strategies_data.items()
+        }
+        
+        # Load recent sessions with proper reconstruction
+        sessions_data = current_session.get('optimization_sessions', [])
+        self.optimization_sessions = []
+        for session_data in sessions_data[-50:]:
+            # Reconstruct attempts properly
+            attempts = []
+            for attempt_data in session_data.get('attempts', []):
+                attempt = OptimizationAttempt(**attempt_data)
+                attempts.append(attempt)
+            
+            session_data['attempts'] = attempts
+            session = RLOptimizationSession(**session_data)
+            self.optimization_sessions.append(session)
+        
+        self.global_insights = current_session.get('global_insights', [])
+        self.epsilon = current_session.get('epsilon', self.epsilon)
+        
+        self.logger.info(f"📚 Loaded memory from session {current_session.get('session_id', 'unknown')} (PID: {current_session.get('pid', 'unknown')})")
     
     def get_rl_insights(self) -> Dict[str, Any]:
         """Get RL learning insights"""
@@ -986,17 +1253,168 @@ OPTIMIZATION: {{
                 })
         
         return insights
+    
+    def get_multi_session_insights(self) -> Dict[str, Any]:
+        """Get insights across all sessions in the memory file"""
+        try:
+            if not self.memory_file.exists():
+                return {"message": "No memory file found"}
+            
+            with open(self.memory_file, 'r') as f:
+                all_sessions = json.load(f)
+            
+            if not isinstance(all_sessions, list):
+                # Old format - convert to list
+                all_sessions = [all_sessions]
+            
+            insights = {
+                "total_sessions_in_file": len(all_sessions),
+                "sessions_by_pid": {},
+                "overall_strategy_performance": {},
+                "cross_session_learning": {}
+            }
+            
+            # Analyze each session
+            for session_data in all_sessions:
+                pid = session_data.get('pid', 'unknown')
+                session_id = session_data.get('session_id', 'unknown')
+                
+                if pid not in insights["sessions_by_pid"]:
+                    insights["sessions_by_pid"][pid] = []
+                
+                insights["sessions_by_pid"][pid].append({
+                    "session_id": session_id,
+                    "timestamp": session_data.get('timestamp', 0),
+                    "strategies_count": len(session_data.get('strategy_performance', {})),
+                    "sessions_count": len(session_data.get('optimization_sessions', [])),
+                    "epsilon": session_data.get('epsilon', 0)
+                })
+                
+                # Aggregate strategy performance across sessions
+                for strategy_name, perf_data in session_data.get('strategy_performance', {}).items():
+                    if strategy_name not in insights["overall_strategy_performance"]:
+                        insights["overall_strategy_performance"][strategy_name] = {
+                            "total_attempts": 0,
+                            "total_success": 0,
+                            "avg_score": 0.0,
+                            "sessions_used": 0
+                        }
+                    
+                    current = insights["overall_strategy_performance"][strategy_name]
+                    current["total_attempts"] += perf_data.get('total_attempts', 0)
+                    current["total_success"] += perf_data.get('success_count', 0)
+                    current["sessions_used"] += 1
+            
+            # Calculate overall averages
+            for strategy_name, data in insights["overall_strategy_performance"].items():
+                if data["total_attempts"] > 0:
+                    data["overall_success_rate"] = data["total_success"] / data["total_attempts"]
+                    data["avg_attempts_per_session"] = data["total_attempts"] / data["sessions_used"]
+            
+            # Sort strategies by overall success rate
+            insights["overall_strategy_performance"] = dict(
+                sorted(
+                    insights["overall_strategy_performance"].items(),
+                    key=lambda x: x[1]["overall_success_rate"],
+                    reverse=True
+                )
+            )
+            
+            return insights
+            
+        except Exception as e:
+            return {"error": f"Failed to get multi-session insights: {e}"}
+    
+    def merge_memories_from_file(self) -> bool:
+        """Merge memories from all sessions in the file into current agent state"""
+        try:
+            if not self.memory_file.exists():
+                return False
+            
+            with open(self.memory_file, 'r') as f:
+                all_sessions = json.load(f)
+            
+            if not isinstance(all_sessions, list):
+                # Old format - nothing to merge
+                return False
+            
+            if len(all_sessions) <= 1:
+                # Only one session - nothing to merge
+                return False
+            
+            # Start with current state
+            merged_strategies = dict(self.strategy_performance)
+            merged_sessions = list(self.optimization_sessions)
+            merged_insights = list(self.global_insights)
+            
+            # Merge from other sessions
+            for session_data in all_sessions:
+                if session_data.get('pid') == os.getpid():
+                    # Skip current session
+                    continue
+                
+                # Merge strategy performance
+                for strategy_name, perf_data in session_data.get('strategy_performance', {}).items():
+                    if strategy_name in merged_strategies:
+                        # Combine performance data
+                        current = merged_strategies[strategy_name]
+                        other = StrategyPerformance(**perf_data)
+                        
+                        # Weighted average based on attempt counts
+                        total_attempts = current.total_attempts + other.total_attempts
+                        if total_attempts > 0:
+                            current.avg_score = (current.avg_score * current.total_attempts + 
+                                               other.avg_score * other.total_attempts) / total_attempts
+                            current.total_attempts = total_attempts
+                            current.success_count += other.success_count
+                            
+                            # Combine recent scores (keep last 10 from each)
+                            combined_scores = current.recent_scores + other.recent_scores
+                            current.recent_scores = combined_scores[-10:]
+                    else:
+                        # Add new strategy
+                        merged_strategies[strategy_name] = StrategyPerformance(**perf_data)
+                
+                # Merge optimization sessions (avoid duplicates)
+                for session_data in session_data.get('optimization_sessions', []):
+                    session = RLOptimizationSession(**session_data)
+                    # Check if session already exists
+                    if not any(s.session_id == session.session_id for s in merged_sessions):
+                        merged_sessions.append(session)
+                
+                # Merge global insights (avoid duplicates)
+                for insight in session_data.get('global_insights', []):
+                    if insight not in merged_insights:
+                        merged_insights.append(insight)
+            
+            # Update current state
+            self.strategy_performance = merged_strategies
+            self.optimization_sessions = merged_sessions[-100:]  # Keep last 100
+            self.global_insights = merged_insights[-100:]  # Keep last 100
+            
+            self.logger.info(f"🔄 Merged memories from {len(all_sessions)} sessions")
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"⚠️ Failed to merge memories: {e}")
+            return False
 
 def main():
     """Command line interface"""
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
-        print("Usage: python smart_prompt_optimizer_v4_1_rl_loop.py \"prompt\" [--validate] [--insights]")
+        print("Usage: python smart_prompt_optimizer_v5_rl_loop_lora.py \"prompt\" [--validate] [--endpoint] [--port] [--insights] [--vllm] [--vllm-url] [--vllm-model]")
         print("\nCommands:")
         print("  \"prompt\"        Optimize with RL learning loop")
         print("  dummy --insights Show RL learning insights")
+        print("  --merge-memories Merge memories from all sessions in file")
+        print("  --multi-insights Show insights across all sessions")
         print("\nOptions:")
         print("  --validate       Use real validation scores (recommended)")
         print("  --endpoint       Use specific endpoint (default: generate/)")
+        print("  --port           Port for TRELLIS server (default: 8096)")
+        print("  --vllm           Use vLLM instead of Ollama")
+        print("  --vllm-url       vLLM server URL (default: http://localhost:9000)")
+        print("  --vllm-model     vLLM model name (default: llama-3-2-3b-it)")
         return
     
     agent = None
@@ -1004,23 +1422,70 @@ def main():
         if "--insights" in sys.argv:
             agent = RLLoopAgent()
             insights = agent.get_rl_insights()
-            print("\n🔄 RL LOOP AGENT INSIGHTS:")
-            print("=" * 50)
+            print("\n🤖 RL LEARNING INSIGHTS")
+            print("="*50)
             print(json.dumps(insights, indent=2))
+            return
+        elif "--multi-insights" in sys.argv:
+            agent = RLLoopAgent()
+            insights = agent.get_multi_session_insights()
+            print("\n🤖 MULTI-SESSION INSIGHTS")
+            print("="*50)
+            print(json.dumps(insights, indent=2))
+            return
+        elif "--merge-memories" in sys.argv:
+            agent = RLLoopAgent()
+            success = agent.merge_memories_from_file()
+            if success:
+                print("✅ Successfully merged memories from all sessions")
+                # Show updated insights
+                insights = agent.get_rl_insights()
+                print("\n🤖 UPDATED RL LEARNING INSIGHTS (After Merge)")
+                print("="*50)
+                print(json.dumps(insights, indent=2))
+            else:
+                print("❌ Failed to merge memories or no sessions to merge")
             return
         
         user_prompt = sys.argv[1]
         use_validation = "--validate" in sys.argv
-        endpoint = sys.argv[2] if len(sys.argv) > 2 else "generate/"
+        
+        # Parse command line arguments
+        endpoint = "generate/"
+        port = 8096
+        use_vllm = "--vllm" in sys.argv
+        vllm_url = "http://localhost:9000"
+        vllm_model = "llama-3-2-3b-it"
+        
+        for i, arg in enumerate(sys.argv):
+            if arg == "--endpoint" and i + 1 < len(sys.argv):
+                endpoint = sys.argv[i + 1]
+            elif arg == "--port" and i + 1 < len(sys.argv):
+                try:
+                    port = int(sys.argv[i + 1])
+                except ValueError:
+                    print(f"⚠️ Invalid port number: {sys.argv[i + 1]}, using default 8096")
+                    port = 8096
+            elif arg == "--vllm-url" and i + 1 < len(sys.argv):
+                vllm_url = sys.argv[i + 1]
+            elif arg == "--vllm-model" and i + 1 < len(sys.argv):
+                vllm_model = sys.argv[i + 1]
+        
         print("🔄 RL LOOP AGENT - TRUE ITERATIVE LEARNING")
         print("=" * 60)
         print("✅ Multi-round optimization with score feedback")
         print("✅ Strategy performance updates based on results")
         print("✅ Convergence detection and early stopping")
         print("✅ Exploration/exploitation based on performance")
+        print(f"✅ Using TRELLIS server on port {port}")
+        print(f"✅ Using endpoint: {endpoint}")
+        if use_vllm:
+            print(f"✅ Using vLLM: {vllm_url} with model {vllm_model}")
+        else:
+            print("✅ Using Ollama (default)")
         print("=" * 60)
         
-        agent = RLLoopAgent()
+        agent = RLLoopAgent(port=port, use_vllm=use_vllm, vllm_url=vllm_url, vllm_model=vllm_model)
         result = agent.optimize_with_rl_loop(user_prompt, use_validation=use_validation, endpoint=endpoint)
         
         print("\n" + "="*20 + " RL LOOP SUMMARY " + "="*20)

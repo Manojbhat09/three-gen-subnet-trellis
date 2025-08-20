@@ -293,6 +293,12 @@ class CLIPAlignmentWithGeneration:
     
     def preprocess_image_for_clip(self, image: Image.Image, image_res: int = 224) -> torch.Tensor:
         """Preprocess image for CLIP model (same as production validation)"""
+        # Ensure image is RGB (convert RGBA if necessary)
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
         # Convert PIL to tensor
         image_tensor = torch.tensor(np.array(image)).float()
         

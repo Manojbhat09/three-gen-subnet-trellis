@@ -92,18 +92,32 @@ class GPUServerManager:
     
     def __init__(self, num_gpus: int = 8, base_port: int = 8096, 
                  server_script: str = "trellis_subnit_server_mix_lora_flash.py",
-                 output_dir: str = "./gpu_server_outputs"):
-        self.num_gpus = num_gpus
-        self.base_port = base_port
+                 output_dir: str = "./gpu_server_outputs",
+                 target_gpu: Optional[int] = None):
+        
         self.server_script = server_script
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
-        # Initialize GPU servers
         self.gpu_servers: Dict[int, GPUServer] = {}
-        for gpu_id in range(num_gpus):
-            port = base_port + gpu_id
-            self.gpu_servers[gpu_id] = GPUServer(gpu_id=gpu_id, port=port)
+        
+        if target_gpu is not None:
+            self.num_gpus = 1 # We are managing only one GPU
+            self.base_port = base_port + target_gpu # Adjust base port for the target GPU
+            self.gpu_servers[target_gpu] = GPUServer(gpu_id=target_gpu, port=self.base_port)
+            logger.info(f"🎯 GPU Server Manager initialized for single GPU: {target_gpu}")
+            logger.info(f"   Port for GPU {target_gpu}: {self.base_port}")
+        else:
+            self.num_gpus = num_gpus
+            self.base_port = base_port
+            for gpu_id in range(num_gpus):
+                port = base_port + gpu_id
+                self.gpu_servers[gpu_id] = GPUServer(gpu_id=gpu_id, port=port)
+            logger.info(f"🎯 GPU Server Manager initialized for {num_gpus} GPUs")
+            logger.info(f"   Base port: {base_port}")
+        
+        logger.info(f"   Server script: {server_script}")
+        logger.info(f"   Output directory: {output_dir}")
         
         # Server management
         self.running = False
@@ -137,11 +151,6 @@ class GPUServerManager:
             'gpu_health_checks': 0,
             'gpu_errors': 0
         }
-        
-        logger.info(f"🎯 GPU Server Manager initialized for {num_gpus} GPUs")
-        logger.info(f"   Base port: {base_port}")
-        logger.info(f"   Server script: {server_script}")
-        logger.info(f"   Output directory: {output_dir}")
     
     def _check_port_available(self, port: int) -> bool:
         """Check if a port is available for use"""
@@ -246,7 +255,7 @@ class GPUServerManager:
         with ThreadPoolExecutor(max_workers=self.num_gpus) as executor:
             future_to_gpu = {
                 executor.submit(self.start_server_on_gpu, gpu_id): gpu_id 
-                for gpu_id in range(self.num_gpus)
+                for gpu_id in self.gpu_servers.keys() # Iterate over initialized GPUs only
             }
             
             for future in as_completed(future_to_gpu):
@@ -298,11 +307,13 @@ class GPUServerManager:
             else:
                 gpu_server.status = "unhealthy"
                 gpu_server.error_count += 1
+                logger.warning(f"⚠️ GPU {gpu_id} health check returned HTTP {response.status_code}")
                 return False
         except Exception as e:
             gpu_server.status = "unreachable"
             gpu_server.error_count += 1
             self.stats['gpu_errors'] += 1
+            logger.error(f"❌ GPU {gpu_id} health check exception: {e}")
             return False
     
     def check_gpu_loading_status(self) -> Dict[int, str]:
@@ -314,7 +325,7 @@ class GPUServerManager:
         with ThreadPoolExecutor(max_workers=self.num_gpus) as executor:
             future_to_gpu = {
                 executor.submit(self.check_gpu_already_loaded, gpu_id): gpu_id 
-                for gpu_id in range(self.num_gpus)
+                for gpu_id in self.gpu_servers.keys() # Iterate over initialized GPUs only
             }
             
             for future in as_completed(future_to_gpu):
@@ -349,7 +360,7 @@ class GPUServerManager:
         with ThreadPoolExecutor(max_workers=self.num_gpus) as executor:
             future_to_gpu = {
                 executor.submit(self.check_server_health, gpu_id): gpu_id 
-                for gpu_id in range(self.num_gpus)
+                for gpu_id in self.gpu_servers.keys() # Iterate over initialized GPUs only
             }
             
             for future in as_completed(future_to_gpu):
@@ -440,7 +451,7 @@ class GPUServerManager:
                     'generation_time': generation_time,
                     'ply_size_bytes': len(ply_data),
                     'compression_ratio': compression_ratio,
-                    'response_headers': dict(response.headers)
+                    'response_headers': dict(response.headers),
                 }
                 
                 logger.info(f"   ✅ GPU {gpu_id} primed successfully in {generation_time:.2f}s")
@@ -480,7 +491,7 @@ class GPUServerManager:
             logger.error(f"   ❌ GPU {gpu_id} priming exception: {e}")
             return result
     
-    def prime_all_gpus_parallel(self) -> List[Dict[str, Any]]:
+    def prime_all_gpus_parallel(self, prompt: Optional[str] = None) -> List[Dict[str, Any]]:
         """Prime all GPUs simultaneously with parallel generation"""
         logger.info("🚀 Priming all GPUs in parallel...")
         
@@ -490,8 +501,8 @@ class GPUServerManager:
         # Prime all GPUs simultaneously
         with ThreadPoolExecutor(max_workers=self.num_gpus) as executor:
             future_to_gpu = {
-                executor.submit(self.prime_single_gpu, gpu_id): gpu_id 
-                for gpu_id in range(self.num_gpus)
+                executor.submit(self.prime_single_gpu, gpu_id, prompt): gpu_id 
+                for gpu_id in self.gpu_servers.keys() # Iterate over initialized GPUs only
             }
             
             for future in as_completed(future_to_gpu):
@@ -556,7 +567,7 @@ class GPUServerManager:
         with ThreadPoolExecutor(max_workers=self.num_gpus) as executor:
             future_to_gpu = {
                 executor.submit(self._test_single_gpu_validation, gpu_id): gpu_id 
-                for gpu_id in range(self.num_gpus)
+                for gpu_id in self.gpu_servers.keys() # Iterate over initialized GPUs only
             }
             
             for future in as_completed(future_to_gpu):
@@ -743,6 +754,7 @@ class GPUServerManager:
             result = {
                 'success': False,
                 'gpu_id': gpu_id,
+                'prompt': prompt,
                 'error': str(e),
                 'validation_time': 0.0,
                 'total_time': 0.0,
@@ -893,7 +905,7 @@ class GPUServerManager:
         logger.info(f"🎯 Test 1: Consistency test with prompt: '{test_prompt}'")
         
         consistency_results = {}
-        for gpu_id in range(self.num_gpus):
+        for gpu_id in self.gpu_servers.keys(): # Iterate over initialized GPUs only
             try:
                 result = self.prime_single_gpu(gpu_id, test_prompt)
                 if result.get('success', False):
@@ -914,7 +926,7 @@ class GPUServerManager:
         try:
             import torch
             if torch.cuda.is_available():
-                for gpu_id in range(self.num_gpus):
+                for gpu_id in self.gpu_servers.keys(): # Iterate over initialized GPUs only
                     memory_allocated = torch.cuda.memory_allocated(gpu_id) / 1024**3  # GB
                     memory_reserved = torch.cuda.memory_reserved(gpu_id) / 1024**3  # GB
                     logger.info(f"   GPU {gpu_id}: {memory_allocated:.2f}GB allocated, {memory_reserved:.2f}GB reserved")
@@ -1170,8 +1182,8 @@ def signal_handler(signum, frame):
 async def main():
     """Main function"""
     parser = argparse.ArgumentParser(description="GPU Server Wrapper for TRELLIS")
-    parser.add_argument("--gpus", type=int, default=8, help="Number of GPUs to use")
-    parser.add_argument("--base-port", type=int, default=8096, help="Base port number")
+    parser.add_argument("--gpus", type=int, default=8, help="Number of GPUs to use (default: 8)")
+    parser.add_argument("--base-port", type=int, default=8096, help="Base port number (default: 8096)")
     parser.add_argument("--server-script", default="trellis_subnit_server_mix_lora_flash.py", 
                        help="TRELLIS server script path")
     parser.add_argument("--output-dir", default="./gpu_server_outputs", help="Output directory")
@@ -1182,6 +1194,7 @@ async def main():
     parser.add_argument("--show-ranking", action="store_true", help="Show current performance ranking and exit")
     parser.add_argument("--run-additional-tests", action="store_true", help="Run additional tests (consistency, memory, latency)")
     parser.add_argument("--show-validation-results", action="store_true", help="Show validation results table from JSON files")
+    parser.add_argument("--target-gpu", type=int, help="Specify a single GPU to run the server on (e.g., --target-gpu 1)")
     
     args = parser.parse_args()
     
@@ -1190,12 +1203,26 @@ async def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Create GPU server manager
-    manager = GPUServerManager(
-        num_gpus=args.gpus,
-        base_port=args.base_port,
-        server_script=args.server_script,
-        output_dir=args.output_dir
-    )
+    if args.target_gpu is not None:
+        if not (0 <= args.target_gpu < args.gpus):
+            logger.error(f"❌ Invalid --target-gpu specified: {args.target_gpu}. Must be between 0 and {args.gpus-1}.")
+            sys.exit(1)
+        
+        logger.info(f"🚀 Initializing manager for single GPU: {args.target_gpu}")
+        manager = GPUServerManager(
+            num_gpus=1, # Explicitly set to 1 since we're targeting a single GPU
+            base_port=args.base_port, 
+            server_script=args.server_script,
+            output_dir=args.output_dir,
+            target_gpu=args.target_gpu # Pass the target GPU to the manager
+        )
+    else:
+        manager = GPUServerManager(
+            num_gpus=args.gpus,
+            base_port=args.base_port,
+            server_script=args.server_script,
+            output_dir=args.output_dir
+        )
     
     # Store manager reference for signal handler
     signal_handler.manager = manager
@@ -1211,10 +1238,10 @@ async def main():
             needs_loading_count = sum(1 for status in loading_status.values() if status == "needs_loading")
             
             logger.info("📊 GPU Loading Status Summary:")
-            logger.info(f"   Already Loaded: {already_loaded_count}/{args.gpus}")
-            logger.info(f"   Needs Loading: {needs_loading_count}/{args.gpus}")
+            logger.info(f"   Already Loaded: {already_loaded_count}/{manager.num_gpus}") # Use manager.num_gpus
+            logger.info(f"   Needs Loading: {needs_loading_count}/{manager.num_gpus}") # Use manager.num_gpus
             
-            if already_loaded_count == args.gpus:
+            if already_loaded_count == manager.num_gpus:
                 logger.info("🎉 All GPUs are ready for use!")
             elif already_loaded_count > 0:
                 logger.info(f"🔄 {already_loaded_count} GPUs ready, {needs_loading_count} need loading")
@@ -1264,14 +1291,14 @@ async def main():
             loading_status = manager.check_gpu_loading_status()
             already_loaded_count = sum(1 for status in loading_status.values() if status == "already_loaded")
             
-            if already_loaded_count == args.gpus:
+            if already_loaded_count == manager.num_gpus: # Use manager.num_gpus
                 logger.info("✅ All GPUs are already loaded and ready!")
                 # Update status to healthy for already loaded GPUs
                 for gpu_id, status in loading_status.items():
                     if status == "already_loaded":
                         manager.gpu_servers[gpu_id].status = "healthy"
             else:
-                logger.info(f"🚀 Starting servers on {args.gpus - already_loaded_count} GPUs that need loading...")
+                logger.info(f"🚀 Starting servers on {manager.num_gpus - already_loaded_count} GPUs that need loading...") # Use manager.num_gpus
                 if not manager.start_all_servers():
                     logger.error("❌ Failed to start GPU servers")
                     return
@@ -1288,7 +1315,7 @@ async def main():
                 logger.error("❌ No healthy servers found after startup")
                 return
             
-            logger.info(f"✅ {healthy_count}/{args.gpus} servers are healthy and ready")
+            logger.info(f"✅ {healthy_count}/{manager.num_gpus} servers are healthy and ready") # Use manager.num_gpus
         else:
             logger.info("⏭️ Skipping server startup (assume already running)")
             manager.check_all_servers_health()
