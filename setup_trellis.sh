@@ -31,7 +31,7 @@ git checkout -b trellis
 git config pull.rebase true
 git config --global user.email "manojbhat09@gmail.com"
 git config --global user.name "manojbhat09"
-git pull origin rl_control #trellis
+git pull origin multi_a600ada_3dereg #trellis
 
 
 echo "Installing system dependencies..."
@@ -73,7 +73,7 @@ conda activate trellis_new
 echo "Cloning and setting up TRELLIS..."
 git clone --recurse-submodules https://github.com/microsoft/TRELLIS.git
 cd "$WORKSPACE_DIR/three-gen-subnet-trellis/TRELLIS"
-./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast
+./setup.sh --basic --xformers --flash-attn --diffoctreerast --spconv --mipgaussian --kaolin --nvdiffrast --vox2seq
 cd ..
 
 echo "Installing requirements for TRELLIS-TextoImagen3D..."
@@ -100,13 +100,24 @@ mkdir ~/.bittensor
 mkdir ~/.bittensor/wallets
 mv home/mbhat/.bittensor/wallets/* ~/.bittensor/wallets/
 
+# Append conda init to bashrc (if not already done)
+echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
+
+# Activate the conda environment automatically on shell start
+echo "conda activate trellis_new" >> ~/.bashrc
+echo "source /home/mbhat/miniconda/bin/activate && conda activate trellis_new" >> ~/.bashrc
+
+echo "Installing validation requirements"
+cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
+pip install -r requirements_validation.txt
+
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
 apt-get install tmux --yes
 tmux new-session -d -s trellis_session
 tmux new-session -d -s trellis_session2
 tmux new-session -d -s trellis_session3
-tmux send-keys -t trellis_session2 'ollama serve' C-m
+tmux send-keys -t trellis_session2 'curl -fsSL https://ollama.com/install.sh | sh && ollama --version && ollama serve' C-m
 tmux send-keys -t trellis_session3 'ollama pull llama3.2:3b && ollama run llama3.2:3b' C-m
 
 # Pane 0: Run the server
@@ -126,5 +137,6 @@ tmux send-keys -t trellis_session.1 "source $WORKSPACE_DIR/miniconda/bin/activat
 
 echo "Attaching to tmux session..."
 tmux attach-session -t trellis_session
+
 
 echo "=== Setup Complete ==="
