@@ -505,6 +505,12 @@ class ValidatorState:
     # Emergency cooldown management
     emergency_blacklist_until: Optional[float] = None
     last_violation_check: Optional[float] = None
+    
+    # FIXED: Separate miner and validator cooldown tracking (subnet compliance)
+    validator_enforced_cooldown_until: Optional[float] = None  # Validator's exact cooldown
+    miner_cooldown_until: Optional[float] = None              # Miner's own cooldown logic
+    validator_reported_violations: int = 0                    # Violations reported by validator
+    pending_cooldown_task_id: Optional[str] = None            # Task ID that has pending cooldown
 
     def __post_init__(self):
         if self.recent_prompts is None:
@@ -1710,6 +1716,9 @@ class ContinuousTrellisOrchestrator:
             'max_adaptive_backoff': 600,  # Maximum adaptive backoff duration (10 minutes)
             'critical_violation_cooldown': 3600,  # Emergency cooldown duration for critical violations
             'base_blacklist_duration': 1800,  # Base duration for temporary blacklisting
+            
+            # Cooldown system control
+            'disable_all_cooldowns': False,  # Global cooldown disable flag
         }
     
     def _setup_bittensor(self) -> bool:
@@ -1887,6 +1896,31 @@ class ContinuousTrellisOrchestrator:
         
         return is_blacklisted
     
+    def _is_validator_on_cooldown(self, validator: ValidatorState) -> tuple[bool, str, float]:
+        """
+        Check if validator is on any type of cooldown.
+        
+        Returns:
+            Tuple of (is_on_cooldown, cooldown_type, remaining_seconds)
+        """
+        # Check if cooldowns are globally disabled
+        if self.config.get('disable_all_cooldowns', False):
+            return False, "none", 0.0
+        
+        current_time = time.time()
+        
+        # Check validator-enforced cooldown first (highest priority)
+        if validator.validator_enforced_cooldown_until and current_time < validator.validator_enforced_cooldown_until:
+            remaining = validator.validator_enforced_cooldown_until - current_time
+            return True, "validator", remaining
+        
+        # Check miner cooldown (only if no validator cooldown is active)
+        if validator.miner_cooldown_until and current_time < validator.miner_cooldown_until:
+            remaining = validator.miner_cooldown_until - current_time
+            return True, "miner", remaining
+        
+        return False, "none", 0.0
+    
     def is_validator_available(self, validator: ValidatorState) -> bool:
         """Check if validator is available for task pulling"""
         current_time = time.time()
@@ -1907,12 +1941,35 @@ class ContinuousTrellisOrchestrator:
             self.logger.warning(f"🚨 Validator UID {validator.uid} not available: EMERGENCY BLACKLIST ({remaining:.1f}s remaining)")
             return False
         
-        # Enhanced cooldown checking (maintains existing protocol compliance)
-        if validator.cooldown_until and current_time < validator.cooldown_until:
-            cooldown_remaining = validator.cooldown_until - current_time
-            cooldown_status = self.get_cooldown_status(validator)
-            self.logger.debug(f"⏳ Validator UID {validator.uid} not available: COOLDOWN ({cooldown_status})")
+        # Enhanced cooldown checking using helper method (subnet compliant)
+        is_cooldown, cooldown_type, remaining = self._is_validator_on_cooldown(validator)
+        if is_cooldown:
+            if cooldown_type == "validator":
+                self.logger.debug(f"⏳ Validator UID {validator.uid} not available: VALIDATOR COOLDOWN ({remaining:.1f}s remaining)")
+            else:
+                self.logger.debug(f"⏳ Validator UID {validator.uid} not available: MINER COOLDOWN ({remaining:.1f}s remaining)")
             return False
+        
+        # FIXED: Check if we have a pending cooldown that should be enforced now
+        # Only enforce if we've actually completed the pending task
+        if validator.validator_enforced_cooldown_until:
+            current_time = time.time()
+            if current_time < validator.validator_enforced_cooldown_until:
+                # Check if we have a pending task - if so, allow one more pull to complete it
+                if validator.pending_cooldown_task_id:
+                    # We have a pending task - allow processing to complete it
+                    remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
+                    self.logger.debug(f"⏳ Pending cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s - allowing completion of task {validator.pending_cooldown_task_id}")
+                else:
+                    # No pending task - enforce the cooldown
+                    remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
+                    self.logger.info(f"⏳ Enforcing validator cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s remaining")
+                    return False
+            else:
+                # Pending cooldown has expired - clear it
+                validator.validator_enforced_cooldown_until = None
+                validator.pending_cooldown_task_id = None
+                self.logger.info(f"✅ Validator cooldown for UID {validator.uid} has expired")
         
         # Check validation lock (new enhanced feature)
         if validator.validation_locked_until and current_time < validator.validation_locked_until:
@@ -1931,7 +1988,7 @@ class ContinuousTrellisOrchestrator:
         self.logger.debug(f"✅ Validator UID {validator.uid} is AVAILABLE for task pulling")
         return True
     
-    def set_validator_cooldown(self, validator: ValidatorState, cooldown_seconds: int, reason: str, task_id: str = None, prompt: str = None):
+    def set_validator_cooldown(self, validator: ValidatorState, cooldown_seconds: int, reason: str, task_id: str = None, prompt: str = None, cooldown_type: str = "miner"):
         """
         Set a cooldown period for a validator with proper logging and duration limits.
         Now supports traffic-specific cooldowns based on subnet requirements.
@@ -1957,8 +2014,16 @@ class ContinuousTrellisOrchestrator:
         max_cooldown = self.config.get('max_cooldown_duration', 300)
         cooldown_seconds = min(cooldown_seconds, max_cooldown)
         
-        # Set cooldown
-        validator.cooldown_until = time.time() + cooldown_seconds
+        # Set cooldown based on type (subnet compliant)
+        current_time = time.time()
+        if cooldown_type == "validator":
+            validator.validator_enforced_cooldown_until = current_time + cooldown_seconds
+            self.logger.info(f"🔒 Validator-enforced cooldown set for UID {validator.uid}: {cooldown_seconds}s ({reason})")
+        else:
+            validator.miner_cooldown_until = current_time + cooldown_seconds
+            # Maintain backward compatibility
+            validator.cooldown_until = current_time + cooldown_seconds
+            self.logger.info(f"⏳ Miner cooldown set for UID {validator.uid}: {cooldown_seconds}s ({reason})")
         
         # Log cooldown with human-readable duration and traffic type info
         if self.config.get('enable_cooldown_logging', True):
