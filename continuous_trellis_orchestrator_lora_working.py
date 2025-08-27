@@ -10,6 +10,12 @@ Features:
 - Comprehensive statistics and JSON logging
 - Always-on generation server integration
 - PRIORITY-BASED server coordination for time-critical tasks
+
+python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18
+ --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"
+
+ython continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18
+ --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
@@ -208,7 +214,271 @@ def run_validator(original_prompt: str, optimized_prompt: str, endpoint: str, po
         print(f"❌ Sync validation error: {e}")
         return {"error": f"Validation error: {e}"}
 
+'''
+# vLLM Optimization Methods
+def test_vllm_connection(vllm_port: int = 11300) -> bool:
+    """Test connection to vLLM server for optimization."""
+    try:
+        vllm_url = f"http://localhost:{vllm_port}/v1/models"
+        
+        print(f"🔍 Testing vLLM connection on port {vllm_port}")
+        
+        response = requests.get(vllm_url, timeout=10)
+        
+        if response.status_code == 200:
+            print(f"✅ vLLM connection test successful")
+            return True
+        else:
+            print(f"❌ vLLM connection test failed with status {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ vLLM connection test error: {e}")
+        return False
 
+
+def query_vllm_no_system_prompt(prompt: str, vllm_port: int = 11300) -> Optional[str]:
+    """
+    Query vLLM WITHOUT system prompt - just send raw prompt to completions endpoint.
+    This mimics the 'no system prompt' behavior from compare_system_vs_no_system.py
+    """
+    try:
+        vllm_url = f"http://localhost:{vllm_port}/v1/completions"
+        
+        # No system prompt - just send the raw prompt directly
+        payload = {
+            "model": "llama-3-2-3b-it",
+            "prompt": f"Please optimize this prompt for 3D generation: {prompt}",
+            "max_tokens": 200,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "stream": False
+        }
+        
+        print("📝 No system prompt - using raw prompt directly")
+        
+        response = requests.post(
+            vllm_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            full_response = result['choices'][0]['text'].strip()
+            
+            # Clean the response to extract just the optimized prompt
+            optimized_prompt = clean_vllm_response(full_response)
+            
+            print(f"✅ vLLM optimization successful (no system prompt):")
+            print(f"   Original: '{prompt}'")
+            print(f"   Optimized: '{optimized_prompt}'")
+            
+            return optimized_prompt
+        else:
+            print(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ vLLM optimization error: {e}")
+        return None
+
+
+def query_vllm_with_system_prompt_chat(prompt: str, vllm_port: int = 11300) -> Optional[str]:
+    """
+    Query vLLM WITH system prompt using chat completions endpoint.
+    Uses structured chat format with system/user/assistant messages.
+    """
+    try:
+        vllm_url = f"http://localhost:{vllm_port}/v1/chat/completions"
+        
+        # System prompt that explains the task
+        system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+        
+        # Format with system prompt (chat format)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Please optimize this prompt for 3D generation: {prompt}"}
+        ]
+        
+        payload = {
+            "model": "llama-3-2-3b-it",
+            "messages": messages,
+            "max_tokens": 200,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "stream": False
+        }
+        
+        print("📝 Using system prompt with chat completions")
+        
+        response = requests.post(
+            vllm_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            full_response = result['choices'][0]['message']['content'].strip()
+            
+            # Clean the response to extract just the optimized prompt
+            optimized_prompt = clean_vllm_response(full_response)
+            
+            print(f"✅ vLLM optimization successful (system prompt + chat):")
+            print(f"   Original: '{prompt}'")
+            print(f"   Optimized: '{optimized_prompt}'")
+            
+            return optimized_prompt
+        else:
+            print(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ vLLM optimization error: {e}")
+        return None
+
+
+def query_vllm_with_system_prompt_completions(prompt: str, vllm_port: int = 11300) -> Optional[str]:
+    """
+    Query vLLM WITH system prompt using completions endpoint.
+    Uses the same format as compare_system_vs_no_system.py with system prompt.
+    """
+    try:
+        vllm_url = f"http://localhost:{vllm_port}/v1/completions"
+        
+        # System prompt that explains the task (same as original script)
+        system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+        
+        # Format with system prompt (same format as original script)
+        formatted_prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\nPlease optimize this prompt for 3D generation: {prompt}<|im_start|>assistant\n"
+        
+        payload = {
+            "model": "llama-3-2-3b-it",
+            "prompt": formatted_prompt,
+            "max_tokens": 200,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "stream": False
+        }
+        
+        print("📝 Using system prompt with completions (like original script)")
+        
+        response = requests.post(
+            vllm_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            full_response = result['choices'][0]['text'].strip()
+            
+            print(f"✅ vLLM optimization successful (system prompt + completions):")
+            print(f"   Original: '{prompt}'")
+            print(f"   Optimized: '{full_response}'")
+            
+            return full_response
+        else:
+            print(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ vLLM optimization error: {e}")
+        return None
+
+
+def clean_vllm_response(full_response: str) -> str:
+    """Clean vLLM response to extract just the optimized prompt."""
+    # Extract just the optimized prompt part (remove explanatory text)
+    optimized_prompt = full_response
+    
+    # Remove common explanatory prefixes
+    prefixes_to_remove = [
+        "Here's an optimized prompt for 3D generation:",
+        "Here's an optimized version of the prompt for 3D generation:",
+        "To optimize the prompt for 3D generation, I would suggest the following:",
+        "Here's the optimized prompt:",
+        "Optimized prompt:",
+        "Here's an enhanced version:",
+        "Enhanced prompt:",
+        "Here's an optimized prompt for 3D generation of a golden statue:",
+        "Here's an optimized prompt for 3D generation of a",
+        "Here's an optimized prompt for 3D generation:",
+        "Here's the optimized prompt:",
+        "Optimized prompt:",
+        "Enhanced prompt:",
+        "Here's an enhanced version:"
+    ]
+    
+    for prefix in prefixes_to_remove:
+        if optimized_prompt.startswith(prefix):
+            optimized_prompt = optimized_prompt[len(prefix):].strip()
+            break
+    
+    # Clean up the response (same cleaning as original script)
+    optimized_prompt = optimized_prompt.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+    optimized_prompt = ''.join(char for char in optimized_prompt if ord(char) >= 32 or char == ' ')
+    optimized_prompt = ' '.join(optimized_prompt.split())
+    
+    return optimized_prompt
+
+
+def optimize_prompt_with_vllm(prompt: str, vllm_port: int = 11300, priority: str = 'system_chat') -> Optional[str]:
+    """
+    Optimize prompt using vLLM with the configured priority method.
+    Returns optimized prompt or None if failed.
+    """
+    try:
+        # Test vLLM connection first
+        if not test_vllm_connection(vllm_port):
+            print(f"❌ vLLM connection test failed, skipping vLLM optimization")
+            return None
+        
+        print(f"🚀 Using vLLM optimization with priority: {priority}")
+        
+        # Try the priority method first
+        optimized_prompt = None
+        
+        if priority == 'system_chat':
+            optimized_prompt = query_vllm_with_system_prompt_chat(prompt, vllm_port)
+        elif priority == 'system_completions':
+            optimized_prompt = query_vllm_with_system_prompt_completions(prompt, vllm_port)
+        elif priority == 'no_system':
+            optimized_prompt = query_vllm_no_system_prompt(prompt, vllm_port)
+        
+        # If priority method failed, try fallback methods
+        if not optimized_prompt:
+            print(f"⚠️ Priority method {priority} failed, trying fallbacks...")
+            
+            if priority != 'system_chat':
+                optimized_prompt = query_vllm_with_system_prompt_chat(prompt, vllm_port)
+            
+            if not optimized_prompt and priority != 'system_completions':
+                optimized_prompt = query_vllm_with_system_prompt_completions(prompt, vllm_port)
+            
+            if not optimized_prompt and priority != 'no_system':
+                optimized_prompt = query_vllm_no_system_prompt(prompt, vllm_port)
+        
+        if optimized_prompt:
+            print(f"✅ vLLM optimization successful:")
+            print(f"   Method: {priority}")
+            print(f"   Original: '{prompt[:50]}...'")
+            print(f"   Optimized: '{optimized_prompt[:50]}...'")
+            
+            return optimized_prompt
+        else:
+            # All vLLM methods failed
+            print(f"❌ All vLLM optimization methods failed")
+            return None
+            
+    except Exception as e:
+        print(f"❌ vLLM optimization failed: {e}")
+        return None
+'''
 
 class PriorityServerCoordinator:
     """
@@ -216,7 +486,7 @@ class PriorityServerCoordinator:
     This allows time-critical subnet tasks to bypass or interrupt other processes.
     """
     
-    def __init__(self, server_url: str = "http://localhost:8097", 
+    def __init__(self, server_url: str = "http://localhost:8096", 
                  max_wait_time_seconds: int = 60,
                  status_check_interval: int = 1,
                  priority_timeout: int = 30,
@@ -542,7 +812,7 @@ class ValidatorStatePersistence:
             state_data = {
                 'saved_at': current_time,
                 'saved_at_readable': datetime.fromtimestamp(current_time).isoformat(),
-                'version': '1.0',
+                'version': '2.0',
                 'validators': {}
             }
             
@@ -557,6 +827,12 @@ class ValidatorStatePersistence:
                     'cooldown_until': validator.cooldown_until,
                     'cooldown_violations': validator.cooldown_violations,
                     'throttle_period': validator.throttle_period,
+
+                    # FIXED: Add subnet-compliant cooldown fields
+                    'validator_enforced_cooldown_until': validator.validator_enforced_cooldown_until,
+                    'miner_cooldown_until': validator.miner_cooldown_until,
+                    'validator_reported_violations': validator.validator_reported_violations,
+                    'pending_cooldown_task_id': validator.pending_cooldown_task_id,
                     
                     # Validation and emergency state (CRITICAL)
                     'validation_locked_until': validator.validation_locked_until,
@@ -1380,13 +1656,13 @@ class ContinuousTrellisOrchestrator:
                 
                 if not gold_standard_results:
                     print(f"❌ No gold prompts found from logs")
-                    return {"error": "No gold prompts found from logs"}
+                    # return {"error": "No gold prompts found from logs"}
                 
                 print(f"✅ Gold prompts loaded: {len(gold_standard_results)} prompts")
                 
             except Exception as e:
                 print(f"❌ Failed to get gold prompts: {e}")
-                return {"error": f"Gold prompt loading failed: {e}"}
+                # return {"error": f"Gold prompt loading failed: {e}"}
 
             self.reproducibility_system = LLMClosePromptReproducibility(
                 episodic_memory_file="episodic_logs_first/episodic_memory.json",
@@ -1412,7 +1688,7 @@ class ContinuousTrellisOrchestrator:
         
         # Priority server coordinator
         self.priority_coordinator = PriorityServerCoordinator(
-            server_url=self.config.get('generation_server_url', 'http://localhost:8097'),
+            server_url=self.config.get('generation_server_url', 'http://localhost:8096'),
             max_wait_time_seconds=self.config.get('priority_access_max_wait', 60),
             status_check_interval=self.config.get('priority_access_check_interval', 1),
             priority_timeout=self.config.get('priority_access_timeout', 30),
@@ -1459,6 +1735,7 @@ class ContinuousTrellisOrchestrator:
             'validators_reset_from_emergency': 0,  # Total validators reset from emergency restrictions
             'dynamic_cooldown_scaling': 0,  # Total times dynamic cooldown scaling was applied
             'dynamic_buffer_applied': 0,  # Total times dynamic buffer was applied
+            'emergency_state_recoveries': 0,
             # State persistence statistics
             'validators_restored_from_disk': 0,  # Total validators restored from disk
             'violations_restored_from_disk': 0,  # Total validators with violations restored
@@ -1472,6 +1749,15 @@ class ContinuousTrellisOrchestrator:
             'total_gold_prompts_available': 0,  # Track total available gold prompts
             'memory_prompts': 0,  # Track prompts from episodic memory
             'log_prompts': 0,  # Track prompts from recent logs
+            
+            # NEW: vLLM optimization statistics
+            'vllm_optimizations': 0,
+            'vllm_system_chat_success': 0,
+            'vllm_system_completions_success': 0,
+            'vllm_no_system_success': 0,
+            'vllm_failures': 0,
+            'vllm_connection_tests': 0,
+            'vllm_connection_success': 0,
         }
         
         # Dynamic system management attributes
@@ -1486,6 +1772,7 @@ class ContinuousTrellisOrchestrator:
         # Register shutdown handlers for state persistence
         self._register_shutdown_handlers()
         
+        '''
         # Preload CLIP model for faster inference
         self.clip_analyzer = None
         try:
@@ -1497,11 +1784,32 @@ class ContinuousTrellisOrchestrator:
         except Exception as e:
             self.logger.warning(f"⚠️ CLIP model preloading failed: {e}")
             self.clip_analyzer = None
-        
+        '''
         self.logger.info("🎯 Continuous TRELLIS Orchestrator initialized")
         self.logger.info(f"   Output directory: {self.output_dir}")
         self.logger.info(f"   Generation server: {self.config['generation_server_url']}")
         self.logger.info(f"   Validation server: {self.config['validation_server_url']}")
+        
+        # Log vLLM optimization configuration
+        if self.config.get('use_vllm_optim', False):
+            self.logger.info(f"🚀 vLLM Optimization: ENABLED on port {self.config.get('vllm_optim_port', 11300)}")
+            if self.config.get('use_system_prompt', False):
+                self.logger.info(f"📝 System Prompts: ENABLED")
+            else:
+                self.logger.info(f"📝 System Prompts: DISABLED")
+            priority = self.config.get('vllm_optimization_priority', 'system_chat')
+            self.logger.info(f"🎯 vLLM Optimization Priority: {priority}")
+        else:
+            self.logger.info(f"🔧 vLLM Optimization: DISABLED (using original prompts)")
+        
+        # Log LoRA configuration
+        if self.config.get('enable_lora_routing', True):
+            self.logger.info(f"🎯 LoRA Routing: ENABLED (confidence threshold: {self.config.get('lora_routing_confidence_threshold', 0.5)})")
+        else:
+            self.logger.info(f"🎯 LoRA Routing: DISABLED")
+        
+        default_lora = self.config.get('default_lora', 'cinema')
+        self.logger.info(f"🎨 Default LoRA: {default_lora}")
         
         # Initialize gold prompts count and setup real-time learning if enabled
         if REPRODUCIBILITY_SYSTEM_AVAILABLE and self.reproducibility_system:
@@ -1593,7 +1901,7 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"🔄 Reproducibility optimization: DISABLED")
         else:
             self.logger.info(f"🔧 Prompt optimization: DISABLED")
-        self.trellis_server_url: str = "http://localhost:8097"
+        self.trellis_server_url: str = "http://localhost:8096"
 
     def get_clip_analyzer(self):
         """Get the preloaded CLIP analyzer"""
@@ -1625,7 +1933,7 @@ class ContinuousTrellisOrchestrator:
             'enable_validator_blacklisting': True,
             
             # Server settings
-            'generation_server_url': 'http://localhost:8097',
+            'generation_server_url': 'http://localhost:8096',
             'validation_server_url': 'http://localhost:10006',
             
             # Operation settings
@@ -1664,6 +1972,9 @@ class ContinuousTrellisOrchestrator:
             # LoRA routing settings
             'enable_lora_routing': True,  # Enable intelligent LoRA routing
             'lora_routing_confidence_threshold': 0.5,  # Minimum confidence for LoRA routing
+            
+            # LoRA selection setting
+            'default_lora': 'cinema',  # Default LoRA when router is not available
 
             # Priority access settings
             'priority_access_max_wait': 60, # Max seconds to wait for priority access
@@ -1682,8 +1993,14 @@ class ContinuousTrellisOrchestrator:
             
             # vLLM settings
             'use_vllm': False,  # Use vLLM instead of Ollama
-            'vllm_url': 'http://localhost:9000',  # vLLM server URL
+            'vllm_url': 'http://localhost:11300',  # vLLM server URL
             'vllm_model': 'llama-3-2-3b-it',  # vLLM model name
+            
+            # NEW: vLLM optimization settings
+            'use_vllm_optim': True,        # Use vLLM for prompt optimization
+            'vllm_optim_port': 11300,       # vLLM port for prompt optimization
+            'use_system_prompt': True,     # Use system prompts during inference
+            'vllm_optimization_priority': 'system_chat',  # Priority: 'system_chat', 'system_completions', 'no_system'
             
             # Shared task tracking settings
             'enable_task_tracking': True,  # Enable shared task tracking to prevent duplicate processing
@@ -1924,6 +2241,9 @@ class ContinuousTrellisOrchestrator:
     def is_validator_available(self, validator: ValidatorState) -> bool:
         """Check if validator is available for task pulling"""
         current_time = time.time()
+
+        # FIXED: Emergency state recovery check for 100% compliance
+        self._recover_from_emergency_state(validator)
         
         # Check if validator is active
         if not validator.is_active:
@@ -2000,10 +2320,19 @@ class ContinuousTrellisOrchestrator:
             task_id: Task ID for traffic type detection
             prompt: Task prompt for traffic type detection
         """
+        traffic_type = "Unknown"
         # Detect traffic type if task information is provided
         if task_id:
             traffic_type = self.detect_traffic_type(task_id, prompt)
             traffic_specific_cooldown = self.get_traffic_specific_cooldown(traffic_type)
+            
+            # ENFORCE traffic-specific cooldown minimums (subnet compliance)
+            if traffic_type == "Synthetic":
+                cooldown_seconds = max(cooldown_seconds, 300)  # Enforce 300s minimum for synthetic
+                self.logger.info(f"🔒 SYNTHETIC traffic detected - enforcing minimum 300s cooldown")
+            elif traffic_type == "Organic":
+                cooldown_seconds = max(cooldown_seconds, 120)  # Enforce 120s minimum for organic
+                self.logger.info(f"🍃 ORGANIC traffic detected - enforcing minimum 120s cooldown")
             
             # Use traffic-specific cooldown if it's different from the provided one
             if traffic_specific_cooldown != cooldown_seconds:
@@ -2501,12 +2830,15 @@ class ContinuousTrellisOrchestrator:
             
             # Only update if the new cooldown is more restrictive
             if not old_cooldown or new_cooldown > old_cooldown:
-                validator.cooldown_until = new_cooldown
+                # validator.cooldown_until = new_cooldown
+                 # FIXED: Update BOTH old and new cooldown fields for subnet compliance
+                validator.cooldown_until = new_cooldown  # Backward compatibility
+                validator.validator_enforced_cooldown_until = new_cooldown  # New subnet field
                 sync_results['cooldown_updated'] = True
                 
                 if new_cooldown > current_time:
                     remaining = new_cooldown - current_time
-                    self.logger.warning(f"🔄 Synchronized cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
+                    self.logger.warning(f"🔄 Synchronized VALIDATOR-ENFORCED cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
                     
                     # Implement graceful degradation with backoff
                     backoff_duration = self._calculate_backoff_duration(validator, remaining)
@@ -2522,13 +2854,18 @@ class ContinuousTrellisOrchestrator:
             new_violations = response_data['cooldown_violations']
             
             if new_violations != old_violations:
-                validator.cooldown_violations = new_violations
+                # validator.cooldown_violations = new_violations
+                
+                # FIXED: Update BOTH old and new violation fields for subnet compliance
+                validator.cooldown_violations = new_violations  # Backward compatibility
+                validator.validator_reported_violations = new_violations  # New subnet field
                 sync_results['violations_updated'] = True
                 
                 if new_violations > old_violations:
                     violation_increase = new_violations - old_violations
-                    self.logger.error(f"🔄 Synchronized violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
-                    
+                    # self.logger.error(f"🔄 Synchronized violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
+                    self.logger.error(f"🔄 Synchronized VALIDATOR-REPORTED violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
+
                     # Implement adaptive backoff based on violation increase
                     if violation_increase > 10:
                         adaptive_backoff = self._calculate_adaptive_backoff(validator, violation_increase)
@@ -2547,6 +2884,29 @@ class ContinuousTrellisOrchestrator:
                 validator.throttle_period = new_throttle
                 sync_results['throttle_updated'] = True
                 self.logger.debug(f"🔄 Synchronized throttle for UID {validator.uid}: {new_throttle}s")
+        
+        # FIXED: Add missing synchronization fields for 100% compliance
+        # Synchronize violation history for adaptive backoff
+        if 'violation_history' in response_data:
+            validator.violation_history = response_data['violation_history']
+            sync_results['violation_history_updated'] = True
+            self.logger.debug(f"🔄 Synchronized violation history for UID {validator.uid}")
+        
+        # Synchronize buffer history for emergency cooldown management
+        if 'buffer_history' in response_data:
+            validator.buffer_history = response_data['buffer_history']
+            sync_results['buffer_history_updated'] = True
+            self.logger.debug(f"🔄 Synchronized buffer history for UID {validator.uid}")
+        
+        # Synchronize emergency blacklist state
+        if 'emergency_blacklist_until' in response_data and response_data['emergency_blacklist_until']:
+            old_blacklist = validator.emergency_blacklist_until
+            new_blacklist = response_data['emergency_blacklist_until']
+            
+            if new_blacklist != old_blacklist:
+                validator.emergency_blacklist_until = new_blacklist
+                sync_results['emergency_blacklist_updated'] = True
+                self.logger.warning(f"🔄 Synchronized emergency blacklist for UID {validator.uid}: {new_blacklist}")
         
         return sync_results
     
@@ -2804,14 +3164,14 @@ class ContinuousTrellisOrchestrator:
                 status_parts.append("Cooldown expired")
             else:
                 remaining = int(validator.cooldown_until - current_time)
-            if remaining < 60:
-                        status_parts.append(f"Cooldown: {remaining}s remaining")
-            elif remaining < 3600:
-                        status_parts.append(f"Cooldown: {remaining//60}m {remaining%60}s remaining")
-            else:
-                hours = remaining // 3600
-                minutes = (remaining % 3600) // 60
-                status_parts.append(f"Cooldown: {hours}h {minutes}m remaining")
+                if remaining < 60:
+                    status_parts.append(f"Cooldown: {remaining}s remaining")
+                elif remaining < 3600:
+                    status_parts.append(f"Cooldown: {remaining//60}m {remaining%60}s remaining")
+                else:
+                    hours = remaining // 3600
+                    minutes = (remaining % 3600) // 60
+                    status_parts.append(f"Cooldown: {hours}h {minutes}m remaining")
         else:
             status_parts.append("No cooldown")
         
@@ -2980,6 +3340,12 @@ class ContinuousTrellisOrchestrator:
                     validator.last_submit_time = saved_state.get('last_submit_time')
                     validator.last_violation_check = saved_state.get('last_violation_check')
                     
+                    # FIXED: Restore subnet-compliant cooldown fields
+                    validator.validator_enforced_cooldown_until = saved_state.get('validator_enforced_cooldown_until')
+                    validator.miner_cooldown_until = saved_state.get('miner_cooldown_until')
+                    validator.validator_reported_violations = saved_state.get('validator_reported_violations', 0)
+                    validator.pending_cooldown_task_id = saved_state.get('pending_cooldown_task_id')
+                    
                     # Restore performance tracking
                     validator.total_tasks_received = saved_state.get('total_tasks_received', 0)
                     validator.total_tasks_submitted = saved_state.get('total_tasks_submitted', 0)
@@ -3003,7 +3369,11 @@ class ContinuousTrellisOrchestrator:
                     if validator.emergency_blacklist_until and time.time() < validator.emergency_blacklist_until:
                         blacklisted_count += 1
                         validator.is_active = False  # Ensure blacklisted validators are inactive
-                    if validator.cooldown_until and time.time() < validator.cooldown_until:
+                    # if validator.cooldown_until and time.time() < validator.cooldown_until:
+                    # FIXED: Count cooldowns using new subnet-compliant fields
+                    current_time = time.time()
+                    if (validator.validator_enforced_cooldown_until and current_time < validator.validator_enforced_cooldown_until) or \
+                       (validator.miner_cooldown_until and current_time < validator.miner_cooldown_until):
                         cooldown_count += 1
                     
                     # Log restoration for validators with critical states
@@ -3090,6 +3460,49 @@ class ContinuousTrellisOrchestrator:
         
         self.logger.info("🔒 Registered shutdown handlers for state persistence")
     
+    def _recover_from_emergency_state(self, validator: ValidatorState):
+        """
+        FIXED: Emergency state recovery logic for 100% compliance.
+        Gracefully recovers validators from emergency states.
+        
+        Args:
+            validator: The validator to recover
+        """
+        current_time = time.time()
+        recovered = False
+        
+        # Recover from emergency blacklist
+        if validator.emergency_blacklist_until and current_time >= validator.emergency_blacklist_until:
+            validator.emergency_blacklist_until = None
+            validator.is_active = True
+            self.logger.info(f"✅ UID {validator.uid} recovered from emergency blacklist")
+            recovered = True
+        
+        # Recover from validation lock
+        if validator.validation_locked_until and current_time >= validator.validation_locked_until:
+            validator.validation_locked_until = None
+            self.logger.info(f"✅ UID {validator.uid} recovered from validation lock")
+            recovered = True
+        
+        # Recover from expired cooldowns
+        if validator.validator_enforced_cooldown_until and current_time >= validator.validator_enforced_cooldown_until:
+            validator.validator_enforced_cooldown_until = None
+            validator.pending_cooldown_task_id = None
+            self.logger.info(f"✅ UID {validator.uid} recovered from validator-enforced cooldown")
+            recovered = True
+        
+        if validator.miner_cooldown_until and current_time >= validator.miner_cooldown_until:
+            validator.miner_cooldown_until = None
+            self.logger.info(f"✅ UID {validator.uid} recovered from miner cooldown")
+            recovered = True
+        
+        # Track recovery statistics
+        if recovered:
+            self.stats['emergency_state_recoveries'] = self.stats.get('emergency_state_recoveries', 0) + 1
+            self.logger.info(f"🔄 UID {validator.uid} emergency state recovery completed")
+        
+        return recovered
+
     # async def pull_task_from_validator(self, validator: ValidatorState) -> Optional[TaskRecord]:
     #     """Pull task from a specific validator with deduplication"""
     #     try:
@@ -3451,7 +3864,394 @@ class ContinuousTrellisOrchestrator:
             import traceback
             traceback.print_exc()
             return {}
-    
+
+    def _clean_vllm_response(self, full_response: str) -> str:
+        """Clean vLLM response to extract just the optimized prompt."""
+        # Extract just the optimized prompt part (remove explanatory text)
+        optimized_prompt = full_response
+        
+        # Remove common explanatory prefixes
+        prefixes_to_remove = [
+            "Here's an optimized prompt for 3D generation:",
+            "Here's an optimized version of the prompt for 3D generation:",
+            "To optimize the prompt for 3D generation, I would suggest the following:",
+            "Here's the optimized prompt:",
+            "Optimized prompt:",
+            "Here's an enhanced version:",
+            "Enhanced prompt:",
+            "Here's an optimized prompt for 3D generation of a golden statue:",
+            "Here's an optimized prompt for 3D generation of a",
+            "Here's an optimized prompt for 3D generation:",
+            "Here's the optimized prompt:",
+            "Optimized prompt:",
+            "Enhanced prompt:",
+            "Here's an enhanced version:", 
+            "Heres an optimized version of the prompt ",
+        ]
+        
+        for prefix in prefixes_to_remove:
+            if optimized_prompt.startswith(prefix):
+                optimized_prompt = optimized_prompt[len(prefix):].strip()
+                break
+        
+        # Remove ALL quotes from the prompt (both single and double quotes)
+        # This prevents shell argument parsing issues
+        # optimized_prompt = optimized_prompt.replace('"', '').replace("'", '')
+        
+        # Additional shell-safe cleanup to prevent bash syntax errors
+        self.logger.debug(f"🔧 Cleaning prompt for shell safety...")
+        self.logger.debug(f"   Original length: {len(optimized_prompt)} chars")
+        
+        # Check for quotes safely
+        has_quotes = '"' in optimized_prompt or "'" in optimized_prompt
+        self.logger.debug(f"   Contains quotes: {has_quotes}")
+        
+        optimized_prompt = self._clean_prompt_for_shell(optimized_prompt)
+        
+        self.logger.debug(f"   Cleaned length: {len(optimized_prompt)} chars")
+        self.logger.debug(f"   Final prompt: '{optimized_prompt[:100]}...'")
+        
+        # Clean up the response (same cleaning as original script)
+        optimized_prompt = optimized_prompt.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        optimized_prompt = ''.join(char for char in optimized_prompt if ord(char) >= 32 or char == ' ')
+        optimized_prompt = ' '.join(optimized_prompt.split())
+        
+        # Final validation: ensure the prompt is safe for shell execution
+        if not self._is_shell_safe(optimized_prompt):
+            self.logger.warning(f"⚠️ Prompt still contains shell-unsafe characters, applying aggressive cleaning")
+            # Remove all non-alphanumeric characters except spaces, dots, and hyphens
+            import re
+            optimized_prompt = re.sub(r'[^\w\s\.\-]', '', optimized_prompt)
+            optimized_prompt = ' '.join(optimized_prompt.split())
+        
+        return optimized_prompt
+
+    def _clean_prompt_for_shell(self, prompt: str) -> str:
+        """Clean prompt for safe use in shell commands by removing problematic characters."""
+        # Remove or replace characters that can cause bash syntax errors
+        cleaned_prompt = prompt
+        
+        # CRITICAL: Fix unmatched quotes first - this is the main cause of bash syntax errors
+        # Count quotes and ensure they're balanced
+        single_quotes = cleaned_prompt.count("'")
+        double_quotes = cleaned_prompt.count('"')
+        
+        # If we have unmatched quotes, remove them completely to prevent bash errors
+        if single_quotes % 2 != 0:  # Odd number of single quotes
+            self.logger.warning(f"⚠️ Unmatched single quotes detected ({single_quotes}), removing all single quotes")
+            cleaned_prompt = cleaned_prompt.replace("'", "")
+        
+        if double_quotes % 2 != 0:  # Odd number of double quotes
+            self.logger.warning(f"⚠️ Unmatched double quotes detected ({double_quotes}), removing all double quotes")
+            cleaned_prompt = cleaned_prompt.replace('"', "")
+        
+        # Remove parentheses and brackets that can cause bash syntax issues
+        cleaned_prompt = cleaned_prompt.replace('(', '').replace(')', '')
+        cleaned_prompt = cleaned_prompt.replace('[', '').replace(']', '')
+        cleaned_prompt = cleaned_prompt.replace('{', '').replace('}', '')
+        
+        # Remove or replace other problematic characters
+        cleaned_prompt = cleaned_prompt.replace('`', "'")  # Replace backticks with single quotes
+        cleaned_prompt = cleaned_prompt.replace('$', 'dollar')  # Replace $ with text
+        cleaned_prompt = cleaned_prompt.replace('&', 'and')  # Replace & with text
+        cleaned_prompt = cleaned_prompt.replace('|', 'or')  # Replace | with text
+        cleaned_prompt = cleaned_prompt.replace(';', '.')  # Replace ; with .
+        cleaned_prompt = cleaned_prompt.replace('\\', '/')  # Replace backslashes with forward slashes
+        
+        # Remove any remaining special shell characters that could cause issues
+        import re
+        cleaned_prompt = re.sub(r'[^\w\s\.\,\-\_\#]', '', cleaned_prompt)
+        
+        # Clean up extra whitespace
+        cleaned_prompt = ' '.join(cleaned_prompt.split())
+        
+        # Final safety check: ensure no quotes remain
+        if "'" in cleaned_prompt or '"' in cleaned_prompt:
+            self.logger.warning(f"⚠️ Quotes still present after cleaning, removing all quotes")
+            cleaned_prompt = cleaned_prompt.replace("'", "").replace('"', "")
+        
+        return cleaned_prompt
+
+    def _is_shell_safe(self, prompt: str) -> bool:
+        """Check if a prompt is safe for shell execution."""
+        # Check for dangerous shell characters
+        dangerous_chars = ['"', "'", '`', '$', '&', '|', ';', '\\', '(', ')', '[', ']', '{', '}']
+        
+        for char in dangerous_chars:
+            if char in prompt:
+                return False
+        
+        # Check for unbalanced quotes (shouldn't happen after cleaning, but double-check)
+        if prompt.count('"') % 2 != 0 or prompt.count("'") % 2 != 0:
+            return False
+        
+        return True
+
+    def query_vllm_no_system_prompt(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITHOUT system prompt - just send raw prompt to completions endpoint.
+        This mimics the 'no system prompt' behavior from compare_system_vs_no_system.py
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/completions"
+            
+            # No system prompt - just send the raw prompt directly
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "prompt": f"Please optimize this prompt for 3D generation: {prompt}",
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 No system prompt - using raw prompt directly")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['text'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (no system prompt):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_no_system_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def query_vllm_with_system_prompt_chat(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITH system prompt using chat completions endpoint.
+        Uses structured chat format with system/user/assistant messages.
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/chat/completions"
+            
+            # System prompt that explains the task
+            system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+            
+            # Format with system prompt (chat format)
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Please optimize this prompt for 3D generation: {prompt}"}
+            ]
+            
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "messages": messages,
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 Using system prompt with chat completions")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['message']['content'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (system prompt + chat):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_system_chat_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def query_vllm_with_system_prompt_completions(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITH system prompt using completions endpoint.
+        Uses the same format as compare_system_vs_no_system.py with system prompt.
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/completions"
+            
+            # System prompt that explains the task (same as original script)
+            system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+            
+            # Format with system prompt (same format as original script)
+            formatted_prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\nPlease optimize this prompt for 3D generation: {prompt}<|im_end|>\n<|im_start|>assistant\n"
+            
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "prompt": formatted_prompt,
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 Using system prompt with completions (like original script)")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['text'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (system prompt + completions):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_system_completions_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def test_vllm_connection(self, vllm_port: int = 11300) -> bool:
+        """Test connection to vLLM server for optimization."""
+        try:
+            vllm_url = f"http://localhost:{vllm_port}/v1/models"
+            
+            print(f"🔍 Testing vLLM connection on port {vllm_port}")
+            
+            response = requests.get(vllm_url, timeout=10)
+            
+            if response.status_code == 200:
+                print(f"✅ vLLM connection test successful")
+                return True
+            else:
+                print(f"❌ vLLM connection test failed with status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ vLLM connection test error: {e}")
+            return False
+
+        
+    def optimize_prompt_with_vllm(self, task: TaskRecord) -> Optional[str]:
+        """
+        Optimize prompt using vLLM with the configured priority method.
+        Returns optimized prompt or None if failed.
+        """
+        try:
+            if not self.config.get('use_vllm_optim', False):
+                return None
+            
+            # Test vLLM connection first
+            if not self.test_vllm_connection(vllm_port=self.config.get('vllm_optim_port', 11300)):
+                self.logger.error(f"❌ vLLM connection test failed, skipping vLLM optimization")
+                return None
+            
+            priority = self.config.get('vllm_optimization_priority', 'system_chat')
+            original_prompt = task.prompt
+            
+            self.logger.info(f"🚀 Using vLLM optimization with priority: {priority}")
+            
+            # Try the priority method first
+            optimized_prompt = None
+            method_used = None
+            
+            if priority == 'system_chat':
+                optimized_prompt = self.query_vllm_with_system_prompt_chat(original_prompt)
+                method_used = 'system_chat'
+            elif priority == 'system_completions':
+                optimized_prompt = self.query_vllm_with_system_prompt_completions(original_prompt)
+                method_used = 'system_completions'
+            elif priority == 'no_system':
+                optimized_prompt = self.query_vllm_no_system_prompt(original_prompt)
+                method_used = 'no_system'
+            
+            # If priority method failed, try fallback methods
+            if not optimized_prompt:
+                self.logger.warning(f"⚠️ Priority method {priority} failed, trying fallbacks...")
+                
+                if priority != 'system_chat':
+                    optimized_prompt = self.query_vllm_with_system_prompt_chat(original_prompt)
+                    method_used = 'system_chat_fallback'
+                
+                if not optimized_prompt and priority != 'system_completions':
+                    optimized_prompt = self.query_vllm_with_system_prompt_completions(original_prompt)
+                    method_used = 'system_completions_fallback'
+                
+                if not optimized_prompt and priority != 'no_system':
+                    optimized_prompt = self.query_vllm_no_system_prompt(original_prompt)
+                    method_used = 'no_system_fallback'
+            
+            if optimized_prompt:
+                # Update task record with vLLM optimization details
+                task.vllm_optimization_method = method_used
+                task.vllm_optimized_prompt = optimized_prompt
+                task.vllm_optimization_success = True
+                
+                # Track successful vLLM optimization
+                self.stats['vllm_optimizations'] += 1
+                
+                self.logger.info(f"✅ vLLM optimization successful:")
+                self.logger.info(f"   Method: {method_used}")
+                self.logger.info(f"   Original: '{original_prompt[:50]}...'")
+                self.logger.info(f"   Optimized: '{optimized_prompt[:50]}...'")
+                
+                return optimized_prompt
+            else:
+                # All vLLM methods failed
+                task.vllm_optimization_success = False
+                self.logger.error(f"❌ All vLLM optimization methods failed")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization failed: {e}")
+            task.vllm_optimization_success = False
+            return None
+            
     def get_deterministic_seed(self, task: TaskRecord) -> int:
         """Generate deterministic seed based on prompt for consistent results with variety"""
         if self.config.get('use_fixed_seed', True):
@@ -3541,17 +4341,37 @@ class ContinuousTrellisOrchestrator:
         try:
             # Step 1: Route to optimal LoRA first
             # lora_info = self.route_prompt_to_optimal_lora(task)
+            default_lora = self.config.get('default_lora', 'cinema')
             lora_info = {
-                'lora_name': 'cinema',
-                'endpoint': '/generate/cinema/',
-                'reasoning': 'Default model (LoRA router not available)',
+                'lora_name': default_lora,
+                'endpoint': f'/generate/{default_lora.lower().replace(" ", "_")}/',
+                'reasoning': f'Default model: {default_lora} (LoRA router not available)',
                 'confidence': 'High'
             }
             # Step 2: Optimize prompt based on selected LoRA
             optimized_prompt = task.prompt  # Default to original
             
             if self.config.get('enable_prompt_optimization', True):
-                # Check if reproducibility system is available and enabled
+                # Step 1: Try vLLM optimization first if enabled
+                if self.config.get('use_vllm_optim', True):
+                    vllm_optimized_prompt = self.optimize_prompt_with_vllm(
+                        task
+                    )
+                    if vllm_optimized_prompt:
+                        self.logger.info(f"🚀 vLLM optimization successful, using vLLM result")
+                        optimized_prompt = vllm_optimized_prompt
+                        self.stats['vllm_optimizations'] = self.stats.get('vllm_optimizations', 0) + 1
+                        return {
+                            'optimized_prompt': optimized_prompt,
+                            'lora_info': lora_info,
+                            'endpoint': lora_info['endpoint'],
+                            'original_prompt': task.prompt,
+                            'method': f"vllm_{self.config.get('vllm_optimization_priority', 'system_chat')}"
+                        }
+                    else:
+                        self.logger.warning(f"⚠️ vLLM optimization failed, falling back to other methods")
+                
+                # Step 2: Check if reproducibility system is available and enabled
                 if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
                     self.reproducibility_system and 
                     self.config.get('enable_reproducibility_optimization', True)):
@@ -3621,6 +4441,14 @@ class ContinuousTrellisOrchestrator:
                                     self.logger.info(f"   Original: '{task.prompt}'")
                                 
                                 result = self.prompt_optimizer.optimize_with_examples(task.prompt)
+                                if 'error' in result.lower():
+                                    self.logger.error(f"❌ Traditional optimization failed: {result['error']}")
+                                    return {
+                                        'optimized_prompt': task.prompt,
+                                        'lora_info': lora_info,
+                                        'endpoint': lora_info['endpoint'],
+                                        'original_prompt': task.prompt
+                                    }
                                 optimized_prompt = result
                                 confidence = 0.8
                                 
@@ -3699,106 +4527,107 @@ class ContinuousTrellisOrchestrator:
             self.logger.warning(f"[TRELLIS] Exception clearing GPU cache: {e}")
 
 
-    # async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
-    #     """Generate 3D model using TRELLIS server with prompt optimization"""
-    #     self.logger.info(f"🎨 Generating 3D model: '{task.prompt}' (task: {task.task_id})")
+    async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
+        """Generate 3D model using TRELLIS server with prompt optimization"""
+        self.logger.info(f"🎨 Generating 3D model: '{task.prompt}' (task: {task.task_id})")
         
-    #     try:
-    #         # CRITICAL: Wait for priority access to the server
-    #         # This is where we ensure subnet tasks get priority over optimizer tasks
-    #         if not self.priority_coordinator.wait_for_priority_access(task.task_id):
-    #             self.logger.error(f"❌ PRIORITY ACCESS TIMEOUT for task {task.task_id} - subnet task will be missed!")
-    #             task.priority_access_timeout = True  # Mark this task as having priority access timeout
-    #             return None
+        try:
+            # CRITICAL: Wait for priority access to the server
+            # This is where we ensure subnet tasks get priority over optimizer tasks
+            if not self.priority_coordinator.wait_for_priority_access(task.task_id):
+                self.logger.error(f"❌ PRIORITY ACCESS TIMEOUT for task {task.task_id} - subnet task will be missed!")
+                task.priority_access_timeout = True  # Mark this task as having priority access timeout
+                return None
             
-    #         # Mark the start of our priority job
-    #         self.priority_coordinator.mark_priority_job_start(task.task_id, task.prompt)
+            # Mark the start of our priority job
+            self.priority_coordinator.mark_priority_job_start(task.task_id, task.prompt)
             
-    #         # Step 1: Optimize prompt and route to optimal LoRA
-    #         optimization_result = self.optimize_prompt_for_generation(task)
-    #         optimized_prompt = optimization_result['optimized_prompt']
-    #         lora_info = optimization_result['lora_info']
-    #         endpoint = optimization_result['endpoint']
+            # Step 1: Optimize prompt and route to optimal LoRA
+            optimization_result = self.optimize_prompt_for_generation(task)
+            optimized_prompt = optimization_result['optimized_prompt']
+            lora_info = optimization_result['lora_info']
+            endpoint = optimization_result['endpoint']
             
-    #         # Step 1.5: Clean the optimized prompt to remove artifacts
-    #         cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
-    #         # Only add "white background" if it's not already present
-    #         # cleaned_prompt = optimized_prompt
-    #         if "white background" not in cleaned_prompt.lower():
-    #             cleaned_prompt = cleaned_prompt + " white background"
-    #         # Log the final optimization result
-    #         if self.config.get('log_optimization_details', True):
-    #             if optimized_prompt != task.prompt:
-    #                 self.logger.info(f"🎯 FINAL OPTIMIZATION RESULT:")
-    #                 self.logger.info(f"   Original: '{task.prompt}'")
-    #                 self.logger.info(f"   Optimized: '{optimized_prompt}'")
-    #                 self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
-    #                 self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
-    #             else:
-    #                 self.logger.info(f"ℹ️ No optimization applied - using original prompt")
-    #                 self.logger.info(f"   Prompt: '{task.prompt}'")
-    #                 self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
+            # Step 1.5: Clean the optimized prompt to remove artifacts
+            cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
+            # Only add "white background" if it's not already present
+            # cleaned_prompt = optimized_prompt
+            if "white background" not in cleaned_prompt.lower():
+                cleaned_prompt = cleaned_prompt + " front view, white background"
+            # Log the final optimization result
+            if self.config.get('log_optimization_details', True):
+                if optimized_prompt != task.prompt:
+                    self.logger.info(f"🎯 FINAL OPTIMIZATION RESULT:")
+                    self.logger.info(f"   Original: '{task.prompt}'")
+                    self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                    self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
+                    self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
+                else:
+                    self.logger.info(f"ℹ️ No optimization applied - using original prompt")
+                    self.logger.info(f"   Prompt: '{task.prompt}'")
+                    self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
             
-    #         # Clear cache on the server using priority coordinator
-    #         self.priority_coordinator.clear_server_cache()
+            # Clear cache on the server using priority coordinator
+            self.priority_coordinator.clear_server_cache()
 
-    #         # Step 2: Get deterministic seed
-    #         deterministic_seed = self.get_deterministic_seed(task)
-    #         self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed}")
-    #         self.logger.info(f"   �� Using LoRA: {lora_info['lora_name']} via {endpoint}")
+            # Step 2: Get deterministic seed
+            deterministic_seed = self.get_deterministic_seed(task)
+            self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed}")
+            self.logger.info(f"   �� Using LoRA: {lora_info['lora_name']} via {endpoint}")
             
-    #         generation_start = time.time()
+            generation_start = time.time()
             
-    #         # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
-    #         full_url = f"{self.config['generation_server_url']}{endpoint}"
-    #         response = requests.post(
-    #             full_url,
-    #             data={
-    #                 'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
-    #                 'seed': deterministic_seed,  # Use deterministic seed
-    #                 'return_compressed': True
-    #             },
-    #             timeout=self.config['generation_timeout']
-    #         )
+            # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+            full_url = f"{self.config['generation_server_url']}{endpoint}"
+            response = requests.post(
+                full_url,
+                data={
+                    'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                    'seed': deterministic_seed,  # Use deterministic seed
+                    'return_compressed': True
+                },
+                timeout=self.config['generation_timeout']
+            )
             
-    #         generation_time = time.time() - generation_start
-    #         task.generation_time = generation_time
+            generation_time = time.time() - generation_start
+            task.generation_time = generation_time
             
-    #         if response.status_code == 200:
-    #             ply_data = response.content
+            if response.status_code == 200:
+                ply_data = response.content
                 
-    #             # Get metadata from headers to check compression status
-    #             compression_ratio = response.headers.get('X-Compression-Ratio', 'unknown')
+                # Get metadata from headers to check compression status
+                compression_ratio = response.headers.get('X-Compression-Ratio', 'unknown')
 
-    #             # Save PLY file
-    #             if self.config['save_intermediate_results']:
-    #                 timestamp = int(time.time())
-    #                 ply_file = self.output_dir / f"task_{task.task_id}_{timestamp}.ply.spz"
-    #                 with open(ply_file, 'wb') as f:
-    #                     f.write(ply_data)
-    #                 task.compressed_file_path = str(ply_file)
+                # Save PLY file
+                if self.config['save_intermediate_results']:
+                    timestamp = int(time.time())
+                    ply_file = self.output_dir / f"task_{task.task_id}_{timestamp}.ply.spz"
+                    with open(ply_file, 'wb') as f:
+                        f.write(ply_data)
+                    task.compressed_file_path = str(ply_file)
                 
-    #             self.logger.info(f"✅ Generation successful in {generation_time:.2f}s ({len(ply_data):,} bytes)")
+                self.logger.info(f"✅ Generation successful in {generation_time:.2f}s ({len(ply_data):,} bytes)")
                 
-    #             self.stats['successful_generations'] += 1
-    #             self.stats['total_generation_time'] += generation_time
+                self.stats['successful_generations'] += 1
+                self.stats['total_generation_time'] += generation_time
                 
-    #             # Mark the completion of our priority job
-    #             self.priority_coordinator.mark_priority_job_end(task.task_id)
+                # Mark the completion of our priority job
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
                 
-    #             return {'ply_data': ply_data, 'compression_ratio': compression_ratio}
-    #         else:
-    #             self.logger.error(f"❌ Generation failed: HTTP {response.status_code}")
-    #             # Mark the completion of our priority job even on failure
-    #             self.priority_coordinator.mark_priority_job_end(task.task_id)
-    #             return None
+                return {'ply_data': ply_data, 'compression_ratio': compression_ratio}
+            else:
+                self.logger.error(f"❌ Generation failed: HTTP {response.status_code}")
+                # Mark the completion of our priority job even on failure
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return None
         
-    #     except Exception as e:
-    #         self.logger.error(f"❌ Generation exception: {e}")
-    #         # Mark the completion of our priority job even on exception
-    #         self.priority_coordinator.mark_priority_job_end(task.task_id)
-    #         return None
+        except Exception as e:
+            self.logger.error(f"❌ Generation exception: {e}")
+            # Mark the completion of our priority job even on exception
+            self.priority_coordinator.mark_priority_job_end(task.task_id)
+            return None
 
+    '''
     async def generate_3d_model_clip(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
         """Generate 3D model using TRELLIS server with prompt optimization and CLIP comparison"""
         self.logger.info(f"🎨 Generating 3D model with CLIP comparison: '{task.prompt}' (task: {task.task_id})")
@@ -4177,6 +5006,7 @@ class ContinuousTrellisOrchestrator:
                 pass
             
             return None
+    '''
 
     # async def generate_3d_model(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
     #     """Generate 3D model using TRELLIS server with prompt optimization"""
@@ -4409,6 +5239,7 @@ class ContinuousTrellisOrchestrator:
             try:
                 from neurons.common.miner_license_consent_declaration import MINER_LICENSE_CONSENT_DECLARATION
             except ImportError:
+                # MINER_LICENSE_CONSENT_DECLARATION = "I, as a miner on SN17, have obtained all licenses, rights and consents required to use, reproduce, modify, display, distribute and make available my submitted results to this subnet and its end users"
                 MINER_LICENSE_CONSENT_DECLARATION = "I, as a miner on SN17, have obtained all licenses, rights and consents required to use, reproduce, modify, display, distribute and make available my submitted results to this subnet and its end users"
 
             message = f"{MINER_LICENSE_CONSENT_DECLARATION}{submit_time}{task.prompt}{neuron.hotkey}{self.wallet.hotkey.ss58_address}"
@@ -4435,7 +5266,7 @@ class ContinuousTrellisOrchestrator:
             )
             
             submit_time_elapsed = time.time() - start_time
-            # print("time elapsed: ", submit_time_elapsed)
+            print("time elapsed: ", submit_time_elapsed)
             task.submitted_at = time.time()
             
             # Calculate total processing time from validator response to submission
@@ -4537,8 +5368,8 @@ class ContinuousTrellisOrchestrator:
         
         try:
             # Step 1: Generate 3D model with priority access
-            # generation_result = await self.generate_3d_model(task)
-            generation_result = await self.generate_3d_model_clip(task)
+            generation_result = await self.generate_3d_model(task)
+            # generation_result = await self.generate_3d_model_clip(task)
             if not generation_result:
                 # Check if this was due to priority access timeout
                 if hasattr(task, 'priority_access_timeout') and task.priority_access_timeout:
@@ -4563,13 +5394,24 @@ class ContinuousTrellisOrchestrator:
             elapsed_time_since_pull = time_after_generation - task.pulled_at
 
             # If elapsed time is less than 17 seconds, wait until 18 seconds have passed
-            if elapsed_time_since_pull < 17.0:
-                wait_duration = 18.0 - elapsed_time_since_pull
+            if elapsed_time_since_pull < 10.0:
+                wait_duration = 10.0 - elapsed_time_since_pull
                 self.logger.info(f"⏳ Elapsed time since pull ({elapsed_time_since_pull:.2f}s) is < 17s. Waiting for {wait_duration:.2f}s to reach 18s before submission.")
                 await asyncio.sleep(wait_duration)
                 
             # Step 3: Submit results, passing the full generation result dictionary
             success = await self.submit_result(task, generation_result)
+            
+            # FIXED: Complete pending task cooldown logic
+            if success and task.validator_uid in self.validators:
+                validator = self.validators[task.validator_uid]
+                if validator.pending_cooldown_task_id == task.task_id:
+                    validator.pending_cooldown_task_id = None  # Clear pending task
+                    self.logger.info(f"✅ Pending cooldown task {task.task_id} completed for UID {validator.uid}")
+                    # Now enforce the cooldown if it's still active
+                    if validator.validator_enforced_cooldown_until and time.time() < validator.validator_enforced_cooldown_until:
+                        remaining = validator.validator_enforced_cooldown_until - time.time()
+                        self.logger.info(f"⏳ Enforcing cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
             
             # Save task record
             self.db.save_task(task)
@@ -4754,6 +5596,28 @@ class ContinuousTrellisOrchestrator:
             self.logger.info(f"🤖 vLLM Model: {self.config.get('vllm_model', 'llama-3-2-3b-it')}")
         else:
             self.logger.info(f"🤖 LLM Provider: Ollama ({self.config.get('ollama_url', 'http://localhost:11434')}")
+        
+        # vLLM optimization statistics
+        if self.config.get('use_vllm_optim', False):
+            self.logger.info(f"🚀 vLLM Optimization: ENABLED on port {self.config.get('vllm_optim_port', 11300)}")
+            if self.config.get('use_system_prompt', False):
+                self.logger.info(f"📝 System Prompts: ENABLED")
+            else:
+                self.logger.info(f"📝 System Prompts: DISABLED")
+            priority = self.config.get('vllm_optimization_priority', 'system_chat')
+            self.logger.info(f"🎯 vLLM Optimization Priority: {priority}")
+            
+            # vLLM performance statistics
+            self.logger.info(f"📊 vLLM Performance:")
+            self.logger.info(f"   Total optimizations: {self.stats.get('vllm_optimizations', 0)}")
+            self.logger.info(f"   System chat success: {self.stats.get('vllm_system_chat_success', 0)}")
+            self.logger.info(f"   System completions success: {self.stats.get('vllm_system_completions_success', 0)}")
+            self.logger.info(f"   No system success: {self.stats.get('vllm_no_system_success', 0)}")
+            self.logger.info(f"   Failures: {self.stats.get('vllm_failures', 0)}")
+            self.logger.info(f"   Connection tests: {self.stats.get('vllm_connection_tests', 0)}")
+            self.logger.info(f"   Connection success: {self.stats.get('vllm_connection_success', 0)}")
+        else:
+            self.logger.info(f"🔧 vLLM Optimization: DISABLED (using original prompts)")
         
         # LoRA routing statistics
         self.logger.info(f"LoRA routing decisions: {self.stats.get('lora_routing_decisions', 0)}")
@@ -5965,7 +6829,7 @@ async def main():
     parser.add_argument("--no-harvest", action="store_true", help="Disable task harvesting")
     parser.add_argument("--no-validate", action="store_true", help="Disable validation")
     parser.add_argument("--no-submit", action="store_true", help="Disable result submission")
-    parser.add_argument("--generation-server", default="http://localhost:8097", help="TRELLIS generation server URL")
+    parser.add_argument("--generation-server", default="http://localhost:8096", help="TRELLIS generation server URL")
     parser.add_argument("--validation-server", default="http://localhost:10006", help="Validation server URL")
     parser.add_argument("--output-dir", default="./continuous_trellis_outputs", help="Output directory")
     parser.add_argument("--min-score", type=float, default=0.3, help="Minimum local validation score")
@@ -5984,6 +6848,12 @@ async def main():
     parser.add_argument("--vllm-url", default="http://localhost:9000", help="URL for the vLLM server")
     parser.add_argument("--vllm-model", default="llama-3-2-3b-it", help="vLLM model name")
     
+    # NEW: vLLM optimization arguments
+    parser.add_argument("--vllm-optim", action="store_true", help="Use vLLM for prompt optimization (bypasses local optimizer)")
+    parser.add_argument("--vllm-optim-port", type=int, default=11300, help="vLLM port for prompt optimization (default: 11300)")
+    parser.add_argument("--system-prompt", action="store_true", help="Use system prompts during inference (activates trained behavior)")
+    parser.add_argument("--vllm-priority", type=str, default="system_chat", choices=["system_chat", "system_completions", "no_system"], help="vLLM optimization priority method (default: system_chat)")
+    
     # Reproducibility optimization arguments
     parser.add_argument("--no-reproducibility", action="store_true", help="Disable reproducibility optimization")
     parser.add_argument("--reproducibility-similarity", type=float, default=0.6, help="Minimum similarity threshold for reproducibility (default: 0.3)")
@@ -5991,6 +6861,9 @@ async def main():
     # LoRA routing arguments
     parser.add_argument("--no-lora-routing", action="store_true", help="Disable intelligent LoRA routing")
     parser.add_argument("--lora-confidence-threshold", type=float, default=0.5, help="Minimum confidence threshold for LoRA routing (default: 0.5)")
+    
+    # LoRA selection argument
+    parser.add_argument("--lora", type=str, default="cinema", help="Default LoRA to use when router is not available (default: Cinema Style)")
     
     # Determinism arguments
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
@@ -6070,6 +6943,12 @@ async def main():
     config['vllm_url'] = args.vllm_url
     config['vllm_model'] = args.vllm_model
     
+    # NEW: vLLM optimization configuration
+    config['use_vllm_optim'] = args.vllm_optim
+    config['vllm_optim_port'] = args.vllm_optim_port
+    config['use_system_prompt'] = args.system_prompt
+    config['vllm_optimization_priority'] = args.vllm_priority
+    
     # Reproducibility optimization configuration
     if args.no_reproducibility:
         config['enable_reproducibility_optimization'] = False
@@ -6079,6 +6958,9 @@ async def main():
     if args.no_lora_routing:
         config['enable_lora_routing'] = False
     config['lora_routing_confidence_threshold'] = args.lora_confidence_threshold
+    
+    # LoRA selection configuration
+    config['default_lora'] = args.lora
     
     # Determinism configuration
     if args.variable_seeds:

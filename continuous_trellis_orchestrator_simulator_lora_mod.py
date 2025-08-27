@@ -248,15 +248,15 @@ class ContinuousTrellisSimulator:
         
         # Generator endpoints mapping for LoRA routing
         self.generator_endpoints = {
-            "Patched Realism": "http://localhost:8096/generate_image/patched_realism/",
-            "Team Fortress 2 Style": "http://localhost:8096/generate_image/tf2_style/",
-            "Cartoon 3D Render": "http://localhost:8096/generate_image/cartoon_3d/",
-            "3D Game Assets": "http://localhost:8096/generate_image/game_assets/",
-            "Game Icon Institute": "http://localhost:8096/generate_image/sd15_game_icon/",
-            "Cinema Style": "http://localhost:8096/generate_image/cinema/",
-            "Flux Isometric 3D": "http://localhost:8096/generate_image/isometric_3d/",
-            "baolei": "http://localhost:8096/generate_image/baolei/",
-            "Necklace Style": "http://localhost:8096/generate_image/necklace/"
+            "Patched Realism": "http://localhost:8096/generate/patched_realism/",
+            "Team Fortress 2 Style": "http://localhost:8096/generate/tf2_style/",
+            "Cartoon 3D Render": "http://localhost:8096/generate/cartoon_3d/",
+            "3D Game Assets": "http://localhost:8096/generate/game_assets/",
+            "Game Icon Institute": "http://localhost:8096/generate/sd15_game_icon/",
+            "Cinema Style": "http://localhost:8096/generate/cinema/",
+            "Flux Isometric 3D": "http://localhost:8096/generate/isometric_3d/",
+            "baolei": "http://localhost:8096/generate/baolei/",
+            "Necklace Style": "http://localhost:8096/generate/necklace/"
         }
         
         # Load episodic memory for CLIP optimization
@@ -715,6 +715,10 @@ class ContinuousTrellisSimulator:
                     if self.config.get('lora', None) == "":     
                         selected_generator = ''
                         generator_endpoint = self.generator_endpoints['']
+                        task.selected_generator = selected_generator
+                    elif self.config.get('lora', None) == "cinema": 
+                        selected_generator = 'cinema'
+                        generator_endpoint = self.generator_endpoints[selected_generator]
                         task.selected_generator = selected_generator
                     else:
                         selected_generator = 'baolei'
@@ -1467,7 +1471,7 @@ async def main():
     parser.add_argument("--promptfile", required=True, help="Path to Python file with EPISODIC_TEST_PROMPTS list.")
     parser.add_argument("--no-validate", action="store_true", help="Disable local validation of generated models.")
     parser.add_argument("--generation-server", default="http://localhost:8096", help="TRELLIS generation server URL.")
-    parser.add_argument("--validation-server", default="http://localhost:10006", help="Validation server URL.")
+    parser.add_argument("--validation-server default="http://localhost:10006", help="Validation server URL.")
     parser.add_argument("--output-dir", default="./trellis_simulation_outputs", help="Output directory for logs and models.")
     parser.add_argument("--no-optimize", action="store_true", help="Disable prompt optimization.")
     parser.add_argument("--aggressive-optimize", action="store_true", help="Enable aggressive optimization mode.")

@@ -15,7 +15,9 @@ Features:
 python continuous_trellis_orchestrator_simulator_lora_mod_vllm.py --promptfile episodic_test_prompts.txt --no-lora-routing --no-reproducibility-check --no-clip-optimization --no-async  --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300
 
 python continuous_trellis_orchestrator_simulator_lora_mod_vllm.py --promptfile episodic_test_prompts.py --no-lora-routing --no-reproducibility-check --no-clip-optimization --no-async  --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --lora ""
-python finetune/merge_adapters.py   --base_model "unsloth/Llama-3.2-3B-Instruct"   --adapter_path outputs/sft_systemp_full_30_1000_training/checkpoint-step-140   --out_dir "merged_sft_model"   --dtype "float16"
+
+# Example with custom naming:
+python continuous_trellis_orchestrator_simulator_lora_mod_vllm.py --promptfile episodic_test_prompts.py --log-name my_custom_simulation.log --db-name my_custom_database.db
 """
 
 import asyncio
@@ -82,15 +84,34 @@ except ImportError:
     LORA_ROUTER_AVAILABLE = False
     print("⚠️ LoRA router not available")
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('continuous_trellis_simulator.log'),
-        logging.StreamHandler()
-    ]
-)
+
+def setup_logging(log_name: str = 'continuous_trellis_simulator.log'):
+    """Setup logging with custom log name"""
+    print(f"🔧 Setting up logging with file: {log_name}")
+    
+    # Remove any existing handlers to allow reconfiguration
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+        print(f"🗑️ Removed existing handler: {type(handler).__name__}")
+    
+    # Configure logging with custom log name
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_name),
+            logging.StreamHandler()
+        ]
+    )
+    
+    print(f"✅ Logging configured with file: {log_name}")
+    
+    # Update the global logger
+    global logger
+    logger = logging.getLogger(__name__)
+    return logger
+
+# Initialize default logger
 logger = logging.getLogger(__name__)
 
 # Simplified TaskRecord for simulation
@@ -223,12 +244,15 @@ class ContinuousTrellisSimulator:
     def __init__(self, config: Dict[str, Any]):
         self.config = self._get_default_config()
         self.config.update(config)
+        
         self.logger = logger
         
         self.output_dir = Path(self.config['output_dir'])
         self.output_dir.mkdir(exist_ok=True)
         
-        self.db = TaskDatabase(db_path=str(self.output_dir / "trellis_simulator_tasks.db"))
+        # Use custom database name if provided, otherwise use default
+        db_name = self.config.get('db_name', "trellis_simulator_tasks.db")
+        self.db = TaskDatabase(db_path=str(self.output_dir / db_name))
         
         self.running = False
         self.start_time = time.time()
@@ -272,15 +296,15 @@ class ContinuousTrellisSimulator:
         # Generator endpoints mapping for LoRA routing
         self.generator_endpoints = {
             "": "http://localhost:8096/generate/",
-            "Patched Realism": "http://localhost:8096/generate_image/patched_realism/",
-            "Team Fortress 2 Style": "http://localhost:8096/generate_image/tf2_style/",
-            "Cartoon 3D Render": "http://localhost:8096/generate_image/cartoon_3d/",
-            "3D Game Assets": "http://localhost:8096/generate_image/game_assets/",
-            "Game Icon Institute": "http://localhost:8096/generate_image/sd15_game_icon/",
-            "Cinema Style": "http://localhost:8096/generate_image/cinema/",
-            "Flux Isometric 3D": "http://localhost:8096/generate_image/isometric_3d/",
-            "baolei": "http://localhost:8096/generate_image/baolei/",
-            "Necklace Style": "http://localhost:8096/generate_image/necklace/"
+            "Patched Realism": "http://localhost:8096/generate/patched_realism/",
+            "Team Fortress 2 Style": "http://localhost:8096/generate/tf2_style/",
+            "Cartoon 3D Render": "http://localhost:8096/generate/cartoon_3d/",
+            "3D Game Assets": "http://localhost:8096/generate/game_assets/",
+            "Game Icon Institute": "http://localhost:8096/generate/sd15_game_icon/",
+            "Cinema Style": "http://localhost:8096/generate/cinema/",
+            "Flux Isometric 3D": "http://localhost:8096/generate/isometric_3d/",
+            "baolei": "http://localhost:8096/generate/baolei/",
+            "Necklace Style": "http://localhost:8096/generate/necklace/"
         }
         
         # Load episodic memory for CLIP optimization
@@ -330,6 +354,12 @@ class ContinuousTrellisSimulator:
         self.logger.info(f"   Generation server: {self.config['generation_server_url']}")
         self.logger.info(f"   Validation server: {self.config['validation_server_url']}")
         
+        # Log custom naming if used
+        if self.config.get('log_name') != 'continuous_trellis_simulator.log':
+            self.logger.info(f"   Custom log file: {self.config['log_name']}")
+        if self.config.get('db_name') != 'trellis_simulator_tasks.db':
+            self.logger.info(f"   Custom database: {self.config['db_name']}")
+        
         # Log optimization settings
         if self.config.get('enable_prompt_optimization', True):
             mode = "aggressive" if self.config.get('optimization_aggressive_mode', False) else "standard"
@@ -356,6 +386,7 @@ class ContinuousTrellisSimulator:
             self.logger.info(f"🎯 vLLM Optimization Priority: {priority}")
         else:
             self.logger.info(f"🔧 vLLM Optimization: DISABLED (using original prompts)")
+
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration"""
@@ -404,6 +435,10 @@ class ContinuousTrellisSimulator:
             # Asynchronous operation settings
             'max_concurrent_tasks': 5,      # Maximum number of concurrent task processing
             'enable_concurrent_processing': True,  # Enable fully asynchronous operations
+            
+            # Custom naming settings
+            'log_name': 'continuous_trellis_simulator.log',  # Custom log file name
+            'db_name': 'trellis_simulator_tasks.db',        # Custom database name
         }
 
     def test_vllm_connection(self) -> bool:
@@ -627,20 +662,98 @@ class ContinuousTrellisSimulator:
                 optimized_prompt = optimized_prompt[len(prefix):].strip()
                 break
         
-        # Remove quotes if present (handle both single and double quotes)
-        if (optimized_prompt.startswith('"') and optimized_prompt.endswith('"')) or \
-           (optimized_prompt.startswith("'") and optimized_prompt.endswith("'")):
-            optimized_prompt = optimized_prompt[1:-1].strip()
+        # Remove ALL quotes from the prompt (both single and double quotes)
+        # This prevents shell argument parsing issues
+        # optimized_prompt = optimized_prompt.replace('"', '').replace("'", '')
         
-        # Also remove any remaining quotes at the beginning or end
-        optimized_prompt = optimized_prompt.strip('"\'')
+        # Additional shell-safe cleanup to prevent bash syntax errors
+        self.logger.debug(f"🔧 Cleaning prompt for shell safety...")
+        self.logger.debug(f"   Original length: {len(optimized_prompt)} chars")
+        
+        # Check for quotes safely
+        has_quotes = '"' in optimized_prompt or "'" in optimized_prompt
+        self.logger.debug(f"   Contains quotes: {has_quotes}")
+        
+        optimized_prompt = self._clean_prompt_for_shell(optimized_prompt)
+        
+        self.logger.debug(f"   Cleaned length: {len(optimized_prompt)} chars")
+        self.logger.debug(f"   Final prompt: '{optimized_prompt[:100]}...'")
         
         # Clean up the response (same cleaning as original script)
         optimized_prompt = optimized_prompt.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
         optimized_prompt = ''.join(char for char in optimized_prompt if ord(char) >= 32 or char == ' ')
         optimized_prompt = ' '.join(optimized_prompt.split())
         
+        # Final validation: ensure the prompt is safe for shell execution
+        if not self._is_shell_safe(optimized_prompt):
+            self.logger.warning(f"⚠️ Prompt still contains shell-unsafe characters, applying aggressive cleaning")
+            # Remove all non-alphanumeric characters except spaces, dots, and hyphens
+            import re
+            optimized_prompt = re.sub(r'[^\w\s\.\-]', '', optimized_prompt)
+            optimized_prompt = ' '.join(optimized_prompt.split())
+        
         return optimized_prompt
+
+    def _clean_prompt_for_shell(self, prompt: str) -> str:
+        """Clean prompt for safe use in shell commands by removing problematic characters."""
+        # Remove or replace characters that can cause bash syntax errors
+        cleaned_prompt = prompt
+        
+        # CRITICAL: Fix unmatched quotes first - this is the main cause of bash syntax errors
+        # Count quotes and ensure they're balanced
+        single_quotes = cleaned_prompt.count("'")
+        double_quotes = cleaned_prompt.count('"')
+        
+        # If we have unmatched quotes, remove them completely to prevent bash errors
+        if single_quotes % 2 != 0:  # Odd number of single quotes
+            self.logger.warning(f"⚠️ Unmatched single quotes detected ({single_quotes}), removing all single quotes")
+            cleaned_prompt = cleaned_prompt.replace("'", "")
+        
+        if double_quotes % 2 != 0:  # Odd number of double quotes
+            self.logger.warning(f"⚠️ Unmatched double quotes detected ({double_quotes}), removing all double quotes")
+            cleaned_prompt = cleaned_prompt.replace('"', "")
+        
+        # Remove parentheses and brackets that can cause bash syntax issues
+        cleaned_prompt = cleaned_prompt.replace('(', '').replace(')', '')
+        cleaned_prompt = cleaned_prompt.replace('[', '').replace(']', '')
+        cleaned_prompt = cleaned_prompt.replace('{', '').replace('}', '')
+        
+        # Remove or replace other problematic characters
+        cleaned_prompt = cleaned_prompt.replace('`', "'")  # Replace backticks with single quotes
+        cleaned_prompt = cleaned_prompt.replace('$', 'dollar')  # Replace $ with text
+        cleaned_prompt = cleaned_prompt.replace('&', 'and')  # Replace & with text
+        cleaned_prompt = cleaned_prompt.replace('|', 'or')  # Replace | with text
+        cleaned_prompt = cleaned_prompt.replace(';', '.')  # Replace ; with .
+        cleaned_prompt = cleaned_prompt.replace('\\', '/')  # Replace backslashes with forward slashes
+        
+        # Remove any remaining special shell characters that could cause issues
+        import re
+        cleaned_prompt = re.sub(r'[^\w\s\.\,\-\_\#]', '', cleaned_prompt)
+        
+        # Clean up extra whitespace
+        cleaned_prompt = ' '.join(cleaned_prompt.split())
+        
+        # Final safety check: ensure no quotes remain
+        if "'" in cleaned_prompt or '"' in cleaned_prompt:
+            self.logger.warning(f"⚠️ Quotes still present after cleaning, removing all quotes")
+            cleaned_prompt = cleaned_prompt.replace("'", "").replace('"', "")
+        
+        return cleaned_prompt
+
+    def _is_shell_safe(self, prompt: str) -> bool:
+        """Check if a prompt is safe for shell execution."""
+        # Check for dangerous shell characters
+        dangerous_chars = ['"', "'", '`', '$', '&', '|', ';', '\\', '(', ')', '[', ']', '{', '}']
+        
+        for char in dangerous_chars:
+            if char in prompt:
+                return False
+        
+        # Check for unbalanced quotes (shouldn't happen after cleaning, but double-check)
+        if prompt.count('"') % 2 != 0 or prompt.count("'") % 2 != 0:
+            return False
+        
+        return True
 
     def optimize_prompt_with_vllm(self, task: TaskRecord) -> Optional[str]:
         """
@@ -1104,6 +1217,10 @@ class ContinuousTrellisSimulator:
                     if self.config.get('lora', None) == "":
                         generator_endpoint = self.generator_endpoints['']
                         task.selected_generator = ""
+                    elif self.config.get('lora', None) == "cinema": 
+                        selected_generator = 'cinema'
+                        generator_endpoint = self.generator_endpoints[selected_generator]
+                        task.selected_generator = selected_generator
                     else:
                         default_lora = self.config.get('default_lora', 'Cinema Style')
                         selected_generator = default_lora
@@ -1192,6 +1309,9 @@ class ContinuousTrellisSimulator:
             if optimized_prompt and optimized_prompt != original_prompt:
                 self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
                 self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
+                self.logger.info(f"      🔍 Shell safety check: {'✅ Safe' if self._is_shell_safe(optimized_prompt) else '⚠️ Unsafe'}")
+                self.logger.info(f"      📏 Final prompt length: {len(optimized_prompt)} chars")
+                
                 cmd = [
                     "bash", "-c",
                     f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" \"{optimized_prompt}\" {args}"
@@ -1431,6 +1551,13 @@ class ContinuousTrellisSimulator:
             self.logger.info(f"Current blacklist: {blacklist}")
             
         self.logger.info(f"Outputs saved in: {self.output_dir}")
+        
+        # Show custom naming information
+        if self.config.get('log_name') != 'continuous_trellis_simulator.log':
+            self.logger.info(f"Custom log file: {self.config['log_name']}")
+        if self.config.get('db_name') != 'trellis_simulator_tasks.db':
+            self.logger.info(f"Custom database: {self.config['db_name']}")
+            
         self.logger.info("="*60)
     
     def _load_episodic_memory(self):
@@ -1886,6 +2013,10 @@ async def main():
     parser.add_argument("--blacklist", type=int, nargs="*", default=[180], help="Validator UIDs to blacklist (default: [180])")
     parser.add_argument("--no-blacklist", action="store_true", help="Disable validator blacklisting")
     
+    # Custom naming arguments
+    parser.add_argument("--log-name", type=str, help="Custom name for the log file (default: continuous_trellis_simulator.log)")
+    parser.add_argument("--db-name", type=str, help="Custom name for the database file (default: trellis_simulator_tasks.db)")
+    
     args = parser.parse_args()
     
     config = {
@@ -1930,7 +2061,16 @@ async def main():
         # Validator blacklisting configuration
         'enable_validator_blacklisting': not args.no_blacklist,
         'validator_blacklist': args.blacklist if args.blacklist is not None else [180],
+        
+        # Custom naming settings
+        'log_name': args.log_name if args.log_name else 'continuous_trellis_simulator.log',
+        'db_name': args.db_name if args.db_name else 'trellis_simulator_tasks.db',
     }
+    
+    # Setup logging with custom log name before creating simulator
+    if args.log_name:
+        setup_logging(args.log_name)
+        print(f"📝 Using custom log file: {args.log_name}")
     
     simulator = ContinuousTrellisSimulator(config)
     await simulator.run_simulation()

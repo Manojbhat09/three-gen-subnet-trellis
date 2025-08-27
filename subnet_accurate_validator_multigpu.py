@@ -145,7 +145,7 @@ def generate_and_get_ply_data(
     
     import requests
     print(f"🎨 Generating 3D model for: '{prompt}'")
-    
+
     try:
         # Always include tuning params for both image and 3D generation endpoints
         payload = {

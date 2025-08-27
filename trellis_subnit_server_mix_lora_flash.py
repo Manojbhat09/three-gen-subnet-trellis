@@ -1189,6 +1189,13 @@ class TrellisGenerator:
             return False
             
         lora_config = lora_configs[lora_key]
+        
+        # Check if the same LoRA is already loaded
+        current_lora = GENERATION_CONFIG.get('current_lora')
+        if current_lora == lora_key:
+            print(f"✅ {current_model.upper()} LoRA '{lora_config['name']}' is already loaded, skipping reload")
+            return True
+        
         print(f"🔧 Loading {current_model.upper()} LoRA: {lora_config['name']}")
         
         try:

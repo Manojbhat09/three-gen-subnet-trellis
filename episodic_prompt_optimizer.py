@@ -29,6 +29,8 @@ Options:
 
 Example:
     CUDA_VISIBLE_DEVICES=2 python episodic_prompt_optimizer.py --episodes 15 --target 0.95 --max-rounds 2 --log-dir episodic_logs_first --endpoint "generate/cinema/" --ollama-url http://localhost:11434 --port 8097
+
+     CUDA_VISIBLE_DEVICES=0 python episodic_prompt_optimizer.py --episodes 2 --target 0.95 --max-rounds 6 --log-dir episodic_logs_new --endpoint "generate/cinema/" --vllm --vllm-url http://localhost:11300 --port 8096 --vllm-model "llama-3-2-3b-it"  
 """
 
 import json
