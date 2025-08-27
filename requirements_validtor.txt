@@ -4,3 +4,4 @@ pytod
 torchmetrics
 pybase64
 zstandard
+git+https://github.com/nerfstudio-project/gsplat.git@v1.4.0

@@ -10,9 +10,12 @@ Features:
 - FULLY ASYNCHRONOUS operations for concurrent task processing
 - Advanced LoRA routing and CLIP optimization
 - Configurable concurrency limits for optimal performance
+- vLLM prompt optimization with three approaches
 
-python continuous_trellis_orchestrator_simulator_lora_mod.py --promptfile episodic_test_prompts.txt --no-lora-routing --no-reproducibility-check --no-clip-optimization --no-async 
+python continuous_trellis_orchestrator_simulator_lora_mod_vllm.py --promptfile episodic_test_prompts.txt --no-lora-routing --no-reproducibility-check --no-clip-optimization --no-async  --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300
 
+python continuous_trellis_orchestrator_simulator_lora_mod_vllm.py --promptfile episodic_test_prompts.py --no-lora-routing --no-reproducibility-check --no-clip-optimization --no-async  --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --lora ""
+python finetune/merge_adapters.py   --base_model "unsloth/Llama-3.2-3B-Instruct"   --adapter_path outputs/sft_systemp_full_30_1000_training/checkpoint-step-140   --out_dir "merged_sft_model"   --dtype "float16"
 """
 
 import asyncio
@@ -41,10 +44,19 @@ except ImportError:
     TORCH_AVAILABLE = False
     print("⚠️ PyTorch not available - CUDA cache management disabled")
 
+import sys
+from unittest.mock import MagicMock
+
+# Create a mock module for the problematic import
+mock_llm_optimizer = MagicMock()
+mock_llm_optimizer.LLMPromptOptimizer = MagicMock()
+sys.modules['llm_prompt_optimizer_v12_f1'] = mock_llm_optimizer
+
+
 # Import the prompt optimizer
 try:
     from llm_prompt_optimizer_v12_f1 import LLMPromptOptimizer
-    OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = True
+    OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = False
     print("✅ Using new performance-optimized prompt optimizer")
 except ImportError:
     from prompt_optimizer import TrellisPromptOptimizer
@@ -121,6 +133,10 @@ class TaskRecord:
     pattern_analysis_used: Optional[bool] = None
     llm_optimization_attempts: Optional[int] = None
     final_optimized_prompt: Optional[str] = None
+    # NEW: vLLM optimization fields
+    vllm_optimization_method: Optional[str] = None  # "no_system", "system_chat", "system_completions"
+    vllm_optimized_prompt: Optional[str] = None
+    vllm_optimization_success: Optional[bool] = None
 
 
 class TaskDatabase:
@@ -223,15 +239,22 @@ class ContinuousTrellisSimulator:
         self.task_semaphore = asyncio.Semaphore(self.config.get('max_concurrent_tasks', 5))
         
         # Initialize prompt optimizer
-        if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
+        if self.config.get('use_vllm_optim', False):
+            # vLLM is enabled - skip local prompt optimizer initialization
+            self.prompt_optimizer = None
+            self.logger.info("🚀 vLLM optimization enabled - skipping local prompt optimizer initialization")
+        elif OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
             self.prompt_optimizer = LLMPromptOptimizer(model="llama3.2:3b")
             self.logger.info("🚀 Initialized performance-optimized prompt optimizer")
         else:
-            self.prompt_optimizer = TrellisPromptOptimizer()
+            # self.prompt_optimizer = TrellisPromptOptimizer()
             self.logger.info("🔧 Initialized standard prompt optimizer")
         
-        # Initialize reproducibility system
-        if REPRODUCIBILITY_SYSTEM_AVAILABLE:
+        if self.config.get('use_vllm_optim', False):
+            # vLLM is enabled - skip reproducibility system initialization
+            self.reproducibility_system = None
+            self.logger.info("🚀 vLLM optimization enabled - skipping reproducibility system initialization")
+        elif REPRODUCIBILITY_SYSTEM_AVAILABLE:
             self.reproducibility_system = LLMClosePromptReproducibility()
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
@@ -248,6 +271,7 @@ class ContinuousTrellisSimulator:
         
         # Generator endpoints mapping for LoRA routing
         self.generator_endpoints = {
+            "": "http://localhost:8096/generate/",
             "Patched Realism": "http://localhost:8096/generate_image/patched_realism/",
             "Team Fortress 2 Style": "http://localhost:8096/generate_image/tf2_style/",
             "Cartoon 3D Render": "http://localhost:8096/generate_image/cartoon_3d/",
@@ -288,6 +312,14 @@ class ContinuousTrellisSimulator:
             'clip_feedback_optimizations': 0,
             'advanced_optimizations': 0,
             'basic_optimizations': 0,
+            # NEW: vLLM optimization statistics
+            'vllm_optimizations': 0,
+            'vllm_system_chat_success': 0,
+            'vllm_system_completions_success': 0,
+            'vllm_no_system_success': 0,
+            'vllm_failures': 0,
+            'vllm_connection_tests': 0,
+            'vllm_connection_success': 0,
             # Async operations statistics
             'concurrent_tasks_processed': 0,
             'blacklisted_validators_skipped': 0,
@@ -312,6 +344,18 @@ class ContinuousTrellisSimulator:
                 self.logger.info(f"🔄 Reproducibility optimization: DISABLED")
         else:
             self.logger.info(f"🔧 Prompt optimization: DISABLED")
+        
+        # Log vLLM optimization configuration
+        if self.config.get('use_vllm_optim', False):
+            self.logger.info(f"🚀 vLLM Optimization: ENABLED on port {self.config.get('vllm_optim_port', 11300)}")
+            if self.config.get('use_system_prompt', False):
+                self.logger.info(f"📝 System Prompts: ENABLED")
+            else:
+                self.logger.info(f"📝 System Prompts: DISABLED")
+            priority = self.config.get('vllm_optimization_priority', 'system_chat')
+            self.logger.info(f"🎯 vLLM Optimization Priority: {priority}")
+        else:
+            self.logger.info(f"🔧 vLLM Optimization: DISABLED (using original prompts)")
 
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration"""
@@ -344,6 +388,15 @@ class ContinuousTrellisSimulator:
             'enable_clip_feedback_optimization': True,
             'target_clip_score': 0.8,
             
+            # NEW: vLLM optimization settings
+            'use_vllm_optim': False,        # Use vLLM for prompt optimization
+            'vllm_optim_port': 11300,       # vLLM port for prompt optimization
+            'use_system_prompt': False,     # Use system prompts during inference
+            'vllm_optimization_priority': 'system_chat',  # Priority: 'system_chat', 'system_completions', 'no_system'
+            
+            # LoRA selection setting
+            'default_lora': 'Cinema Style',  # Default LoRA when router is not available
+            
             # Validator blacklisting
             'validator_blacklist': [180],   # UIDs to blacklist (e.g., 180 is a WC)
             'enable_validator_blacklisting': True,
@@ -352,6 +405,317 @@ class ContinuousTrellisSimulator:
             'max_concurrent_tasks': 5,      # Maximum number of concurrent task processing
             'enable_concurrent_processing': True,  # Enable fully asynchronous operations
         }
+
+    def test_vllm_connection(self) -> bool:
+        """Test connection to vLLM server for optimization."""
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/models"
+            
+            self.logger.info(f"🔍 Testing vLLM connection on port {self.config.get('vllm_optim_port', 11300)}")
+            
+            # Track connection test
+            self.stats['vllm_connection_tests'] += 1
+            
+            response = requests.get(vllm_url, timeout=10)
+            
+            if response.status_code == 200:
+                self.logger.info(f"✅ vLLM connection test successful")
+                self.stats['vllm_connection_success'] += 1
+                return True
+            else:
+                self.logger.error(f"❌ vLLM connection test failed with status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM connection test error: {e}")
+            return False
+
+    def query_vllm_no_system_prompt(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITHOUT system prompt - just send raw prompt to completions endpoint.
+        This mimics the 'no system prompt' behavior from compare_system_vs_no_system.py
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/completions"
+            
+            # No system prompt - just send the raw prompt directly
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "prompt": f"Please optimize this prompt for 3D generation: {prompt}",
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 No system prompt - using raw prompt directly")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['text'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (no system prompt):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_no_system_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def query_vllm_with_system_prompt_chat(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITH system prompt using chat completions endpoint.
+        Uses structured chat format with system/user/assistant messages.
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/chat/completions"
+            
+            # System prompt that explains the task
+            system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+            
+            # Format with system prompt (chat format)
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Please optimize this prompt for 3D generation: {prompt}"}
+            ]
+            
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "messages": messages,
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 Using system prompt with chat completions")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['message']['content'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (system prompt + chat):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_system_chat_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def query_vllm_with_system_prompt_completions(self, prompt: str) -> Optional[str]:
+        """
+        Query vLLM WITH system prompt using completions endpoint.
+        Uses the same format as compare_system_vs_no_system.py with system prompt.
+        """
+        try:
+            vllm_url = f"http://localhost:{self.config.get('vllm_optim_port', 11300)}/v1/completions"
+            
+            # System prompt that explains the task (same as original script)
+            system_prompt = "You are a prompt optimization expert. Your task is to take a simple prompt and enhance it with detailed, descriptive language that would be perfect for 3D generation. Make the description vivid, specific, and complete. Focus on materials, textures, lighting, perspective, and artistic style."
+            
+            # Format with system prompt (same format as original script)
+            formatted_prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\nPlease optimize this prompt for 3D generation: {prompt}<|im_end|>\n<|im_start|>assistant\n"
+            
+            payload = {
+                "model": "llama-3-2-3b-it",
+                "prompt": formatted_prompt,
+                "max_tokens": 200,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "stream": False
+            }
+            
+            self.logger.info("📝 Using system prompt with completions (like original script)")
+            
+            response = requests.post(
+                vllm_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                full_response = result['choices'][0]['text'].strip()
+                
+                # Clean the response to extract just the optimized prompt
+                optimized_prompt = self._clean_vllm_response(full_response)
+                
+                self.logger.info(f"✅ vLLM optimization successful (system prompt + completions):")
+                self.logger.info(f"   Original: '{prompt}'")
+                self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                
+                # Track success
+                self.stats['vllm_system_completions_success'] += 1
+                
+                return optimized_prompt
+            else:
+                self.logger.error(f"❌ vLLM optimization failed with status {response.status_code}: {response.text}")
+                self.stats['vllm_failures'] += 1
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization error: {e}")
+            self.stats['vllm_failures'] += 1
+            return None
+
+    def _clean_vllm_response(self, full_response: str) -> str:
+        """Clean vLLM response to extract just the optimized prompt."""
+        # Extract just the optimized prompt part (remove explanatory text)
+        optimized_prompt = full_response
+        
+        # Remove common explanatory prefixes
+        prefixes_to_remove = [
+            "Here's an optimized prompt for 3D generation:",
+            "Here's an optimized version of the prompt for 3D generation:",
+            "To optimize the prompt for 3D generation, I would suggest the following:",
+            "Here's the optimized prompt:",
+            "Optimized prompt:",
+            "Here's an enhanced version:",
+            "Enhanced prompt:",
+            "Here's an optimized prompt for 3D generation of a golden statue:",
+            "Here's an optimized prompt for 3D generation of a",
+            "Here's an optimized prompt for 3D generation:",
+            "Here's the optimized prompt:",
+            "Optimized prompt:",
+            "Enhanced prompt:",
+            "Here's an enhanced version:"
+        ]
+        
+        for prefix in prefixes_to_remove:
+            if optimized_prompt.startswith(prefix):
+                optimized_prompt = optimized_prompt[len(prefix):].strip()
+                break
+        
+        # Remove quotes if present (handle both single and double quotes)
+        if (optimized_prompt.startswith('"') and optimized_prompt.endswith('"')) or \
+           (optimized_prompt.startswith("'") and optimized_prompt.endswith("'")):
+            optimized_prompt = optimized_prompt[1:-1].strip()
+        
+        # Also remove any remaining quotes at the beginning or end
+        optimized_prompt = optimized_prompt.strip('"\'')
+        
+        # Clean up the response (same cleaning as original script)
+        optimized_prompt = optimized_prompt.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+        optimized_prompt = ''.join(char for char in optimized_prompt if ord(char) >= 32 or char == ' ')
+        optimized_prompt = ' '.join(optimized_prompt.split())
+        
+        return optimized_prompt
+
+    def optimize_prompt_with_vllm(self, task: TaskRecord) -> Optional[str]:
+        """
+        Optimize prompt using vLLM with the configured priority method.
+        Returns optimized prompt or None if failed.
+        """
+        try:
+            if not self.config.get('use_vllm_optim', False):
+                return None
+            
+            # Test vLLM connection first
+            if not self.test_vllm_connection():
+                self.logger.error(f"❌ vLLM connection test failed, skipping vLLM optimization")
+                return None
+            
+            priority = self.config.get('vllm_optimization_priority', 'system_chat')
+            original_prompt = task.prompt
+            
+            self.logger.info(f"🚀 Using vLLM optimization with priority: {priority}")
+            
+            # Try the priority method first
+            optimized_prompt = None
+            method_used = None
+            
+            if priority == 'system_chat':
+                optimized_prompt = self.query_vllm_with_system_prompt_chat(original_prompt)
+                method_used = 'system_chat'
+            elif priority == 'system_completions':
+                optimized_prompt = self.query_vllm_with_system_prompt_completions(original_prompt)
+                method_used = 'system_completions'
+            elif priority == 'no_system':
+                optimized_prompt = self.query_vllm_no_system_prompt(original_prompt)
+                method_used = 'no_system'
+            
+            # If priority method failed, try fallback methods
+            if not optimized_prompt:
+                self.logger.warning(f"⚠️ Priority method {priority} failed, trying fallbacks...")
+                
+                if priority != 'system_chat':
+                    optimized_prompt = self.query_vllm_with_system_prompt_chat(original_prompt)
+                    method_used = 'system_chat_fallback'
+                
+                if not optimized_prompt and priority != 'system_completions':
+                    optimized_prompt = self.query_vllm_with_system_prompt_completions(original_prompt)
+                    method_used = 'system_completions_fallback'
+                
+                if not optimized_prompt and priority != 'no_system':
+                    optimized_prompt = self.query_vllm_no_system_prompt(original_prompt)
+                    method_used = 'no_system_fallback'
+            
+            if optimized_prompt:
+                # Update task record with vLLM optimization details
+                task.vllm_optimization_method = method_used
+                task.vllm_optimized_prompt = optimized_prompt
+                task.vllm_optimization_success = True
+                
+                # Track successful vLLM optimization
+                self.stats['vllm_optimizations'] += 1
+                
+                self.logger.info(f"✅ vLLM optimization successful:")
+                self.logger.info(f"   Method: {method_used}")
+                self.logger.info(f"   Original: '{original_prompt[:50]}...'")
+                self.logger.info(f"   Optimized: '{optimized_prompt[:50]}...'")
+                
+                return optimized_prompt
+            else:
+                # All vLLM methods failed
+                task.vllm_optimization_success = False
+                self.logger.error(f"❌ All vLLM optimization methods failed")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ vLLM optimization failed: {e}")
+            task.vllm_optimization_success = False
+            return None
 
     def load_prompts_from_file(self, filepath: str) -> List[str]:
         """Dynamically load the EPISODIC_TEST_PROMPTS list from a Python file."""
@@ -400,6 +764,16 @@ class ContinuousTrellisSimulator:
 
     def optimize_prompt_for_generation(self, task: TaskRecord) -> Dict[str, Any]:
         """Enhanced prompt optimization with CLIP feedback loops and image interrogator"""
+
+        optimization_result = {
+            'selected_generator': 'Cinema Style',
+            'generator_endpoint': self.generator_endpoints['Cinema Style'],
+            'optimized_prompt': task.prompt,
+            'optimization_method': 'none',
+            'similarity_score': 0.0,
+            'pattern_analysis': False,
+            'reproducibility_references': ""
+        }
         try:
             # Check if optimization is enabled
             if not self.config.get('enable_prompt_optimization', True):
@@ -411,7 +785,21 @@ class ContinuousTrellisSimulator:
                     'final_score': 0.0
                 }
             
-            # Step 1: Try new CLIP feedback optimization system if available
+            # Step 1: Try vLLM optimization first if enabled
+            if self.config.get('use_vllm_optim', False):
+                vllm_optimized_prompt = self.optimize_prompt_with_vllm(task)
+                if vllm_optimized_prompt:
+                    self.logger.info(f"🚀 vLLM optimization successful, using vLLM result")
+                    return {
+                        'optimized_prompt': vllm_optimized_prompt,
+                        'method': f"vllm_{task.vllm_optimization_method}",
+                        'improvement': 0.1,  # Assume improvement
+                        #'vllm_method': task.vllm_optimization_method
+                    }
+                else:
+                    self.logger.warning(f"⚠️ vLLM optimization failed, falling back to other methods")
+            
+            # Step 2: Try new CLIP feedback optimization system if available
             if self.config.get('enable_clip_feedback_optimization', True):
                 try:
                     # Call the new optimization endpoint
@@ -463,7 +851,7 @@ class ContinuousTrellisSimulator:
                 except Exception as e:
                     self.logger.warning(f"CLIP feedback optimization failed, falling back: {e}")
             
-            # Step 2: Try reproducibility system first (if available and enabled)
+            # Step 3: Try reproducibility system first (if available and enabled)
             if (REPRODUCIBILITY_SYSTEM_AVAILABLE and 
                 self.reproducibility_system and 
                 self.config.get('enable_reproducibility_optimization', True)):
@@ -503,7 +891,7 @@ class ContinuousTrellisSimulator:
                         'gold_score': gold_score
                     }
             
-            # Step 3: Fall back to traditional optimization if CLIP feedback didn't work
+            # Step 4: Fall back to traditional optimization if CLIP feedback didn't work
             if (OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE and 
                 hasattr(self, 'prompt_optimizer') and 
                 self.prompt_optimizer):
@@ -542,7 +930,7 @@ class ContinuousTrellisSimulator:
                         'improvement': optimization_result.get('confidence', 0.0)
                     }
             
-            # Step 4: Final fallback - basic optimization
+            # Step 5: Final fallback - basic optimization
             if hasattr(self, 'prompt_optimizer') and self.prompt_optimizer:
                 try:
                     optimized_prompt = self.prompt_optimizer.optimize_prompt(task.prompt)
@@ -659,7 +1047,7 @@ class ContinuousTrellisSimulator:
             # Step 2: Enhanced optimization with CLIP feedback loops, LoRA routing and reproducibility
             optimization_result = self.optimize_prompt_for_generation(task)
             
-            # manual_optimized_prompt = f"{task.prompt}, front view, accurate, complete, white background"
+            manual_optimized_prompt = f"{task.prompt}, front view, white background"
             # optimization_result = {'optimized_prompt': manual_optimized_prompt, 'method': 'none', 'improvement': 0.0}
             
             # Extract optimized prompt and optimization details
@@ -712,13 +1100,14 @@ class ContinuousTrellisSimulator:
                     selected_generator = task.selected_generator
                     generator_endpoint = router_result.get('generator_endpoint', self.generator_endpoints['Cinema Style'])
                 else:
-                    if self.config.get('lora', None) == "":     
-                        selected_generator = ''
+                    # Use command line specified LoRA or default to Cinema Style
+                    if self.config.get('lora', None) == "":
                         generator_endpoint = self.generator_endpoints['']
-                        task.selected_generator = selected_generator
+                        task.selected_generator = ""
                     else:
-                        selected_generator = 'baolei'
-                        generator_endpoint = self.generator_endpoints['baolei']
+                        default_lora = self.config.get('default_lora', 'Cinema Style')
+                        selected_generator = default_lora
+                        generator_endpoint = self.generator_endpoints.get(default_lora, self.generator_endpoints['Cinema Style'])
                         task.selected_generator = selected_generator
             
             self.logger.info(f"🎯 Using generator: {selected_generator}")
@@ -788,100 +1177,81 @@ class ContinuousTrellisSimulator:
             
             self.logger.info("      🔍 Validating...")
             
-            # Create temporary file for PLY data if provided
-            temp_file = None
             if ply_data:
                 temp_file = self.output_dir / f"temp_validation_{int(time.time())}.ply.spz"
                 with open(temp_file, 'wb') as f:
                     f.write(ply_data)
                 self.logger.info(f"      💾 Saved PLY data to temp file: {temp_file}")
+            else:
+                temp_file = None        
+            # Use optimized prompt for generation if provided, otherwise use original
+            args = ""
+            if temp_file:
+                args = f"--pre-generated-ply \"{temp_file}\""
+
+            if optimized_prompt and optimized_prompt != original_prompt:
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" \"{optimized_prompt}\" {args}"
+                ]
+            else:
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt[:50]}...'")
+                cmd = [
+                    "bash", "-c",
+                    f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" {args}"
+                ]
             
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            # Log the validation output for debugging
+            # if result.stdout:
+            #     self.logger.info(f"      📊 Validation stdout: {result.stdout.strip()}")
+            if result.stderr:
+                self.logger.warning(f"      ⚠️ Validation stderr: {result.stderr.strip()}")
+            
+            if result.returncode != 0:
+                self.logger.warning(f"   ❌ Validation failed (return code {result.returncode})")
+                if "CUDA" in result.stderr or "out of memory" in result.stderr.lower():
+                    self.logger.warning(f"   🔥 CUDA OOM detected in validation - clearing cache")
+                    if TORCH_AVAILABLE and torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        time.sleep(2)  # Brief pause for memory cleanup
+                return 0.0
+            
+            # Read and log the validation results
             try:
-                # Use optimized prompt for generation if provided, otherwise use original
-                if optimized_prompt and optimized_prompt != original_prompt:
-                    self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt[:50]}...'")
-                    self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt[:50]}...'")
-                    if temp_file:
-                        cmd = [
-                            "bash", "-c",
-                            f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" \"{optimized_prompt}\" --pre-generated-ply \"{temp_file}\""
-                        ]
-                    else:
-                        cmd = [
-                            "bash", "-c",
-                            f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" \"{optimized_prompt}\""
-                        ]
-                else:
-                    self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt[:50]}...'")
-                    if temp_file:
-                        cmd = [
-                            "bash", "-c",
-                            f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\" --pre-generated-ply \"{temp_file}\""
-                        ]
-                    else:
-                        cmd = [
-                            "bash", "-c",
-                            f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{original_prompt}\""
-                        ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                
-                # Log the validation output for debugging
-                if result.stdout:
-                    self.logger.info(f"      📊 Validation stdout: {result.stdout.strip()}")
-                if result.stderr:
-                    self.logger.warning(f"      ⚠️ Validation stderr: {result.stderr.strip()}")
-                
-                if result.returncode != 0:
-                    self.logger.warning(f"   ❌ Validation failed (return code {result.returncode})")
-                    if "CUDA" in result.stderr or "out of memory" in result.stderr.lower():
-                        self.logger.warning(f"   🔥 CUDA OOM detected in validation - clearing cache")
-                        if TORCH_AVAILABLE and torch.cuda.is_available():
-                            torch.cuda.empty_cache()
-                            time.sleep(2)  # Brief pause for memory cleanup
-                    return 0.0
-                
-                # Read and log the validation results
-                try:
-                    with open("subnet_validation_results.json", 'r') as f:
-                        data = json.load(f)
-                        score = data.get("validation_engine_score", 0.0)
-                        
-                        # Log detailed validation results
-                        self.logger.info(f"      📊 Validation Results:")
-                        self.logger.info(f"         🏆 Validation Engine Score: {score:.4f}")
-                        self.logger.info(f"         🤝 Alignment Score: {data.get('alignment_score', 0):.4f}")
-                        self.logger.info(f"         💎 Quality Score: {data.get('quality_score', 0):.4f}")
-                        self.logger.info(f"         🎭 Demo Fidelity Score: {data.get('demo_fidelity_score', 0):.4f}")
-                        self.logger.info(f"         🎯 Task Fidelity Score: {data.get('task_fidelity_score', 0):.4f}")
-                        self.logger.info(f"         ✅ Validation Passed: {data.get('validation_passed', False)}")
-                        
-                        # Check for zero score and provide more context
-                        if score == 0.0:
-                            self.logger.warning(f"   🔧 Zero validation score detected!")
-                            self.logger.warning(f"      Alignment: {data.get('alignment_score', 0):.4f}")
-                            self.logger.warning(f"      Quality: {data.get('quality_score', 0):.4f}")
-                            self.logger.warning(f"      Demo Fidelity: {data.get('demo_fidelity_score', 0):.4f}")
-                            
-                            if TORCH_AVAILABLE and torch.cuda.is_available():
-                                self.logger.warning(f"   🔧 Clearing CUDA cache due to zero score")
-                                torch.cuda.empty_cache()
-                        
-                except FileNotFoundError:
-                    self.logger.error(f"      ❌ Validation results file not found")
-                    return 0.0
-                except json.JSONDecodeError as e:
-                    self.logger.error(f"      ❌ Invalid JSON in validation results: {e}")
-                    return 0.0
+                with open("subnet_validation_results_8096.json", 'r') as f:
+                    data = json.load(f)
+                    score = data.get("validation_engine_score", 0.0)
                     
-            finally:
-                # Clean up temp file
-                if temp_file and temp_file.exists():
-                    try:
-                        temp_file.unlink()
-                        self.logger.info(f"      🧹 Cleaned up temp file: {temp_file}")
-                    except Exception as e:
-                        self.logger.warning(f"      ⚠️ Failed to clean up temp file: {e}")
+                    # Log detailed validation results
+                    self.logger.info(f"      📊 Validation Results:")
+                    self.logger.info(f"         🏆 Validation Engine Score: {score:.4f}")
+                    self.logger.info(f"         🤝 Alignment Score: {data.get('alignment_score', 0):.4f}")
+                    self.logger.info(f"         💎 Quality Score: {data.get('quality_score', 0):.4f}")
+                    self.logger.info(f"         🎭 Demo Fidelity Score: {data.get('demo_fidelity_score', 0):.4f}")
+                    self.logger.info(f"         🎯 Task Fidelity Score: {data.get('task_fidelity_score', 0):.4f}")
+                    self.logger.info(f"         ✅ Validation Passed: {data.get('validation_passed', False)}")
+                    
+                    # Check for zero score and provide more context
+                    if score == 0.0:
+                        self.logger.warning(f"   🔧 Zero validation score detected!")
+                        self.logger.warning(f"      Alignment: {data.get('alignment_score', 0):.4f}")
+                        self.logger.warning(f"      Quality: {data.get('quality_score', 0):.4f}")
+                        self.logger.warning(f"      Demo Fidelity: {data.get('demo_fidelity_score', 0):.4f}")
+                        
+                        if TORCH_AVAILABLE and torch.cuda.is_available():
+                            self.logger.warning(f"   🔧 Clearing CUDA cache due to zero score")
+                            torch.cuda.empty_cache()
+                        
+            except FileNotFoundError:
+                self.logger.error(f"      ❌ Validation results file not found")
+                return 0.0
+            except json.JSONDecodeError as e:
+                self.logger.error(f"      ❌ Invalid JSON in validation results: {e}")
+                return 0.0
                 
         except Exception as e:
             self.logger.error(f"      ❌ Validation error: {e}")
@@ -1027,6 +1397,16 @@ class ContinuousTrellisSimulator:
             self.logger.info(f"CLIP Feedback Optimizations: {self.stats.get('clip_feedback_optimizations', 0)}")
             self.logger.info(f"Advanced Optimizations: {self.stats.get('advanced_optimizations', 0)}")
             self.logger.info(f"Basic Optimizations: {self.stats.get('basic_optimizations', 0)}")
+        
+        # vLLM optimization statistics
+        if self.config.get('use_vllm_optim', False):
+            self.logger.info(f"vLLM Optimizations: {self.stats.get('vllm_optimizations', 0)}")
+            self.logger.info(f"vLLM System Chat Success: {self.stats.get('vllm_system_chat_success', 0)}")
+            self.logger.info(f"vLLM System Completions Success: {self.stats.get('vllm_system_completions_success', 0)}")
+            self.logger.info(f"vLLM No System Success: {self.stats.get('vllm_no_system_success', 0)}")
+            self.logger.info(f"vLLM Failures: {self.stats.get('vllm_failures', 0)}")
+            self.logger.info(f"vLLM Connection Tests: {self.stats.get('vllm_connection_tests', 0)}")
+            self.logger.info(f"vLLM Connection Success: {self.stats.get('vllm_connection_success', 0)}")
         
         # Advanced optimization statistics
         if self.stats.get('lora_routing_decisions', 0) > 0:
@@ -1308,7 +1688,7 @@ Provide an optimized version that follows successful patterns from the reference
                 'method': 'error_fallback'
             }
     
-    def optimize_prompt_for_generation(self, task: TaskRecord) -> Dict[str, Any]:
+    def optimize_prompt_for_generation_legacy(self, task: TaskRecord) -> Dict[str, Any]:
         """Advanced prompt optimization with LoRA routing and reproducibility + CLIP optimization"""
         
         optimization_result = {
@@ -1489,6 +1869,15 @@ async def main():
     parser.add_argument("--enable-clip-feedback-optimization", action="store_true", help="Enable new CLIP feedback optimization system.")
     parser.add_argument("--target-clip-score", type=float, default=0.8, help="Target CLIP score for feedback optimization.")
     
+    # NEW: vLLM optimization arguments
+    parser.add_argument("--vllm-optim", action="store_true", help="Use vLLM for prompt optimization (bypasses local optimizer)")
+    parser.add_argument("--vllm-optim-port", type=int, default=11300, help="vLLM port for prompt optimization (default: 11300)")
+    parser.add_argument("--system-prompt", action="store_true", help="Use system prompts during inference (activates trained behavior)")
+    parser.add_argument("--vllm-priority", type=str, default="system_chat", choices=["system_chat", "system_completions", "no_system"], help="vLLM optimization priority method (default: system_chat)")
+    
+    # LoRA selection argument
+    parser.add_argument("--lora", type=str, default="Cinema Style", help="Default LoRA to use when router is not available (default: Cinema Style)")
+    
     # Async operations arguments
     parser.add_argument("--no-async", action="store_true", help="Disable concurrent processing (use sequential mode)")
     parser.add_argument("--max-concurrent-tasks", type=int, default=5, help="Maximum number of concurrent tasks (default: 5)")
@@ -1524,6 +1913,15 @@ async def main():
         'llm_optimization_attempts': args.llm_optimization_attempts,
         'enable_clip_feedback_optimization': args.enable_clip_feedback_optimization,
         'target_clip_score': args.target_clip_score,
+        
+        # NEW: vLLM optimization settings
+        'use_vllm_optim': args.vllm_optim,
+        'vllm_optim_port': args.vllm_optim_port,
+        'use_system_prompt': args.system_prompt,
+        'vllm_optimization_priority': args.vllm_priority,
+        
+        # LoRA selection setting
+        'default_lora': args.lora,
         
         # Async operations configuration
         'enable_concurrent_processing': not args.no_async,
