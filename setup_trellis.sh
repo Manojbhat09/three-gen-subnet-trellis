@@ -119,6 +119,10 @@ tmux new-session -d -s trellis_session2
 tmux new-session -d -s trellis_session3
 tmux send-keys -t trellis_session2 'curl -fsSL https://ollama.com/install.sh | sh && ollama --version && ollama serve' C-m
 tmux send-keys -t trellis_session3 'ollama pull llama3.2:3b && ollama run llama3.2:3b' C-m
+# tmux send-keys -t trellis_session2 'source $WORKSPACE_DIR/miniconda/bin/activate && conda create -n "vllm" python==3.11 && pip install vllm'
+# sleep 2m
+# tmux send-keys -t trellis_session2 'conda activate vllm && CUDA_VISIBLE_DEVICES=0 vllm serve /home/mbhat/three-gen-subnet-trellis/merged_sftdpo_model   --served-model-name llama-3-2-3b-it   --generation-config auto   --port 1130
+0   --gpu-memory-utilization 0.3   --max-model-len 1000 --max-num-seqs 2' C-m
 
 # Pane 0: Run the server
 echo "Starting server in tmux pane 0..."
