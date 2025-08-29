@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Episodic CLIP Score Optimizer with Persistent Memory and Intelligent LoRA Routing
+Episodic CLIP Score Optimizer with Persistent Memory and CPU-based Processing
 ===============================================================================
 🧠 Persistent memory across sessions
 🔄 Episodic learning with cross-session knowledge
 🎯 Force improvement over historical best scores
 📊 Rich context injection to LLM with past attempts
 🚫 Early termination on stuck optimization
-🎯 INTELLIGENT LORA ROUTING: Pre-optimization generator selection
-📈 MULTI-GENERATOR HISTORY: Track generator choices across episodes
-🏆 TIE-BREAKING: Test multiple generators when router is uncertain
+🖥️ CPU-based CLIP processing for efficiency
+🔗 vLLM integration for prompt optimization
+🎬 Cinema endpoint for image generation
 """
 
 import json
@@ -19,14 +19,20 @@ import logging
 import os
 import statistics
 import requests
+import subprocess
+import torch
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, asdict
 from get_max_clip_score import CLIPScoreMaximizer, RLLoopAgent, OptimizationAttempt, RLOptimizationSession
 
+# =======================================================================================
+# ORIGINAL ROUTER IMPORTS - COMMENTED OUT FOR CPU MODE
+# =======================================================================================
 # Import the hybrid router
-from hybrid_ultimate_router import HybridUltimateRouter, RouterResult
+# from hybrid_ultimate_router import HybridUltimateRouter, RouterResult
+# =======================================================================================
 
 @dataclass
 class GeneratorHistory:
@@ -61,19 +67,31 @@ class EpisodicMemory:
 
 class MultiGeneratorCLIPOptimizer:
     """
+    CPU-based Episodic CLIP Optimizer with vLLM Integration
+
+    MODIFIED FOR CPU MODE:
+    - CLIP models run on CPU instead of GPU
+    - vLLM used for prompt optimization instead of OpenRouter
+    - Cinema Style endpoint only for image generation
+    - Router functionality commented out but preserved
+    - All original code maintained in comments for easy reactivation
+
+    ORIGINAL DESCRIPTION:
     Multi-generator CLIP optimizer with intelligent LoRA routing
     """
     
-    def __init__(self, 
+    def __init__(self,
                  num_episodes: int = 50,
                  target_score: float = 0.85,
                  max_rounds_per_episode: int = 15,
                  memory_file: str = "episodic_clip_memory.json",
                  log_dir: str = "episodic_clip_logs",
                  improvement_threshold: float = 0.05,
-                 enable_router: bool = True,
-                 tie_break_threshold: float = 0.1):  # Minimum score difference for tie-breaking
-        
+                 enable_router: bool = False,  # Disabled for CPU-only mode
+                 tie_break_threshold: float = 0.1,
+                 use_cpu: bool = True,  # Force CPU usage
+                 vllm_url: str = "http://localhost:11300"):  # vLLM endpoint
+
         self.num_episodes = num_episodes
         self.target_score = target_score
         self.max_rounds_per_episode = max_rounds_per_episode
@@ -82,12 +100,14 @@ class MultiGeneratorCLIPOptimizer:
         self.improvement_threshold = improvement_threshold
         self.enable_router = enable_router
         self.tie_break_threshold = tie_break_threshold
-        
+        self.use_cpu = use_cpu
+        self.vllm_url = vllm_url
+
         # Create log directory
         self.log_dir.mkdir(exist_ok=True)
-        
+
         # Setup logging
-        log_file = self.log_dir / f"multi_generator_clip_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        log_file = self.log_dir / f"cpu_episodic_clip_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s',
@@ -97,51 +117,181 @@ class MultiGeneratorCLIPOptimizer:
             ]
         )
         self.logger = logging.getLogger(__name__)
-        
+
+        # =======================================================================================
+        # ORIGINAL ROUTER INITIALIZATION - COMMENTED OUT FOR CPU MODE
+        # =======================================================================================
         # Initialize LoRA router
-        if self.enable_router:
-            self.lora_router = HybridUltimateRouter()
-            self.logger.info("🎯 LoRA Router initialized")
-        
-        # Generator endpoints mapping
+        # if self.enable_router:
+        #     self.lora_router = HybridUltimateRouter()
+        #     self.logger.info("🎯 LoRA Router initialized")
+        # =======================================================================================
+
+        # =======================================================================================
+        # CPU MODE ENDPOINTS - SIMPLIFIED FOR CPU-ONLY OPERATION
+        # =======================================================================================
         self.generator_endpoints = {
-            "Patched Realism": "http://localhost:8096/generate_image/patched_realism/",
-            "Team Fortress 2 Style": "http://localhost:8096/generate_image/tf2_style/",
-            "Cartoon 3D Render": "http://localhost:8096/generate_image/cartoon_3d/",
-            "3D Game Assets": "http://localhost:8096/generate_image/game_assets/",
-            "Game Icon Institute": "http://localhost:8096/generate_image/sd15_game_icon/",
-            "Cinema Style": "http://localhost:8096/generate_image/cinema/",
-            "Flux Isometric 3D": "http://localhost:8096/generate_image/isometric_3d/",
-            "Baolei Style": "http://localhost:8096/generate_image/baolei/"
+            "Cinema Style": "http://localhost:8096/generate_image/cinema/"  # Only Cinema endpoint for CPU mode
         }
-        
+
+        # =======================================================================================
+        # ORIGINAL FULL GENERATOR ENDPOINTS - COMMENTED OUT FOR CPU MODE
+        # =======================================================================================
+        # self.generator_endpoints = {
+        #     "Patched Realism": "http://localhost:8096/generate_image/patched_realism/",
+        #     "Team Fortress 2 Style": "http://localhost:8096/generate_image/tf2_style/",
+        #     "Cartoon 3D Render": "http://localhost:8096/generate_image/cartoon_3d/",
+        #     "3D Game Assets": "http://localhost:8096/generate_image/game_assets/",
+        #     "Game Icon Institute": "http://localhost:8096/generate_image/sd15_game_icon/",
+        #     "Cinema Style": "http://localhost:8096/generate_image/cinema/",
+        #     "Flux Isometric 3D": "http://localhost:8096/generate_image/isometric_3d/",
+        #     "Baolei Style": "http://localhost:8096/generate_image/baolei/"
+        # }
+        # =======================================================================================
+
+        # =======================================================================================
+        # ORIGINAL RL AGENT INITIALIZATION - COMMENTED OUT FOR CPU MODE
+        # =======================================================================================
         # Initialize CLIP maximizer and RL agent
-        self.clip_maximizer = CLIPScoreMaximizer(target_score=target_score)
-        self.rl_agent = RLLoopAgent(
-            clip_maximizer=self.clip_maximizer,
-            memory_file=str(self.log_dir / "rl_memory.json")
-        )
-        
-        # Override RL parameters for episodic settings
-        self.rl_agent.max_optimization_rounds = max_rounds_per_episode
-        self.rl_agent.min_score_threshold = target_score
-        self.rl_agent.convergence_threshold = 0.01  # Stricter convergence
-        
+        # self.clip_maximizer = CLIPScoreMaximizer(target_score=target_score)
+        # self.rl_agent = RLLoopAgent(
+        #     clip_maximizer=self.clip_maximizer,
+        #     memory_file=str(self.log_dir / "rl_memory.json")
+        # )
+        #
+        # # Override RL parameters for episodic settings
+        # self.rl_agent.max_optimization_rounds = max_rounds_per_episode
+        # self.rl_agent.min_score_threshold = target_score
+        # self.rl_agent.convergence_threshold = 0.01  # Stricter convergence
+        # =======================================================================================
+
+        # =======================================================================================
+        # CPU MODE RL AGENT - ACTIVE IMPLEMENTATION
+        # =======================================================================================
+        # Initialize CPU-based CLIP maximizer and RL agent
+        self.clip_maximizer = self._create_cpu_clip_maximizer(target_score)
+        self.rl_agent = self._create_cpu_rl_agent(max_rounds_per_episode, target_score)
+        # =======================================================================================
+
         # Load episodic memory
         self.episodic_memory: Dict[str, EpisodicMemory] = {}
         self._load_episodic_memory()
-        
+
         # Episode tracking
         self.episode_results = []
         self.global_insights = []
-        
-        self.logger.info(f"🧠 Multi-Generator CLIP Optimizer initialized")
+
+        self.logger.info(f"🖥️ CPU-based Episodic CLIP Optimizer initialized")
         self.logger.info(f"   Target score: {target_score}")
         self.logger.info(f"   Episodes: {num_episodes}")
         self.logger.info(f"   Max rounds per episode: {max_rounds_per_episode}")
-        self.logger.info(f"   Router enabled: {enable_router}")
+        self.logger.info(f"   CPU mode: {use_cpu}")
+        self.logger.info(f"   vLLM URL: {vllm_url}")
+        self.logger.info(f"   Router disabled: CPU-only mode")
         self.logger.info(f"   Memory entries: {len(self.episodic_memory)}")
-    
+
+        # Test vLLM connection
+        if not self.test_vllm_connection():
+            self.logger.warning("⚠️ vLLM connection test failed - optimization may not work properly")
+        else:
+            self.logger.info("🔗 vLLM connection test passed")
+
+    def _create_cpu_clip_maximizer(self, target_score: float) -> CLIPScoreMaximizer:
+        """Create CPU-based CLIP maximizer"""
+        # Create a custom CPU-based CLIP maximizer
+        class CPUCLIPScoreMaximizer(CLIPScoreMaximizer):
+            def __init__(self, target_score: float):
+                super().__init__(target_score=target_score)
+                # Force CPU usage
+                self.device = torch.device("cpu")
+                self._model_loaded = False
+
+            def load_clip_model(self):
+                """Load CLIP model on CPU"""
+                if self._model_loaded:
+                    return
+
+                import open_clip
+                model_name = "ViT-H-14"
+                pretrained_dataset = "laion2b_s32b_b79k"
+
+                self.logger.info(f"📥 Loading CLIP model on CPU: {model_name} ({pretrained_dataset})...")
+
+                self.clip_model, _, self.clip_processor = open_clip.create_model_and_transforms(
+                    model_name, pretrained=pretrained_dataset, device=self.device
+                )
+                self.clip_tokenizer = open_clip.get_tokenizer(model_name)
+                self.clip_model.eval()
+                self._model_loaded = True
+                self.logger.info("✅ CLIP model loaded on CPU.")
+
+        return CPUCLIPScoreMaximizer(target_score)
+
+    def _create_cpu_rl_agent(self, max_rounds_per_episode: int, target_score: float) -> RLLoopAgent:
+        """Create CPU-based RL agent with vLLM integration"""
+        # Create a custom RL agent that uses vLLM
+        class CPUvLLMRLLoopAgent(RLLoopAgent):
+            def __init__(self, clip_maximizer, memory_file: str, vllm_url: str):
+                super().__init__(clip_maximizer, memory_file=memory_file)
+                self.vllm_url = vllm_url
+                # Override to use vLLM
+                self.use_openrouter = False
+                self.api_base_url = None
+
+            def _query_llm(self, prompt: str) -> str:
+                """Query vLLM instead of OpenRouter/Ollama"""
+                try:
+                    data = {
+                        "model": "default",  # vLLM handles model selection
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.7,
+                        "max_tokens": 350,
+                        "stream": False
+                    }
+                    response = requests.post(f"{self.vllm_url}/v1/chat/completions", json=data, timeout=30)
+                    response.raise_for_status()
+                    return response.json()["choices"][0]["message"]["content"].strip()
+                except Exception as e:
+                    self.logger.warning(f"vLLM query failed: {e}")
+                    # Fallback to simple response
+                    return "Optimized prompt based on context."
+
+        agent = CPUvLLMRLLoopAgent(
+            clip_maximizer=self.clip_maximizer,
+            memory_file=str(self.log_dir / "cpu_rl_memory.json"),
+            vllm_url=self.vllm_url
+        )
+
+        # Override RL parameters for episodic settings
+        agent.max_optimization_rounds = max_rounds_per_episode
+        agent.min_score_threshold = target_score
+        agent.convergence_threshold = 0.01  # Stricter convergence
+
+        return agent
+
+    def test_vllm_connection(self) -> bool:
+        """Test vLLM connection"""
+        try:
+            data = {
+                "model": "default",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "temperature": 0.7,
+                "max_tokens": 10,
+                "stream": False
+            }
+            response = requests.post(f"{self.vllm_url}/v1/chat/completions", json=data, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("choices") and len(result["choices"]) > 0:
+                self.logger.info("✅ vLLM connection successful")
+                return True
+            else:
+                self.logger.error("❌ vLLM returned invalid response")
+                return False
+        except Exception as e:
+            self.logger.error(f"❌ vLLM connection failed: {e}")
+            return False
+
     def _load_episodic_memory(self):
         """Load episodic memory from file"""
         if self.memory_file.exists():
@@ -201,138 +351,164 @@ class MultiGeneratorCLIPOptimizer:
             self.logger.error(f"❌ Failed to save episodic memory: {e}")
     
     def _select_generator_for_prompt(self, prompt: str, episode_num: int) -> Tuple[str, str, Dict[str, Any]]:
-        """Select the best generator for a prompt using router + history"""
-        
-        if not self.enable_router:
-            return "Cinema Style", self.generator_endpoints["Cinema Style"], {"method": "default"}
-        
-        # Check if we have memory for this prompt
-        has_memory = prompt in self.episodic_memory
-        memory = self.episodic_memory.get(prompt, None)
-        
-        if has_memory and memory.generator_history:
-            # Analyze generator history
-            generator_stats = {}
-            for gen_name, gen_history in memory.generator_history.items():
-                generator_stats[gen_name] = {
-                    'episode_count': gen_history.episode_count,
-                    'best_score': gen_history.best_clip_score,
-                    'avg_score': gen_history.total_clip_score / gen_history.episode_count if gen_history.episode_count > 0 else 0.0,
-                    'success_rate': gen_history.success_rate,
-                    'last_used': gen_history.last_used_episode
-                }
-            
-            # Find generators with highest episode count (majority)
-            max_episodes = max(stats['episode_count'] for stats in generator_stats.values())
-            majority_generators = [
-                gen_name for gen_name, stats in generator_stats.items() 
-                if stats['episode_count'] == max_episodes
-            ]
-            
-            self.logger.info(f"   📊 Generator history: {len(memory.generator_history)} generators")
-            self.logger.info(f"   📊 Majority generators: {majority_generators} (used {max_episodes} times)")
-            
-            if len(majority_generators) == 1:
-                # Clear majority - use historical best
-                selected_generator = majority_generators[0]
-                self.logger.info(f"   🎯 HISTORICAL MAJORITY: {selected_generator}")
-                return selected_generator, self.generator_endpoints[selected_generator], {
-                    "method": "historical_majority",
-                    "episode_count": max_episodes,
-                    "generator_stats": generator_stats
-                }
-            
-            elif len(majority_generators) > 1:
-                # Tie - need to test multiple generators
-                self.logger.info(f"   🤝 TIE DETECTED: {majority_generators}")
-                return self._resolve_generator_tie(prompt, majority_generators, episode_num)
-        
-        # No history or no clear majority - use router
-        self.logger.info(f"   🧠 NO HISTORY - USING ROUTER")
-        router_result = self.lora_router.route_hybrid(prompt)
-        selected_generator = router_result.recommended_lora
-        
-        self.logger.info(f"   🎯 ROUTER SELECTION: {selected_generator}")
-        return selected_generator, self.generator_endpoints[selected_generator], {
-            "method": "router_selection",
-            "router_confidence": router_result.confidence,
-            "router_reasoning": router_result.reasoning,
-            "alternatives": router_result.alternatives
+        """Select generator for a prompt - CPU mode always uses Cinema Style"""
+
+        # CPU mode: Always use Cinema Style generator
+        selected_generator = "Cinema Style"
+        generator_endpoint = self.generator_endpoints[selected_generator]
+
+        self.logger.info(f"   🎬 CPU MODE: Using Cinema Style generator")
+        return selected_generator, generator_endpoint, {
+            "method": "cpu_mode_cinema",
+            "reason": "CPU-only mode uses Cinema Style endpoint",
+            "generator": selected_generator
         }
+
+    # =======================================================================================
+    # FULL ORIGINAL GENERATOR SELECTION METHOD - COMMENTED OUT FOR CPU MODE
+    # =======================================================================================
+    # def _select_generator_for_prompt_ORIGINAL(self, prompt: str, episode_num: int) -> Tuple[str, str, Dict[str, Any]]:
+    #     """Select the best generator for a prompt using router + history"""
+    #
+    #     if not self.enable_router:
+    #         return "Cinema Style", self.generator_endpoints["Cinema Style"], {"method": "default"}
+    #
+    #     # Check if we have memory for this prompt
+    #     has_memory = prompt in self.episodic_memory
+    #     memory = self.episodic_memory.get(prompt, None)
+    #
+    #     if has_memory and memory.generator_history:
+    #         # Analyze generator history
+    #         generator_stats = {}
+    #         for gen_name, gen_history in memory.generator_history.items():
+    #             generator_stats[gen_name] = {
+    #                 'episode_count': gen_history.episode_count,
+    #                 'best_score': gen_history.best_clip_score,
+    #                 'avg_score': gen_history.total_clip_score / gen_history.episode_count if gen_history.episode_count > 0 else 0.0,
+    #                 'success_rate': gen_history.success_rate,
+    #                 'last_used': gen_history.last_used_episode
+    #             }
+    #
+    #         # Find generators with highest episode count (majority)
+    #         max_episodes = max(stats['episode_count'] for stats in generator_stats.values())
+    #         majority_generators = [
+    #             gen_name for gen_name, stats in generator_stats.items()
+    #             if stats['episode_count'] == max_episodes
+    #         ]
+    #
+    #         self.logger.info(f"   📊 Generator history: {len(memory.generator_history)} generators")
+    #         self.logger.info(f"   📊 Majority generators: {majority_generators} (used {max_episodes} times)")
+    #
+    #         if len(majority_generators) == 1:
+    #             # Clear majority - use historical best
+    #             selected_generator = majority_generators[0]
+    #             self.logger.info(f"   🎯 HISTORICAL MAJORITY: {selected_generator}")
+    #             return selected_generator, self.generator_endpoints[selected_generator], {
+    #                 "method": "historical_majority",
+    #                 "episode_count": max_episodes,
+    #                 "generator_stats": generator_stats
+    #             }
+    #
+    #         elif len(majority_generators) > 1:
+    #             # Tie - need to test multiple generators
+    #             self.logger.info(f"   🤝 TIE DETECTED: {majority_generators}")
+    #             return self._resolve_generator_tie(prompt, majority_generators, episode_num)
+    #
+    #     # No history or no clear majority - use router
+    #     self.logger.info(f"   🧠 NO HISTORY - USING ROUTER")
+    #     router_result = self.lora_router.route_hybrid(prompt)
+    #     selected_generator = router_result.recommended_lora
+    #
+    #     self.logger.info(f"   🎯 ROUTER SELECTION: {selected_generator}")
+    #     return selected_generator, self.generator_endpoints[selected_generator], {
+    #         "method": "router_selection",
+    #         "router_confidence": router_result.confidence,
+    #         "router_reasoning": router_result.reasoning,
+    #         "alternatives": router_result.alternatives
+    #     }
+    # =======================================================================================
     
-    def _resolve_generator_tie(self, prompt: str, tied_generators: List[str], episode_num: int) -> Tuple[str, str, Dict[str, Any]]:
-        """Resolve tie by testing multiple generators and selecting the best"""
-        
-        self.logger.info(f"   🔬 TIE-BREAKING: Testing {len(tied_generators)} generators")
-        
-        # Test each tied generator with a quick optimization
-        generator_scores = {}
-        
-        for generator in tied_generators:
-            self.logger.info(f"   🔬 Testing generator: {generator}")
-            
-            try:
-                # Quick optimization test (fewer rounds for tie-breaking)
-                test_result = self._quick_optimization_test(prompt, generator, max_rounds=5)
-                generator_scores[generator] = test_result.get('final_score', 0.0)
-                
-                self.logger.info(f"   🔬 {generator} score: {generator_scores[generator]:.4f}")
-                
-            except Exception as e:
-                self.logger.warning(f"   ⚠️ Failed to test {generator}: {e}")
-                generator_scores[generator] = 0.0
-        
-        # Find the best generator
-        best_generator = max(generator_scores.keys(), key=lambda g: generator_scores[g])
-        best_score = generator_scores[best_generator]
-        
-        # Check if scores are close (within threshold)
-        close_generators = [
-            gen for gen, score in generator_scores.items()
-            if abs(score - best_score) <= self.tie_break_threshold
-        ]
-        
-        if len(close_generators) > 1:
-            self.logger.info(f"   🤝 Scores too close - using historical success rate")
-            # Use historical success rate as tie-breaker
-            memory = self.episodic_memory.get(prompt)
-            if memory and memory.generator_history:
-                best_success_rate = 0.0
-                for gen in close_generators:
-                    if gen in memory.generator_history:
-                        success_rate = memory.generator_history[gen].success_rate
-                        if success_rate > best_success_rate:
-                            best_success_rate = success_rate
-                            best_generator = gen
-        
-        self.logger.info(f"   🏆 TIE RESOLVED: {best_generator} (score: {best_score:.4f})")
-        
-        return best_generator, self.generator_endpoints[best_generator], {
-            "method": "tie_break_testing",
-            "tied_generators": tied_generators,
-            "generator_scores": generator_scores,
-            "best_score": best_score,
-            "close_generators": close_generators
-        }
-    
-    def _quick_optimization_test(self, prompt: str, generator: str, max_rounds: int = 5) -> Dict[str, Any]:
-        """Quick optimization test for tie-breaking"""
-        
-        # Temporarily modify the CLIP maximizer endpoint
-        original_endpoint = self.clip_maximizer.dit_server_url
-        self.clip_maximizer.dit_server_url = self.generator_endpoints[generator]
-        
-        try:
-            # Run quick optimization
-            result = self.rl_agent.optimize_with_rl_loop(
-                prompt, 
-                seed=42, 
-                max_rounds=max_rounds
-            )
-            return result
-        finally:
-            # Restore original endpoint
-            self.clip_maximizer.dit_server_url = original_endpoint
+    # =======================================================================================
+    # FULL ORIGINAL TIE-BREAKING METHOD - COMMENTED OUT FOR CPU MODE
+    # =======================================================================================
+    # def _resolve_generator_tie_ORIGINAL(self, prompt: str, tied_generators: List[str], episode_num: int) -> Tuple[str, str, Dict[str, Any]]:
+    #     """Resolve tie by testing multiple generators and selecting the best"""
+    #
+    #     self.logger.info(f"   🔬 TIE-BREAKING: Testing {len(tied_generators)} generators")
+    #
+    #     # Test each tied generator with a quick optimization
+    #     generator_scores = {}
+    #
+    #     for generator in tied_generators:
+    #         self.logger.info(f"   🔬 Testing generator: {generator}")
+    #
+    #         try:
+    #             # Quick optimization test (fewer rounds for tie-breaking)
+    #             test_result = self._quick_optimization_test(prompt, generator, max_rounds=5)
+    #             generator_scores[generator] = test_result.get('final_score', 0.0)
+    #
+    #             self.logger.info(f"   🔬 {generator} score: {generator_scores[generator]:.4f}")
+    #
+    #         except Exception as e:
+    #             self.logger.warning(f"   ⚠️ Failed to test {generator}: {e}")
+    #             generator_scores[generator] = 0.0
+    #
+    #     # Find the best generator
+    #     best_generator = max(generator_scores.keys(), key=lambda g: generator_scores[g])
+    #     best_score = generator_scores[best_generator]
+    #
+    #     # Check if scores are close (within threshold)
+    #     close_generators = [
+    #         gen for gen, score in generator_scores.items()
+    #         if abs(score - best_score) <= self.tie_break_threshold
+    #     ]
+    #
+    #     if len(close_generators) > 1:
+    #         self.logger.info(f"   🤝 Scores too close - using historical success rate")
+    #         # Use historical success rate as tie-breaker
+    #         memory = self.episodic_memory.get(prompt)
+    #         if memory and memory.generator_history:
+    #             best_success_rate = 0.0
+    #             for gen in close_generators:
+    #                 if gen in memory.generator_history:
+    #                     success_rate = memory.generator_history[gen].success_rate
+    #                     if success_rate > best_success_rate:
+    #                         best_success_rate = success_rate
+    #                         best_generator = gen
+    #
+    #     self.logger.info(f"   🏆 TIE RESOLVED: {best_generator} (score: {best_score:.4f})")
+    #
+    #     return best_generator, self.generator_endpoints[best_generator], {
+    #         "method": "tie_break_testing",
+    #         "tied_generators": tied_generators,
+    #         "generator_scores": generator_scores,
+    #         "best_score": best_score,
+    #         "close_generators": close_generators
+    #     }
+    # =======================================================================================
+
+    # =======================================================================================
+    # FULL ORIGINAL QUICK OPTIMIZATION TEST METHOD - COMMENTED OUT FOR CPU MODE
+    # =======================================================================================
+    # def _quick_optimization_test_ORIGINAL(self, prompt: str, generator: str, max_rounds: int = 5) -> Dict[str, Any]:
+    #     """Quick optimization test for tie-breaking"""
+    #
+    #     # Temporarily modify the CLIP maximizer endpoint
+    #     original_endpoint = self.clip_maximizer.dit_server_url
+    #     self.clip_maximizer.dit_server_url = self.generator_endpoints[generator]
+    #
+    #     try:
+    #         # Run quick optimization
+    #         result = self.rl_agent.optimize_with_rl_loop(
+    #             prompt,
+    #             seed=42,
+    #             max_rounds=max_rounds
+    #         )
+    #         return result
+    #     finally:
+    #         # Restore original endpoint
+    #         self.clip_maximizer.dit_server_url = original_endpoint
+    # =======================================================================================
     
     def _build_historical_context(self, prompt: str) -> str:
         """Build rich historical context for the LLM"""
@@ -937,26 +1113,51 @@ def main():
 
     ]
 
+    # =======================================================================================
+    # ORIGINAL OPTIMIZER CONFIGURATION - COMMENTED OUT FOR CPU MODE
+    # =======================================================================================
+    # optimizer = MultiGeneratorCLIPOptimizer(
+    #     num_episodes=3,  # Start with fewer episodes for testing
+    #     target_score=0.8,  # More achievable target
+    #     max_rounds_per_episode=20,
+    #     enable_router=True,  # ORIGINAL: Router enabled
+    #     tie_break_threshold=0.05
+    # )
+    # =======================================================================================
+
+    # =======================================================================================
+    # CPU MODE OPTIMIZER CONFIGURATION - ACTIVE IMPLEMENTATION
+    # =======================================================================================
     optimizer = MultiGeneratorCLIPOptimizer(
         num_episodes=3,  # Start with fewer episodes for testing
         target_score=0.8,  # More achievable target
         max_rounds_per_episode=20,
-        enable_router=True,
-        tie_break_threshold=0.05
+        enable_router=False,  # Disabled for CPU-only mode
+        tie_break_threshold=0.05,
+        use_cpu=True,  # Force CPU usage
+        vllm_url="http://localhost:11300"  # vLLM endpoint
     )
+    # =======================================================================================
     
     try:
+        print("🖥️ Starting CPU-based CLIP optimization with vLLM integration...")
+        print("🔗 vLLM URL: http://localhost:11300")
+        print("🎬 Generation endpoint: Cinema Style")
+        print("=" * 60)
+
         results = optimizer.run_all_episodes(test_prompts)
-        print(f"\n✅ Multi-generator episodic optimization complete!")
-        print(f"Results saved to: {optimizer.log_dir}")
-        
+        print(f"\n✅ CPU-based episodic CLIP optimization complete!")
+        print(f"📊 Results saved to: {optimizer.log_dir}")
+        print(f"🧠 Memory file: {optimizer.memory_file}")
+
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
         optimizer._save_episodic_memory()
+        print("💾 Episodic memory saved")
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":
-    main() 
+    main()

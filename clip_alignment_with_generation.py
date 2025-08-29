@@ -44,7 +44,7 @@ class CLIPAlignmentWithGeneration:
         "sd15_game_icon"
     ]
     
-    def __init__(self, hunyuan_server_url: str = "http://localhost:8098", verbose: bool = False, lora1_endpoint: str = None, lora2_endpoint: str = None):
+    def __init__(self, hunyuan_server_url: str = "http://localhost:8096", verbose: bool = False, lora1_endpoint: str = None, lora2_endpoint: str = None):
         self.hunyuan_server_url = hunyuan_server_url
         self.verbose = verbose
         self.lora1_endpoint = lora1_endpoint
@@ -293,12 +293,6 @@ class CLIPAlignmentWithGeneration:
     
     def preprocess_image_for_clip(self, image: Image.Image, image_res: int = 224) -> torch.Tensor:
         """Preprocess image for CLIP model (same as production validation)"""
-        # Ensure image is RGB (convert RGBA if necessary)
-        if image.mode == 'RGBA':
-            image = image.convert('RGB')
-        elif image.mode != 'RGB':
-            image = image.convert('RGB')
-        
         # Convert PIL to tensor
         image_tensor = torch.tensor(np.array(image)).float()
         
@@ -320,6 +314,37 @@ class CLIPAlignmentWithGeneration:
         
         return image_tensor.to(self.device)
     
+    def compute_text_to_text_similarity(self, text1: str, text2: str) -> float:
+        """Compute CLIP text-to-text similarity between two prompts"""
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("CLIP model not loaded. Call load_clip_model() first.")
+        
+        try:
+            # Tokenize both texts
+            tokenized_text1 = self._tokenizer(text1).to(self.device)
+            tokenized_text2 = self._tokenizer(text2).to(self.device)
+            
+            with torch.no_grad(), torch.amp.autocast(self.device.type):
+                # Encode both texts
+                text1_features = self._model.encode_text(tokenized_text1)
+                text2_features = self._model.encode_text(tokenized_text2)
+                
+                # Normalize features
+                text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                
+                # Compute similarity
+                similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                
+                # Clip to [0, 1] range
+                similarity = np.clip(similarity, 0, 1)
+                
+                return float(similarity)
+                
+        except Exception as e:
+            print(f"❌ CLIP text-to-text similarity computation failed: {e}")
+            return 0.0
+
     def compute_clip_alignment_score(self, prompt: str, image: Image.Image) -> float:
         """Compute CLIP alignment score between prompt and image"""
         if self._model is None or self._tokenizer is None:
@@ -650,6 +675,203 @@ class CLIPAlignmentWithGeneration:
         
         return results
 
+    def analyze_confusion_matrix(self, prompt: str, optimized_prompt: str, seed: int = 42, use_lora1: bool = False, use_lora2: bool = False) -> dict:
+        """Analyze all four alignment combinations between prompts and images"""
+        print(f"\n🔍 ANALYZING CONFUSION MATRIX")
+        print(f"=" * 50)
+        print(f"Original Prompt: '{prompt}'")
+        print(f"Optimized Prompt: '{optimized_prompt}'")
+        print(f"Seed: {seed}")
+        if use_lora1:
+            print(f"LoRA 1: {self.lora1_endpoint}")
+        if use_lora2:
+            print(f"LoRA 2: {self.lora2_endpoint}")
+        
+        # Generate both images
+        print(f"\n🎨 Generating image with original prompt...")
+        original_image = self.generate_image(prompt, seed, use_lora1, False)
+        if original_image is None:
+            return {"error": "Original image generation failed"}
+        
+        print(f"\n🎨 Generating image with optimized prompt...")
+        optimized_image = self.generate_image(optimized_prompt, seed, False, use_lora2)
+        if optimized_image is None:
+            return {"error": "Optimized image generation failed"}
+        
+        # Compute all four alignment scores
+        print(f"\n📊 Computing alignment scores...")
+        
+        # 1. Original prompt vs Original image
+        original_vs_original = self.compute_clip_alignment_score(prompt, original_image)
+        original_vs_original_norm = original_vs_original / 0.35
+        
+        # 2. Original prompt vs Optimized image
+        original_vs_optimized = self.compute_clip_alignment_score(prompt, optimized_image)
+        original_vs_optimized_norm = original_vs_optimized / 0.35
+        
+        # 3. Optimized prompt vs Original image
+        optimized_vs_original = self.compute_clip_alignment_score(optimized_prompt, original_image)
+        optimized_vs_original_norm = optimized_vs_original / 0.35
+        
+        # 4. Optimized prompt vs Optimized image
+        optimized_vs_optimized = self.compute_clip_alignment_score(optimized_prompt, optimized_image)
+        optimized_vs_optimized_norm = optimized_vs_optimized / 0.35
+        
+        # Determine statuses
+        def get_status(score):
+            if score < 0.3:
+                return "❌ FAIL"
+            elif score >= 0.8:
+                return "✅ EXCELLENT"
+            elif score >= 0.6:
+                return "🟡 GOOD"
+            else:
+                return "🟠 POOR"
+        
+        results = {
+            "original_prompt_vs_original_image": {
+                "prompt": prompt,
+                "image": "original",
+                "alignment_score": original_vs_original,
+                "normalized_score": original_vs_original_norm,
+                "status": get_status(original_vs_original_norm)
+            },
+            "original_prompt_vs_optimized_image": {
+                "prompt": prompt,
+                "image": "optimized",
+                "alignment_score": original_vs_optimized,
+                "normalized_score": original_vs_optimized_norm,
+                "status": get_status(original_vs_optimized_norm)
+            },
+            "optimized_prompt_vs_original_image": {
+                "prompt": optimized_prompt,
+                "image": "original",
+                "alignment_score": optimized_vs_original,
+                "normalized_score": optimized_vs_original_norm,
+                "status": get_status(optimized_vs_original_norm)
+            },
+            "optimized_prompt_vs_optimized_image": {
+                "prompt": optimized_prompt,
+                "image": "optimized",
+                "alignment_score": optimized_vs_optimized,
+                "normalized_score": optimized_vs_optimized_norm,
+                "status": get_status(optimized_vs_optimized_norm)
+            }
+        }
+        
+        # Print confusion matrix
+        print(f"\n📊 CONFUSION MATRIX RESULTS:")
+        print(f"=" * 80)
+        print(f"{'Prompt':<30} {'Image':<15} {'Raw Score':<12} {'Norm Score':<12} {'Status':<15}")
+        print(f"{'-' * 30} {'-' * 15} {'-' * 12} {'-' * 12} {'-' * 15}")
+        
+        for key, result in results.items():
+            prompt_text = result["prompt"][:27] + "..." if len(result["prompt"]) > 30 else result["prompt"]
+            image_type = result["image"]
+            raw_score = result["alignment_score"]
+            norm_score = result["normalized_score"]
+            status = result["status"]
+            
+            print(f"{prompt_text:<30} {image_type:<15} {raw_score:<12.4f} {norm_score:<12.4f} {status:<15}")
+        
+        # Analysis insights
+        print(f"\n🔍 ANALYSIS INSIGHTS:")
+        print(f"=" * 50)
+        
+        # Best and worst combinations
+        all_scores = [(k, v["normalized_score"]) for k, v in results.items()]
+        best_combination = max(all_scores, key=lambda x: x[1])
+        worst_combination = min(all_scores, key=lambda x: x[1])
+        
+        print(f"🏆 Best combination: {best_combination[0]} (Score: {best_combination[1]:.4f})")
+        print(f"❌ Worst combination: {worst_combination[0]} (Score: {worst_combination[1]:.4f})")
+        
+        # Prompt effectiveness
+        original_prompt_avg = (original_vs_original_norm + original_vs_optimized_norm) / 2
+        optimized_prompt_avg = (optimized_vs_original_norm + optimized_vs_optimized_norm) / 2
+        
+        print(f"\n📝 PROMPT EFFECTIVENESS:")
+        print(f"   Original prompt average: {original_prompt_avg:.4f}")
+        print(f"   Optimized prompt average: {optimized_prompt_avg:.4f}")
+        print(f"   Prompt improvement: {optimized_prompt_avg - original_prompt_avg:+.4f}")
+        
+        # Image effectiveness
+        original_image_avg = (original_vs_original_norm + optimized_vs_original_norm) / 2
+        optimized_image_avg = (original_vs_optimized_norm + optimized_vs_optimized_norm) / 2
+        
+        print(f"\n🖼️ IMAGE EFFECTIVENESS:")
+        print(f"   Original image average: {original_image_avg:.4f}")
+        print(f"   Optimized image average: {optimized_image_avg:.4f}")
+        print(f"   Image improvement: {optimized_image_avg - original_image_avg:+.4f}")
+        
+        # Overall optimization effectiveness
+        diagonal_improvement = (optimized_vs_optimized_norm - original_vs_original_norm)
+        print(f"\n🎯 OVERALL OPTIMIZATION:")
+        print(f"   Diagonal improvement: {diagonal_improvement:+.4f}")
+        if diagonal_improvement > 0:
+            print(f"   ✅ Optimization improved overall alignment")
+        elif diagonal_improvement < 0:
+            print(f"   ❌ Optimization decreased overall alignment")
+        else:
+            print(f"   ➖ Optimization had no effect")
+        
+        return results
+
+    def analyze_prompt_self_alignment(self, prompt: str, optimized_prompt: str) -> dict:
+        """Compute prompt-to-prompt alignment (semantic similarity)"""
+        print(f"\n🔗 PROMPT-TO-PROMPT ALIGNMENT (Semantic Similarity)")
+        print(f"=" * 60)
+        print(f"Original Prompt: '{prompt}'")
+        print(f"Optimized Prompt: '{optimized_prompt}'")
+        
+        # Compute prompt-to-prompt alignment (semantic similarity)
+        print(f"\n📊 Computing prompt-to-prompt alignment...")
+        prompt_alignment = self.compute_text_to_text_similarity(prompt, optimized_prompt)
+        prompt_alignment_norm = prompt_alignment / 0.35
+        
+        # Determine status
+        def get_status(score):
+            if score < 0.3:
+                return "❌ FAIL"
+            elif score >= 0.8:
+                return "✅ EXCELLENT"
+            elif score >= 0.6:
+                return "🟡 GOOD"
+            else:
+                return "🟠 POOR"
+        
+        status = get_status(prompt_alignment_norm)
+        
+        # Print results
+        print(f"\n📊 RESULTS:")
+        print(f"   Raw Alignment Score: {prompt_alignment:.4f}")
+        print(f"   Normalized Score: {prompt_alignment_norm:.4f}")
+        print(f"   Status: {status}")
+        
+        # Semantic similarity analysis
+        print(f"\n🔍 SEMANTIC SIMILARITY ANALYSIS:")
+        if prompt_alignment_norm >= 0.8:
+            print(f"   ✅ Excellent semantic alignment - prompts are very similar")
+        elif prompt_alignment_norm >= 0.6:
+            print(f"   🟡 Good semantic alignment - prompts maintain core meaning")
+        elif prompt_alignment_norm >= 0.4:
+            print(f"   🟠 Moderate semantic alignment - some meaning preserved")
+        else:
+            print(f"   ❌ Poor semantic alignment - prompts may be too different")
+        
+        results = {
+            "prompt_to_prompt": {
+                "type": "semantic_similarity",
+                "original_prompt": prompt,
+                "optimized_prompt": optimized_prompt,
+                "alignment_score": prompt_alignment,
+                "normalized_score": prompt_alignment_norm,
+                "status": status
+            }
+        }
+        
+        return results
+
     def compare_prompts_across_all_loras(self, prompt1: str, prompt2: str, seed: int = 42) -> dict:
         """Compare two prompts across all LoRA endpoints and HunyuanDiT and generate a comparison table"""
         print(f"\n🔍 COMPARING TWO PROMPTS ACROSS ALL LoRA ENDPOINTS + HUNYUANDiT")
@@ -913,6 +1135,12 @@ Examples:
   # Optimization analysis
   python clip_alignment_with_generation.py --optimized "a blue ceramic vase with red trim" "a blue vase"
   
+  # Confusion matrix analysis
+  python clip_alignment_with_generation.py --confusion-mat --optimized "a blue ceramic vase with red trim" "a blue vase"
+  
+  # Prompt self-alignment analysis
+  python clip_alignment_with_generation.py --prompt-self --optimized "a blue ceramic vase with red trim" "a blue vase"
+  
   # Using LoRA endpoints
   python clip_alignment_with_generation.py --lora1 "live_3d" "a blue vase"
   python clip_alignment_with_generation.py --lora2 "game_assets" "a blue vase"
@@ -931,12 +1159,14 @@ Examples:
     parser.add_argument("--optimized", help="Optimized prompt to compare against")
     parser.add_argument("--all-loras", action="store_true", help="Test prompt across all LoRA endpoints and generate comparison table")
     parser.add_argument("--compare-all-loras", action="store_true", help="Compare two prompts across all LoRA endpoints and generate comparison table")
+    parser.add_argument("--confusion-mat", action="store_true", help="Analyze confusion matrix between original/optimized prompts and images")
+    parser.add_argument("--prompt-self", action="store_true", help="Analyze prompt-to-prompt alignment and comprehensive image results")
     parser.add_argument("--lora1", help="LoRA 1 endpoint (e.g., isometric_3d, live_3d, game_assets, etc.)")
     parser.add_argument("--lora2", help="LoRA 2 endpoint (e.g., isometric_3d, live_3d, game_assets, etc.)")
     parser.add_argument("-1", "--lora1_num", type=int, help="LoRA 1 by number (0=none, 1=isometric_3d, 2=live_3d, etc.)")
     parser.add_argument("-2", "--lora2_num", type=int, help="LoRA 2 by number (0=none, 1=isometric_3d, 2=live_3d, etc.)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for generation")
-    parser.add_argument("--server", default="http://localhost:8098", help="Hunyuan server URL")
+    parser.add_argument("--server", default="http://localhost:8096", help="Hunyuan server URL")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -957,6 +1187,13 @@ Examples:
         
         # Load CLIP model
         analyzer.load_clip_model()
+
+        # Always compute prompt-to-prompt similarity if --prompt-self is given
+        if args.prompt_self and args.optimized:
+            print(f"\n🔗 COMPUTING PROMPT-TO-PROMPT SIMILARITY FIRST")
+            print(f"=" * 60)
+            prompt_similarity_results = analyzer.analyze_prompt_self_alignment(args.prompt, args.optimized)
+            print(f"\n" + "=" * 60)
         
         # Handle LoRA selection (number-based or string-based)
         def get_lora_from_number(num: int) -> str:
@@ -1034,6 +1271,8 @@ Examples:
             use_lora1 = (args.lora1 is not None or args.lora1_num is not None) and analyzer.lora1_endpoint != "none"
             use_lora2 = (args.lora2 is not None or args.lora2_num is not None) and analyzer.lora2_endpoint != "none"
         
+        
+        
         # Perform analysis based on arguments
         if args.compare_all_loras:
             # Compare two prompts across all LoRA endpoints
@@ -1046,6 +1285,9 @@ Examples:
             # Test across all LoRA endpoints
             results = analyzer.analyze_all_loras(args.prompt, args.seed)
             analyzer.print_lora_comparison_table(results)
+        elif args.confusion_mat and args.optimized:
+            # Confusion matrix analysis
+            results = analyzer.analyze_confusion_matrix(args.prompt, args.optimized, args.seed, use_lora1, use_lora2)
         elif args.optimized:
             # Optimization analysis
             results = analyzer.analyze_optimization(args.prompt, args.optimized, args.seed, use_lora1, use_lora2)

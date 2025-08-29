@@ -423,7 +423,7 @@ class RLLoopAgent:
                 prompt_with_context=prompt_with_context
             )
             if use_validation:
-                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = endpoint)
+                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = endpoint, use_direct=True)
                 self.logger.info(f"      📊 Validation score: {attempt.validation_score:.4f}")
             else:
                 attempt.validation_score = attempt.predicted_confidence
@@ -903,12 +903,76 @@ OPTIMIZATION: {{
         except Exception as e:
             self.logger.warning(f"[TRELLIS] Exception clearing GPU cache: {e}")
 
-    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/") -> float:
-        """Run validation with conda environment, clearing GPU cache first via TRELLIS server."""
+    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/", use_direct: bool = False) -> float:
+        """Run validation with conda environment, clearing GPU cache first via TRELLIS server.
+
+        Args:
+            original_prompt: Original prompt for validation scoring
+            optimized_prompt: Optimized prompt for generation (optional)
+            endpoint: Generation endpoint
+            use_direct: If True, use direct validation function instead of subprocess
+        """
+        try:
+            if use_direct:
+                return self._validate_prompt_direct(original_prompt, optimized_prompt, endpoint)
+            else:
+                return self._validate_prompt_subprocess(original_prompt, optimized_prompt, endpoint)
+        except Exception as e:
+            self.logger.error(f"   ❌ Validation failed: {e}")
+            return 0.0
+
+    def _validate_prompt_direct(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/") -> float:
+        """Direct validation using cached models for speed."""
+        try:
+            self.logger.info("      🔍 Direct validating...")
+            self._clear_trellis_gpu_cache()  # Clear GPU cache before validation
+
+            # Import the direct validation function
+            sys.path.append('/home/mbhat/three-gen-subnet-trellis')
+            from subnet_accurate_validator_multigpu import validate_prompt_direct
+
+            # Use optimized prompt for generation if provided, otherwise use original
+            if optimized_prompt and optimized_prompt != original_prompt:
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt}...'")
+            else:
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{original_prompt}...'")
+
+            # Call direct validation function
+            result = validate_prompt_direct(
+                original_prompt=original_prompt,
+                optimized_prompt=optimized_prompt,
+                endpoint=endpoint,
+                port=self.port
+            )
+
+            if not result:
+                self.logger.warning("   ❌ Direct validation returned no result")
+                return 0.0
+
+            # Log results
+            if result.get('endpoint_type') == 'image':
+                self.logger.info(f"      🖼️ Image validation - tt_clip: {result.get('tt_clip', 0.0):.4f}, ti_clip: {result.get('ti_clip', 0.0):.4f}")
+                score = result.get('ti_clip', 0.0)  # Use text-image CLIP for image endpoint
+            else:
+                score = result.get('validation_engine_score', 0.0)
+                self.logger.info(f"      🏆 Validation score: {score:.4f}")
+                self.logger.info(f"      🤝 Alignment score: {result.get('alignment_score', 0.0):.4f}")
+
+            return float(score)
+
+        except Exception as e:
+            self.logger.error(f"   ❌ Direct validation failed: {e}")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return 0.0
+
+    def _validate_prompt_subprocess(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/") -> float:
+        """Original subprocess-based validation."""
         try:
             self._clear_trellis_gpu_cache()  # Clear GPU cache before validation
             self.logger.info("      🔍 Validating...")
-            
+
             # Use optimized prompt for generation if provided, otherwise use original
             if optimized_prompt and optimized_prompt != original_prompt:
                 self.logger.info(f"      📝 Using optimized prompt for generation: '{optimized_prompt}...'")
@@ -938,7 +1002,7 @@ OPTIMIZATION: {{
                 f"subnet_validation_results_{self.trellis_server_url_w_port.split(':')[-1]}.json",
                 "subnet_validation_results.json"
             ]
-            
+
             data = None
             for validation_file in validation_files:
                 try:
@@ -949,11 +1013,11 @@ OPTIMIZATION: {{
                 except FileNotFoundError:
                     self.logger.debug(f"      📄 Validation file not found: {validation_file}")
                     continue
-            
+
             if data is None:
                 self.logger.warning(f"   ❌ No validation results file found")
                 return 0.0
-                
+
             score = data.get("validation_engine_score", 0.0)
             if score == 0.0 and torch.cuda.is_available():
                 self.logger.warning(f"   🔧 Score 0.0 - clearing CUDA cache")
@@ -1043,7 +1107,8 @@ OPTIMIZATION: {{
     def _query_llama(self, prompt: str) -> str:
         """Query local Ollama LLM"""
         data = {
-            "model": self.model,
+            # "model": self.model,
+            "model": "my-model",
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "options": {

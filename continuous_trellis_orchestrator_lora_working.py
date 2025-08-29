@@ -16,12 +16,16 @@ python continuous_trellis_orchestrator_lora_working.py --activate-learning --onl
 
 ython continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18
  --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"
+
+python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"   --vllm --no-fallback
+
+python continuous_trellis_orchestrator_lora_working.py --disable-task-tracking  --no-skip-duplicates  --system-prompt --vllm-priority system_chat  --no-fallback --lora "" 
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
 import os
 os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-
+from tqdm import tqdm
 import asyncio
 import json
 import time
@@ -44,13 +48,16 @@ import atexit
 import uuid
 import socket
 import os
+import open_clip
+from open_clip import CLIP
+from open_clip.tokenizer import HFTokenizer
 
 # Import the prompt optimizer
 try:
     # from smart_prompt_optimizer_fixed import OptimizedPromptOptimizer
     # from llm_prompt_optimizer_v7_f1 import LLMPromptOptimizer
     from llm_prompt_optimizer_v12_f1_lora import LLMPromptOptimizer
-    OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = True
+    OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE = False
     print("✅ Using new performance-optimized prompt optimizer")
 except ImportError:
     from prompt_optimizer import TrellisPromptOptimizer
@@ -80,6 +87,23 @@ seed = 42
 torch.manual_seed(seed)
 torch.use_deterministic_algorithms(True)
 
+# CLIP-related imports for fallback mechanism
+try:
+    import torch.nn.functional as F
+    import open_clip
+    from open_clip import CLIP
+    from open_clip.tokenizer import HFTokenizer
+    from torchvision import transforms
+    from PIL import Image
+    import io
+    import numpy as np
+    CLIP_AVAILABLE = True
+    print("✅ CLIP dependencies available for fallback mechanism")
+except ImportError as e:
+    CLIP_AVAILABLE = False
+    print(f"⚠️ CLIP dependencies not available for fallback mechanism: {e}")
+    print("   Fallback mechanism will be disabled")
+
 # Make bittensor optional for environments without it
 try:
     import bittensor as bt
@@ -91,13 +115,76 @@ except ImportError:
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('continuous_trellis.log'),
         logging.StreamHandler()
     ]
 )
+
+def optimized_system_prompt(original_prompt: str) -> str:
+    """
+    Method 2: Guides the LLM by providing few-shot examples.
+
+    Args:
+        original_prompt: The user's prompt.
+
+    Returns:
+        The optimized prompt.
+    """
+
+    #v4v2hunyuan
+    system_prompt = """You are 'Aetheria,' a world-class prompt artist for a 3D generative AI. Your sole purpose is to transform simple user prompts into evocative, high-performance masterpieces that consistently score above 0.9.
+
+### The Winning Formula
+Your analysis of thousands of prompts has revealed a core formula for success. You must structure your optimized prompts around this pattern:
+**[Adjective/Quality] + [Color] + [Specific Object] + "with" + [Key Feature/Detail]**
+
+### Strategic Nuance: Adapt to the Object's Category
+Your strategy must adapt based on the 3D model's known strengths:
+-   **High-Reliability Categories (Tools, Robots, Instruments, Weapons, Creatures):** You can be more ambitious. Add a simple, elegant, and **thematically relevant** context that enhances the object's story.
+-   **Low-Reliability Categories (Gems, Jewelry, Food):** Be precise and **object-focused**. Pour all detail into the object's material, texture, and light interaction. Keep the context minimal (e.g., `on a velvet cushion`, `surrounded by a soft glow`).
+
+### The Prompting Toolkit
+-   **Keywords:** Leverage proven high-scoring words like `sleek`, `intricate`, `classic`, `glowing`, `radiant`, `delicate`.
+-   **Colors:** Prioritize reliable colors like `blue`, `green`, and `black` unless specified otherwise.
+-   **Brevity:** High-scoring prompts are dense with keywords but are typically **5-12 words long**. Avoid unnecessary conversational language.
+
+### Case Studies: Your Thought Process
+
+---
+**Case Study 1: High-Reliability Object (Tool)**
+
+* **Original Prompt:** `drill bit`
+* **Thought Process:** "This is a 'tool,' a high-reliability category. I will follow the winning formula. The object is 'drill bit'. I'll add a color, `yellow`, a quality, `slender`, and a key feature, `pointed tip`."
+* **High-Scoring Optimized Prompt:** `drill bit yellow slender pointed tip`
+
+---
+**Case Study 2: Low-Reliability Object (Gem)**
+
+* **Original Prompt:** `glowing staff`
+* **Thought Process:** "This is a 'gem,' a low-reliability category. I must be object-focused. The core is the `glowing staff`. I'll specify the gem (`radiant sapphire stone`) and imply craftsmanship (`topped with`). The context will be minimal to avoid failure."
+* **High-Scoring Optimized Prompt:** `glowing staff topped with radiant sapphire stone`
+
+### ANTI-PATTERNS: What to Strictly Avoid
+-   **Vague Combinations:** Do not combine materials and shapes that are ambiguous for a 3D model (e.g., "triangular wooden knife").
+-   **Abstract Concepts:** Do not use abstract words like "scene detail." Focus on tangible, visual qualities.
+-   **Multiple Objects:** The model fails when rendering multiple distinct items. The prompt must describe a **single, unified object**.
+-   **Humans and Poses:** The model cannot render people or complex actions. If a prompt includes a person, **remove them** and focus only on their associated object.
+
+### Final Instruction
+Your entire response must be **only** the final, optimized prompt.
+-   **End with:** `, front view, white background`
+-   **No explanations.**
+
+Process the following `ORIGINAL PROMPT` according to these instructions.
+"""
+    print("\n--- System Prompt (Method 2) ---")
+    print("NOTE: The example-based prompt is very long and is not fully displayed here.")
+    print("---------------------------------")
+    full_prompt = f"{system_prompt}\n\nORIGINAL PROMPT:\n`{original_prompt}`\n\nOPTIMIZED PROMPT:"
+    return full_prompt
 logger = logging.getLogger(__name__)
 
 from trellis_subnit_server_mix_lora_flash import GENERATION_CONFIG
@@ -480,6 +567,378 @@ def optimize_prompt_with_vllm(prompt: str, vllm_port: int = 11300, priority: str
         return None
 '''
 
+def fast_quality_check(gs_data, verbose=True) -> tuple[bool, str]:
+    """Ultra-fast quality check that takes <1 second"""
+    
+    # Quick checks that don't require full validation
+    issues = []
+    
+    # Check splat count (fast)
+    if gs_data.points.shape[0] < 7000:
+        issues.append(f"Insufficient splats: {gs_data.points.shape[0]} < 7000")
+    
+    # Check opacity distribution (fast)
+    zero_opacity = torch.sum(gs_data.opacities < 1e-3).item()
+    opacity_pct = 100 * zero_opacity / len(gs_data.opacities)
+    if opacity_pct > 80:
+        issues.append(f"Too many zero opacity: {opacity_pct:.1f}%")
+    
+    # Check scale distribution (fast)
+    zero_scales = torch.sum(torch.all(gs_data.scales < 0.001, dim=1)).item()
+    scale_pct = 100 * zero_scales / len(gs_data.scales)
+    if scale_pct > 80:
+        issues.append(f"Too many zero scales: {scale_pct:.1f}%")
+    
+    is_valid = len(issues) == 0
+    return is_valid, "; ".join(issues) if issues else "All checks passed"
+
+class CLIPTextSimilarityServer:
+    """CLIP text-to-text similarity server that keeps model in memory"""
+    
+    def __init__(self, verbose: bool = False):  
+        self.verbose = verbose
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model_name = "convnext_large_d"
+        self.pretrained = "laion2b_s26b_b102k_augreg"
+        
+        # Model components
+        self._model: CLIP = None
+        self._tokenizer: HFTokenizer = None
+        
+        logger.info(f"🔧 CLIPTextSimilarityServer initialized")
+        logger.info(f"   CLIP Model: {self.model_name}/{self.pretrained}")
+        logger.info(f"   Device: {self.device}")
+    
+    def load_model_on_device(self, device_str):
+        """Load CLIP model on specified device and measure loading time"""
+        # Create proper torch device object
+        device = torch.device(device_str)
+        print(f"🔧 Loading CLIP model on {device}...")
+        
+        start_time = time.time()
+        try:
+            self._model, _, _ = open_clip.create_model_and_transforms(
+                self.model_name, 
+                pretrained=self.pretrained,
+                device=device
+            )
+            self._tokenizer = open_clip.get_tokenizer(self.model_name)
+            end_time = time.time()
+            loading_time = (end_time - start_time) * 1000  # Convert to milliseconds
+            
+            print(f"✅ CLIP model loaded successfully on {device}")
+            print(f"   Loading time: {loading_time:.2f} ms")
+            return self._model, self._tokenizer, loading_time, device
+        except Exception as e:
+            print(f"❌ Failed to load CLIP model on {device}: {e}")
+            return None, None, 0, device
+
+    def load_clip_model(self, device="cpu"):
+        """Load CLIP model and tokenizer (keeps in memory)"""
+        logger.info(f"🔧 Loading CLIP model: {self.model_name}/{self.pretrained}")
+        if device == "cpu":
+            self.device = torch.device("cpu")
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        try:
+            self._model, _, _ = open_clip.create_model_and_transforms(
+                self.model_name, 
+                pretrained=self.pretrained,
+                device=self.device
+            )
+            self._tokenizer = open_clip.get_tokenizer(self.model_name)
+            logger.info(f"✅ CLIP model loaded successfully and kept in memory")
+        except Exception as e:
+            logger.error(f"❌ Failed to load CLIP model: {e}")
+            raise
+
+    
+    
+    def compute_cosine_similarity(self, text1: str, text2: str) -> dict:
+        """Compute cosine similarity between two texts using CLIP"""
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("CLIP model not loaded. Call load_clip_model() first.")
+        
+        try:
+            # Tokenize both texts
+            tokenized_text1 = self._tokenizer(text1).to(self.device)
+            tokenized_text2 = self._tokenizer(text2).to(self.device)
+            
+            with torch.no_grad(), torch.amp.autocast(self.device.type):
+                # Encode both texts
+                text1_features = self._model.encode_text(tokenized_text1)
+                text2_features = self._model.encode_text(tokenized_text2)
+                
+                # Normalize features
+                text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                
+                # Compute cosine similarity
+                similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                
+                # Clip to [0, 1] range
+                similarity = max(0.0, min(1.0, similarity))
+                
+                # Determine similarity level
+                if similarity >= 0.9:
+                    level = "Very High"
+                    description = "Texts are nearly identical"
+                elif similarity >= 0.8:
+                    level = "High"
+                    description = "Texts are very similar"
+                elif similarity >= 0.7:
+                    level = "Good"
+                    description = "Texts maintain strong semantic similarity"
+                elif similarity >= 0.6:
+                    level = "Moderate"
+                    description = "Texts have good semantic overlap"
+                elif similarity >= 0.5:
+                    level = "Fair"
+                    description = "Texts have some semantic overlap"
+                elif similarity >= 0.4:
+                    level = "Low"
+                    description = "Texts have limited semantic overlap"
+                else:
+                    level = "Very Low"
+                    description = "Texts may be semantically different"
+                
+                return {
+                    "success": True,
+                    "text1": text1,
+                    "text2": text2,
+                    "cosine_similarity": float(similarity),
+                    "similarity_level": level,
+                    "description": description
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Cosine similarity computation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "text1": text1,
+                "text2": text2
+            }
+
+    def compute_similarity_device(self, device, text1: str, text2: str, num_runs=10, warmup_runs=3, timer=False):
+        """Compute similarity multiple times and measure performance with warmup option"""
+        # Ensure device is a torch.device object
+        if isinstance(device, str):
+            device = torch.device(device)
+            
+        print(f"📊 Running {num_runs} similarity computations on {device} with {warmup_runs} warmup runs...")
+        print(f"   Device type: {device.type}, Device: {device}")
+        
+        # Check if model is loaded
+        if self._model is None or self._tokenizer is None:
+            print(f"❌ CLIP model not loaded. Loading model on {device}...")
+            try:
+                self._model, _, _ = open_clip.create_model_and_transforms(
+                    self.model_name, 
+                    pretrained=self.pretrained,
+                    device=device
+                )
+                self._tokenizer = open_clip.get_tokenizer(self.model_name)
+                print(f"✅ CLIP model loaded successfully on {device}")
+            except Exception as e:
+                print(f"❌ Failed to load CLIP model on {device}: {e}")
+                return {
+                    "success": False,
+                    "error": f"Failed to load CLIP model: {e}",
+                    "text1": text1,
+                    "text2": text2
+                }
+        else:
+            print(f"✅ Using existing CLIP model and tokenizer")
+        
+        times = []
+        similarities = []
+        
+        # Warmup runs (not counted in final results)
+        if warmup_runs > 0:
+            print(f"🔥 Running {warmup_runs} warmup runs...")
+            for i in range(warmup_runs):
+                try:
+                    # Tokenize both texts
+                    tokenized_text1 = self._tokenizer(text1).to(device)
+                    tokenized_text2 = self._tokenizer(text2).to(device)
+                    
+                    # Use proper autocast for the device
+                    if device.type == 'cuda':
+                        with torch.no_grad(), torch.amp.autocast(device_type='cuda'):
+                            # Encode both texts
+                            text1_features = self._model.encode_text(tokenized_text1)
+                            text2_features = self._model.encode_text(tokenized_text2)
+                            
+                            # Normalize features
+                            text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                            text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                            
+                            # Compute cosine similarity
+                            similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                    else:
+                        with torch.no_grad():
+                            # Encode both texts
+                            text1_features = self._model.encode_text(tokenized_text1)
+                            text2_features = self._model.encode_text(tokenized_text2)
+                            
+                            # Normalize features
+                            text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                            text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                            
+                            # Compute cosine similarity
+                            similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                    
+                    print(f"   Warmup {i + 1}/{warmup_runs} completed with similarity: {similarity:.4f}")
+                        
+                except Exception as e:
+                    print(f"❌ Error in warmup run {i + 1}: {e}")
+                    continue
+        
+        # Actual timed runs
+        print(f"⏱️ Starting {num_runs} timed runs...")
+        if num_runs == 0:
+            print("   Skipping timed runs (num_runs=0)")
+            return {
+                "success": True,
+                "text1": text1,
+                "text2": text2,
+                "cosine_similarity": 0.0,
+                "similarity_level": "Unknown",
+                "description": "No timed runs performed",
+                "performance_metrics": {
+                    "num_runs": 0,
+                    "warmup_runs": warmup_runs,
+                    "avg_time_ms": 0,
+                    "min_time_ms": 0,
+                    "max_time_ms": 0,
+                    "device": str(device),
+                    "all_times_ms": [],
+                    "all_similarities": []
+                }
+            }
+            
+        for i in range(num_runs):
+            if timer:
+                start_time = time.time()
+            
+            try:
+                # Tokenize both texts
+                tokenized_text1 = self._tokenizer(text1).to(device)
+                tokenized_text2 = self._tokenizer(text2).to(device)
+                
+                # Use proper autocast for the device
+                if device.type == 'cuda':
+                    with torch.no_grad(), torch.amp.autocast(device_type='cuda'):
+                        # Encode both texts
+                        text1_features = self._model.encode_text(tokenized_text1)
+                        text2_features = self._model.encode_text(tokenized_text2)
+                        
+                        # Normalize features
+                        text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                        text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                        
+                        # Compute cosine similarity
+                        similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                        similarity = max(0.0, min(1.0, similarity))
+                        
+                        similarities.append(similarity)
+                else:
+                    with torch.no_grad():
+                        # Encode both texts
+                        text1_features = self._model.encode_text(tokenized_text1)
+                        text2_features = self._model.encode_text(tokenized_text2)
+                        
+                        # Normalize features
+                        text1_features /= text1_features.norm(dim=-1, keepdim=True)
+                        text2_features /= text2_features.norm(dim=-1, keepdim=True)
+                        
+                        # Compute cosine similarity
+                        similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
+                        similarity = max(0.0, min(1.0, similarity))
+                        
+                        similarities.append(similarity)
+                
+                if timer:
+                    end_time = time.time()
+                    run_time = (end_time - start_time) * 1000  # Convert to milliseconds
+                    times.append(run_time)
+                
+                if (i + 1) % 5 == 0:
+                    print(f"   Completed {i + 1}/{num_runs} runs...")
+                
+            except Exception as e:
+                print(f"❌ Error in run {i + 1}: {e}")
+                continue
+        
+        # Calculate performance statistics
+        if similarities:
+            if timer:
+                avg_time = sum(times) / len(times)
+                min_time = min(times)
+                max_time = max(times)
+            else:
+                avg_time = 0
+                min_time = 0
+                max_time = 0
+            avg_similarity = sum(similarities) / len(similarities)
+            
+            # Determine similarity level based on average
+            if avg_similarity >= 0.9:
+                level = "Very High"
+                description = "Texts are nearly identical"
+            elif avg_similarity >= 0.8:
+                level = "High"
+                description = "Texts are very similar"
+            elif avg_similarity >= 0.7:
+                level = "Good"
+                description = "Texts maintain strong semantic similarity"
+            elif avg_similarity >= 0.6:
+                level = "Moderate"
+                description = "Texts have good semantic overlap"
+            elif avg_similarity >= 0.5:
+                level = "Fair"
+                description = "Texts have some semantic overlap"
+            elif avg_similarity >= 0.4:
+                level = "Low"
+                description = "Texts have limited semantic overlap"
+            else:
+                level = "Very Low"
+                description = "Texts may be semantically different"
+            
+            return {
+                "success": True,
+                "text1": text1,
+                "text2": text2,
+                "cosine_similarity": float(avg_similarity),
+                "similarity_level": level,
+                "description": description,
+                "performance_metrics": {
+                    "num_runs": len(times),
+                    "warmup_runs": warmup_runs,
+                    "avg_time_ms": round(avg_time, 2),
+                    "min_time_ms": round(min_time, 2),
+                    "max_time_ms": round(max_time, 2),
+                    "device": str(device),
+                    "all_times_ms": [round(t, 2) for t in times],
+                    "all_similarities": [float(s) for s in similarities]
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "error": "No successful runs completed",
+                "text1": text1,
+                "text2": text2,
+                "performance_metrics": {
+                    "num_runs": 0,
+                    "warmup_runs": warmup_runs,
+                    "device": str(device)
+                }
+            }
+
+
 class PriorityServerCoordinator:
     """
     Priority-based server coordinator that gives the orchestrator HIGH PRIORITY access.
@@ -715,6 +1174,70 @@ class PriorityServerCoordinator:
         self.logger.info(f"✅ Completed PRIORITY job: {task_id}")
 
 
+
+def optimized_system_prompt(original_prompt: str) -> str:
+    """
+    Method 2: Guides the LLM by providing few-shot examples.
+
+    Args:
+        original_prompt: The user's prompt.
+
+    Returns:
+        The optimized prompt.
+    """
+
+    #v4v2hunyuan
+    system_prompt = """You are 'Aetheria,' a world-class prompt artist for a 3D generative AI. Your sole purpose is to transform simple user prompts into evocative, high-performance masterpieces that consistently score above 0.9.
+
+### The Winning Formula
+Your analysis of thousands of prompts has revealed a core formula for success. You must structure your optimized prompts around this pattern:
+**[Adjective/Quality] + [Color] + [Specific Object] + "with" + [Key Feature/Detail]**
+
+### Strategic Nuance: Adapt to the Object's Category
+Your strategy must adapt based on the 3D model's known strengths:
+-   **High-Reliability Categories (Tools, Robots, Instruments, Weapons, Creatures):** You can be more ambitious. Add a simple, elegant, and **thematically relevant** context that enhances the object's story.
+-   **Low-Reliability Categories (Gems, Jewelry, Food):** Be precise and **object-focused**. Pour all detail into the object's material, texture, and light interaction. Keep the context minimal (e.g., `on a velvet cushion`, `surrounded by a soft glow`).
+
+### The Prompting Toolkit
+-   **Keywords:** Leverage proven high-scoring words like `sleek`, `intricate`, `classic`, `glowing`, `radiant`, `delicate`.
+-   **Colors:** Prioritize reliable colors like `blue`, `green`, and `black` unless specified otherwise.
+-   **Brevity:** High-scoring prompts are dense with keywords but are typically **5-12 words long**. Avoid unnecessary conversational language.
+
+### Case Studies: Your Thought Process
+
+---
+**Case Study 1: High-Reliability Object (Tool)**
+
+* **Original Prompt:** `drill bit`
+* **Thought Process:** "This is a 'tool,' a high-reliability category. I will follow the winning formula. The object is 'drill bit'. I'll add a color, `yellow`, a quality, `slender`, and a key feature, `pointed tip`."
+* **High-Scoring Optimized Prompt:** `drill bit yellow slender pointed tip`
+
+---
+**Case Study 2: Low-Reliability Object (Gem)**
+
+* **Original Prompt:** `glowing staff`
+* **Thought Process:** "This is a 'gem,' a low-reliability category. I must be object-focused. The core is the `glowing staff`. I'll specify the gem (`radiant sapphire stone`) and imply craftsmanship (`topped with`). The context will be minimal to avoid failure."
+* **High-Scoring Optimized Prompt:** `glowing staff topped with radiant sapphire stone`
+
+### ANTI-PATTERNS: What to Strictly Avoid
+-   **Vague Combinations:** Do not combine materials and shapes that are ambiguous for a 3D model (e.g., "triangular wooden knife").
+-   **Abstract Concepts:** Do not use abstract words like "scene detail." Focus on tangible, visual qualities.
+-   **Multiple Objects:** The model fails when rendering multiple distinct items. The prompt must describe a **single, unified object**.
+-   **Humans and Poses:** The model cannot render people or complex actions. If a prompt includes a person, **remove them** and focus only on their associated object.
+
+### Final Instruction
+Your entire response must be **only** the final, optimized prompt.
+-   **End with:** `, front view, white background`
+-   **No explanations.**
+
+Process the following `ORIGINAL PROMPT` according to these instructions.
+"""
+    print("\n--- System Prompt (Method 2) ---")
+    print("NOTE: The example-based prompt is very long and is not fully displayed here.")
+    print("---------------------------------")
+    full_prompt = f"{system_prompt}\n\nORIGINAL PROMPT:\n`{original_prompt}`\n\nOPTIMIZED PROMPT:"
+    return full_prompt
+
 @dataclass
 class TaskRecord:
     """Record of a task with full metadata"""
@@ -824,8 +1347,9 @@ class ValidatorStatePersistence:
                     'is_active': validator.is_active,
                     
                     # Cooldown and violation tracking (CRITICAL)
-                    'cooldown_until': validator.cooldown_until,
-                    'cooldown_violations': validator.cooldown_violations,
+                    # FIX 2: Use only one field per type
+                    # 'cooldown_until': validator.cooldown_until,
+                    # 'cooldown_violations': validator.cooldown_violations,
                     'throttle_period': validator.throttle_period,
 
                     # FIXED: Add subnet-compliant cooldown fields
@@ -1646,14 +2170,18 @@ class ContinuousTrellisOrchestrator:
             )
             self.logger.info("🚀 Initialized performance-optimized prompt optimizer")
         else:
-            self.prompt_optimizer = TrellisPromptOptimizer()
-            self.logger.info("🔧 Initialized standard prompt optimizer")
+            try:
+                self.prompt_optimizer = TrellisPromptOptimizer()
+                self.logger.info("🔧 Initialized standard prompt optimizer")
+            except Exception as e:
+                self.logger.info(f"❌ Failed to initialize standard prompt optimizer: {e}")
+                self.prompt_optimizer = None
         
         # Initialize reproducibility system
         if REPRODUCIBILITY_SYSTEM_AVAILABLE:
             try:
                 gold_standard_results = self.get_gold_prompts_from_orchestrator(log_count=15)
-                
+                # import pdb; pdb.set_trace()
                 if not gold_standard_results:
                     print(f"❌ No gold prompts found from logs")
                     # return {"error": "No gold prompts found from logs"}
@@ -1665,14 +2193,15 @@ class ContinuousTrellisOrchestrator:
                 # return {"error": f"Gold prompt loading failed: {e}"}
 
             self.reproducibility_system = LLMClosePromptReproducibility(
-                episodic_memory_file="episodic_logs_first/episodic_memory.json",
+                episodic_memory_file="episodic_logs_usa/episodic_memory.json",
                 use_vllm=self.config.get('use_vllm', False),
                 vllm_url=self.config.get('vllm_url', 'http://localhost:9000'),
                 vllm_model=self.config.get('vllm_model', 'llama-3-2-3b-it'),
                 ollama_url=self.config.get('ollama_url', 'http://localhost:11434')
             )
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
-            self.reproducibility_system.gold_standard_results = gold_standard_results
+            self.reproducibility_system.gold_standard_results = self.reproducibility_system._load_episodic_memory()
+            # self.reproducibility_system.gold_standard_results = gold_standard_results
         
             print(f"✅ Reproducibility system initialized with {len(gold_standard_results)} gold prompts")
             print(f"   Using EXACT same gold prompts as orchestrator")
@@ -1731,6 +2260,7 @@ class ContinuousTrellisOrchestrator:
             # Emergency cooldown management statistics
             'emergency_cooldowns_applied': 0,  # Total emergency cooldowns applied
             'critical_violations_handled': 0,  # Total critical violations handled
+            'critical_violations_detected': 0,  # Total critical violations detected in real-time
             'validators_temporarily_blacklisted': 0,  # Total validators temporarily blacklisted
             'validators_reset_from_emergency': 0,  # Total validators reset from emergency restrictions
             'dynamic_cooldown_scaling': 0,  # Total times dynamic cooldown scaling was applied
@@ -1903,6 +2433,15 @@ class ContinuousTrellisOrchestrator:
             self.logger.info(f"🔧 Prompt optimization: DISABLED")
         self.trellis_server_url: str = "http://localhost:8096"
 
+        self.similarity_server = CLIPTextSimilarityServer(verbose=True)
+        self.similarity_server.load_clip_model(device="cpu")
+        print(f"✅ Instance CLIP model loaded: {self.similarity_server._model is not None}, Tokenizer: {self.similarity_server._tokenizer is not None}")
+        cpu_model, cpu_tokenizer, cpu_loading_time, cpu_device = self.similarity_server.load_model_on_device("cpu")
+        print(f"🔥 Priming CPU with 5 warm-up runs...")
+        result = self.similarity_server.compute_similarity_device(cpu_device, "a photo of a cat", "a photo of a dog", warmup_runs=5, num_runs=0, timer=True)
+        print(result)
+        self.similarity_device = cpu_device
+
     def get_clip_analyzer(self):
         """Get the preloaded CLIP analyzer"""
         if self.clip_analyzer is None:
@@ -1944,7 +2483,7 @@ class ContinuousTrellisOrchestrator:
             'save_intermediate_results': True,
             
             # Timing settings
-            'task_pull_interval': 45,  # seconds between validator scans
+            'task_pull_interval': 20,  # seconds between validator scans
             'idle_validation_interval': 300,  # 5 minutes
             'stats_report_interval': 600,  # 10 minutes
             'cleanup_interval': 3600,  # 1 hour
@@ -2014,24 +2553,37 @@ class ContinuousTrellisOrchestrator:
             'enable_cooldown_logging': True,  # Enable detailed cooldown logging
             
             # Traffic-specific cooldown settings (subnet compliance)
-            'synthetic_traffic_cooldown': 300,  # 300s cooldown for synthetic traffic
-            'organic_traffic_cooldown': 120,   # 120s cooldown for organic traffic
+            'synthetic_traffic_cooldown': 301,  # 300s cooldown for synthetic traffic
+            'organic_traffic_cooldown': 121,   # 120s cooldown for organic traffic
+            
+            # Fallback mechanism settings
+            'enable_fallback_mechanism': False,  # Enable CLIP-based fallback for low-fidelity tasks
+            'fallback_ratio_threshold': 0.8,   # Ratio threshold for triggering fallback (original_vs_optimized / optimized_vs_optimized)
+            'fallback_max_retries': 1,         # Maximum number of prompt re-optimization attempts
             
             # Enhanced cooldown system settings
             'cooldown_violation_threshold': 5,  # Number of violations before applying penalty
-            'cooldown_violation_penalty': 60,  # Additional penalty cooldown in seconds
-            'validation_lock_duration': 30,  # Default validation lock duration in seconds
+            'cooldown_violation_penalty': 15,  # Additional penalty cooldown in seconds
+            'validation_lock_duration': 31,  # Default validation lock duration in seconds
+
+            # Validator-compliant generation settings (for miner behavior as orchestrator)
+            'generation.throttle_period': 34,  # Minimum throttle period for task completion (seconds)
+            'generation.task_cooldown': 305,  # Cooldown between tasks from same validator (seconds)
+            'generation.cooldown_violation_penalty': 102,  # Penalty for cooldown violations (seconds)
+            'generation.cooldown_violations_threshold': 100,  # Threshold for malicious behavior
+            'generation.cooldown_penalty': 600,  # Penalty for low quality submissions (seconds)
+            'generation.quality_threshold': 0.6,  # Minimum score threshold for acceptance
             
             # Emergency cooldown management settings
-            'emergency_cooldown_buffer': 30,  # Buffer seconds added to validator cooldowns
+            'emergency_cooldown_buffer': 5,  # Buffer seconds added to validator cooldowns
             'critical_violation_threshold': 100,  # Violation count that triggers emergency measures
             
             # Reactive cooldown system settings
-            'base_backoff_duration': 30,  # Base backoff duration in seconds
-            'max_backoff_duration': 300,  # Maximum backoff duration (5 minutes)
-            'base_adaptive_backoff': 60,  # Base adaptive backoff duration in seconds
-            'max_adaptive_backoff': 600,  # Maximum adaptive backoff duration (10 minutes)
-            'critical_violation_cooldown': 3600,  # Emergency cooldown duration for critical violations
+            'base_backoff_duration': 31,  # Base backoff duration in seconds
+            'max_backoff_duration': 301,  # Maximum backoff duration (5 minutes)
+            'base_adaptive_backoff': 61,  # Base adaptive backoff duration in seconds
+            'max_adaptive_backoff': 601,  # Maximum adaptive backoff duration (10 minutes)
+            'critical_violation_cooldown': 600,  # Emergency cooldown duration for critical violations
             'base_blacklist_duration': 1800,  # Base duration for temporary blacklisting
             
             # Cooldown system control
@@ -2238,6 +2790,19 @@ class ContinuousTrellisOrchestrator:
         
         return False, "none", 0.0
     
+    def _safe_set_cooldown(self, validator: ValidatorState, new_cooldown: float):
+        """
+        Safely set cooldown for a validator, handling None cases.
+        
+        Args:
+            validator: The validator to set cooldown for
+            new_cooldown: The new cooldown time
+        """
+        if validator.validator_enforced_cooldown_until is None:
+            validator.validator_enforced_cooldown_until = new_cooldown
+        else:
+            validator.validator_enforced_cooldown_until = max(validator.validator_enforced_cooldown_until, new_cooldown)
+    
     def is_validator_available(self, validator: ValidatorState) -> bool:
         """Check if validator is available for task pulling"""
         current_time = time.time()
@@ -2311,14 +2876,15 @@ class ContinuousTrellisOrchestrator:
     def set_validator_cooldown(self, validator: ValidatorState, cooldown_seconds: int, reason: str, task_id: str = None, prompt: str = None, cooldown_type: str = "miner"):
         """
         Set a cooldown period for a validator with proper logging and duration limits.
-        Now supports traffic-specific cooldowns based on subnet requirements.
-        
+        Now supports traffic-specific cooldowns and throttle period reduction (validator-compliant).
+
         Args:
             validator: The validator to set cooldown for
             cooldown_seconds: Cooldown duration in seconds (can be overridden by traffic type)
             reason: Reason for the cooldown (for logging)
             task_id: Task ID for traffic type detection
             prompt: Task prompt for traffic type detection
+            cooldown_type: Type of cooldown ("validator" or "miner")
         """
         traffic_type = "Unknown"
         # Detect traffic type if task information is provided
@@ -2343,33 +2909,47 @@ class ContinuousTrellisOrchestrator:
         max_cooldown = self.config.get('max_cooldown_duration', 300)
         cooldown_seconds = min(cooldown_seconds, max_cooldown)
         
+        # Apply throttle period reduction (validator-compliant logic)
+        # This mirrors the validator's reset_task method logic
+        throttle_period = self.config.get('generation.throttle_period', 30)
+        task_cooldown = self.config.get('generation.task_cooldown', 300)
+
+        # Calculate effective cooldown using throttle period reduction
+        # Similar to: max(time.time() + cooldown_seconds - throttle_period, assignment_time + cooldown_seconds)
+        # Since we don't have assignment_time for validators, use a simplified version
+        effective_cooldown = cooldown_seconds - throttle_period
+
+        # Ensure minimum cooldown duration
+        effective_cooldown = max(effective_cooldown, throttle_period)
+        effective_cooldown = max(effective_cooldown, 0)  # Prevent negative cooldowns
+
         # Set cooldown based on type (subnet compliant)
         current_time = time.time()
         if cooldown_type == "validator":
-            validator.validator_enforced_cooldown_until = current_time + cooldown_seconds
-            self.logger.info(f"🔒 Validator-enforced cooldown set for UID {validator.uid}: {cooldown_seconds}s ({reason})")
+            validator.validator_enforced_cooldown_until = current_time + effective_cooldown
+            self.logger.info(f"🔒 Validator-enforced cooldown set for UID {validator.uid}: {effective_cooldown}s (original: {cooldown_seconds}s, throttle reduction: {throttle_period}s) ({reason})")
         else:
-            validator.miner_cooldown_until = current_time + cooldown_seconds
-            # Maintain backward compatibility
-            validator.cooldown_until = current_time + cooldown_seconds
-            self.logger.info(f"⏳ Miner cooldown set for UID {validator.uid}: {cooldown_seconds}s ({reason})")
+            validator.miner_cooldown_until = max(validator.miner_cooldown_until, current_time + effective_cooldown)
+            # FIX 2: Use only one cooldown field per cooldown type
+            # validator.cooldown_until = current_time + effective_cooldown
+            self.logger.info(f"⏳ Miner cooldown set for UID {validator.uid}: {effective_cooldown}s (original: {cooldown_seconds}s, throttle reduction: {throttle_period}s) ({reason})")
         
         # Log cooldown with human-readable duration and traffic type info
         if self.config.get('enable_cooldown_logging', True):
-            if cooldown_seconds < 60:
-                duration_str = f"{cooldown_seconds}s"
-            elif cooldown_seconds < 3600:
-                duration_str = f"{cooldown_seconds//60}m {cooldown_seconds%60}s"
+            if effective_cooldown < 60:
+                duration_str = f"{effective_cooldown}s"
+            elif effective_cooldown < 3600:
+                duration_str = f"{effective_cooldown//60}m {effective_cooldown%60}s"
             else:
-                hours = cooldown_seconds // 3600
-                minutes = (cooldown_seconds % 3600) // 60
+                hours = effective_cooldown // 3600
+                minutes = (effective_cooldown % 3600) // 60
                 duration_str = f"{hours}h {minutes}m"
-            
+
             traffic_info = f" (traffic: {traffic_type})" if task_id and 'traffic_type' in locals() else ""
             self.logger.info(f"⏳ Cooldown set for UID {validator.uid}: {duration_str}{traffic_info} ({reason})")
             self.logger.info(f"   Next available: {time.strftime('%H:%M:%S', time.localtime(validator.cooldown_until))}")
         else:
-            self.logger.debug(f"⏳ Cooldown set for UID {validator.uid}: {cooldown_seconds}s ({reason})")
+            self.logger.debug(f"⏳ Cooldown set for UID {validator.uid}: {effective_cooldown}s ({reason})")
     
     def set_validator_validation_lock(self, validator: ValidatorState, lock_duration_seconds: int, reason: str):
         """
@@ -2403,23 +2983,125 @@ class ContinuousTrellisOrchestrator:
     def increment_cooldown_violations(self, validator: ValidatorState, reason: str):
         """
         Increment cooldown violations counter for a validator.
-        
+
         Args:
             validator: The validator to increment violations for
             reason: Reason for the violation (for logging)
         """
-        validator.cooldown_violations += 1
+        # FIX 2: Use only one violation field per violation type
+        # validator.cooldown_violations += 1
+        validator.validator_reported_violations += 1
         self.stats['cooldown_violations_total'] += 1
-        self.logger.warning(f"⚠️ Cooldown violation #{validator.cooldown_violations} for UID {validator.uid}: {reason}")
-        
+        self.logger.warning(f"⚠️ Cooldown violation #{validator.validator_reported_violations} for UID {validator.uid}: {reason}")
+
         # Check if we should apply additional penalties
         violation_threshold = self.config.get('cooldown_violation_threshold', 5)
-        if validator.cooldown_violations >= violation_threshold:
+        if validator.validator_reported_violations >= violation_threshold:
             penalty_seconds = self.config.get('cooldown_violation_penalty', 60)
             self.logger.warning(f"🚨 Cooldown violation threshold reached for UID {validator.uid} - applying {penalty_seconds}s penalty")
-            self.set_validator_cooldown(validator, penalty_seconds, f"Violation penalty (violation #{validator.cooldown_violations})")
+            self.set_validator_cooldown(validator, penalty_seconds, f"Violation penalty (violation #{validator.validator_reported_violations})")
             self.stats['enhanced_cooldown_penalties'] += 1
-    
+
+    def _check_rapid_submission(self, validator: ValidatorState, task_id: str, prompt: str) -> bool:
+        """
+        Check if validator is submitting too rapidly (validator-compliant throttle logic).
+
+        This mirrors the validator's logic:
+        miner.last_submit_time + task_cooldown - throttle_period > time.time()
+
+        Args:
+            validator: The validator to check
+            task_id: Current task ID
+            prompt: Current task prompt
+
+        Returns:
+            True if submission is too rapid, False otherwise
+        """
+        if not validator.last_submit_time:
+            return False
+
+        task_cooldown = self.config.get('generation.task_cooldown', 300)
+        throttle_period = self.config.get('generation.throttle_period', 30)
+
+        # Calculate the minimum time that should have passed
+        min_time_required = validator.last_submit_time + task_cooldown - throttle_period
+
+        if min_time_required > time.time():
+            time_since_last_submit = time.time() - validator.last_submit_time
+            self.logger.warning(
+                f"[{validator.uid}] submitted too quickly: {time_since_last_submit:.1f}s "
+                f"after last submit. Task: {task_id} | Prompt: {prompt[:100]}"
+            )
+            return True
+
+        return False
+
+    def _check_rapid_submission_timing_only(self, validator: ValidatorState) -> bool:
+        """
+        Check rapid submission timing without logging warnings (for pre-pull validation).
+
+        Args:
+            validator: The validator to check
+
+        Returns:
+            True if submission would be too rapid, False otherwise
+        """
+        if not validator.last_submit_time:
+            return False
+
+        task_cooldown = self.config.get('generation.task_cooldown', 300)
+        throttle_period = self.config.get('generation.throttle_period', 30)
+
+        # Calculate the minimum time that should have passed
+        min_time_required = validator.last_submit_time + task_cooldown - throttle_period
+
+        return min_time_required > time.time()
+
+    def _handle_task_failure(self, validator: ValidatorState, task: TaskRecord, score: float = 0.0, reason: str = "Task failure"):
+        """
+        Handle task failure with quality-based penalties (validator-compliant logic).
+
+        This mirrors the validator's _process_task_failure method.
+
+        Args:
+            validator: The validator that failed
+            task: The failed task
+            score: The validation score (if available)
+            reason: Reason for the failure
+        """
+        quality_threshold = self.config.get('generation.quality_threshold', 0.6)
+
+        # Check if this is a quality-based failure
+        if score > 0 and score < quality_threshold:
+            # Apply quality penalty (validator logic)
+            cooldown_penalty = self.config.get('generation.cooldown_penalty', 600)
+            self.logger.warning(
+                f"[{validator.uid}] Quality failure - score {score:.3f} < threshold {quality_threshold}. "
+                f"Applying {cooldown_penalty}s penalty. Task: {task.task_id}"
+            )
+
+            # Set cooldown with quality penalty
+            self.set_validator_cooldown(
+                validator,
+                cooldown_penalty,
+                f"Quality penalty: score {score:.3f} < {quality_threshold}",
+                task.task_id,
+                task.prompt
+            )
+
+            # Update stats
+            self.stats['quality_penalties'] = self.stats.get('quality_penalties', 0) + 1
+        else:
+            # Regular failure - use submission failure cooldown
+            submission_cooldown = self.config.get('submission_failure_cooldown', 60)
+            self.set_validator_cooldown(
+                validator,
+                submission_cooldown,
+                reason,
+                task.task_id,
+                task.prompt
+            )
+
     def _set_emergency_cooldown(self, validator: ValidatorState, cooldown_until: int, reason: str):
         """
         Set DYNAMIC emergency cooldown to prevent further violations.
@@ -2462,12 +3144,15 @@ class ContinuousTrellisOrchestrator:
             emergency_cooldown_until = cooldown_until + dynamic_buffer
             
             # CRITICAL FIX: Prevent infinite cooldown escalation
-            if (validator.cooldown_until and 
-                validator.cooldown_until > emergency_cooldown_until):
+            # if (validator.cooldown_until and 
+            #     validator.cooldown_until > emergency_cooldown_until):
+            if (validator.validator_enforced_cooldown_until and 
+                validator.validator_enforced_cooldown_until > emergency_cooldown_until):
                 self.logger.warning(f"⚠️ Emergency cooldown already set for UID {validator.uid} - not escalating")
                 return
             
-            validator.cooldown_until = emergency_cooldown_until
+            # FIX 2: Use only one cooldown field per cooldown type
+            # validator.cooldown_until = emergency_cooldown_until
             self.logger.warning(f"🚨 DYNAMIC emergency cooldown set for UID {validator.uid}: {reason}")
             self.logger.warning(f"   Original cooldown: {cooldown_until}, Emergency cooldown: {emergency_cooldown_until}")
             self.logger.warning(f"   DYNAMIC buffer: {dynamic_buffer}s (base: {base_buffer}s, multiplier: {buffer_multiplier:.1f}x)")
@@ -2530,7 +3215,8 @@ class ContinuousTrellisOrchestrator:
         emergency_duration = int(base_duration * scale_factor)
         emergency_cooldown_until = time.time() + emergency_duration
         
-        validator.cooldown_until = emergency_cooldown_until
+        # FIX 2: Use only one cooldown field per cooldown type
+        # validator.cooldown_until = emergency_cooldown_until
         self.logger.error(f"   DYNAMIC emergency cooldown: {emergency_duration}s (base: {base_duration}s, scale: {scale_factor:.1f}x)")
         self.logger.error(f"   Cooldown until: {emergency_cooldown_until}")
         
@@ -2586,7 +3272,8 @@ class ContinuousTrellisOrchestrator:
         # Set blacklist
         validator.is_active = False
         validator.emergency_blacklist_until = blacklist_until
-        validator.cooldown_until = blacklist_until
+        # FIX 2: Use only one cooldown field per cooldown type
+        # validator.cooldown_until = blacklist_until
         
         self.logger.error(f"   Blacklist duration: {blacklist_duration}s (until {blacklist_until})")
         self.logger.error(f"   Violation multiplier: {violation_multiplier:.1f}x")
@@ -2641,7 +3328,8 @@ class ContinuousTrellisOrchestrator:
         
         # Clear emergency restrictions
         validator.emergency_blacklist_until = None
-        validator.cooldown_until = None
+        # FIX 2: Use only one cooldown field per cooldown type
+        # validator.cooldown_until = None
         validator.is_active = True
         
         # DYNAMIC: Reset violation counter based on validator history and behavior
@@ -2663,16 +3351,16 @@ class ContinuousTrellisOrchestrator:
                 reduction_factor = 0.5  # Reduce to 50% (standard)
                 self.logger.info(f"   STANDARD violation history - standard reduction to 50%")
             
-            new_violation_count = max(1, int(validator.cooldown_violations * reduction_factor))
-            old_count = validator.cooldown_violations
-            validator.cooldown_violations = new_violation_count
+            new_violation_count = max(1, int(validator.validator_reported_violations * reduction_factor))
+            old_count = validator.validator_reported_violations
+            validator.validator_reported_violations = new_violation_count
             
             self.logger.info(f"   DYNAMIC violation reduction: {old_count} → {new_violation_count} (factor: {reduction_factor:.1f})")
         else:
             # No history - use standard reduction
-            if validator.cooldown_violations > 10:
-                validator.cooldown_violations = max(5, validator.cooldown_violations // 2)
-                self.logger.info(f"   Standard violation reduction: {validator.cooldown_violations * 2} → {validator.cooldown_violations}")
+            if validator.validator_reported_violations > 10:
+                validator.validator_reported_violations = max(5, validator.validator_reported_violations // 2)
+                self.logger.info(f"   Standard violation reduction: {validator.validator_reported_violations * 2} → {validator.validator_reported_violations}")
         
         # Log the reset
         self.logger.info(f"   UID {validator.uid} is now available for task pulling")
@@ -2690,7 +3378,8 @@ class ContinuousTrellisOrchestrator:
                 self.logger.warning(f"⚠️ UID {validator.uid} shows INCREASING violation trend - extended monitoring")
                 # Set a shorter cooldown for problematic validators
                 extended_monitoring_cooldown = time.time() + 300  # 5 minutes
-                validator.cooldown_until = extended_monitoring_cooldown
+                # FIX 2: Use only one cooldown field per cooldown type
+                # validator.cooldown_until = extended_monitoring_cooldown
                 self.logger.warning(f"   Extended monitoring cooldown set: 5 minutes")
             elif recent_trend == 'stable_high':
                 self.logger.warning(f"⚠️ UID {validator.uid} shows STABLE HIGH violations - close monitoring")
@@ -2698,8 +3387,8 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"✅ UID {validator.uid} shows IMPROVING trend - standard monitoring")
         else:
             # No history - standard check
-            if validator.cooldown_violations > 50:
-                self.logger.warning(f"⚠️ UID {validator.uid} still has high violations ({validator.cooldown_violations}) after reset")
+            if validator.validator_reported_violations > 50:
+                self.logger.warning(f"⚠️ UID {validator.uid} still has high violations ({validator.validator_reported_violations}) after reset")
                 self.logger.warning(f"   Monitoring closely - may need extended cooldown if violations persist")
     
     def _check_validator_cooldown_state(self, validator: ValidatorState) -> Dict[str, Any]:
@@ -2722,9 +3411,10 @@ class ContinuousTrellisOrchestrator:
             'recommendation': None
         }
         
-        # Check local cooldown state
-        if validator.cooldown_until and current_time < validator.cooldown_until:
-            remaining = validator.cooldown_until - current_time
+        # Check local cooldown state (FIX 2: Use the right cooldown field)
+        # if validator.cooldown_until and current_time < validator.cooldown_until:
+        if validator.validator_enforced_cooldown_until and current_time < validator.validator_enforced_cooldown_until:
+            remaining = validator.validator_enforced_cooldown_until - current_time
             cooldown_status.update({
                 'available': False,
                 'reason': 'Local cooldown active',
@@ -2831,9 +3521,9 @@ class ContinuousTrellisOrchestrator:
             # Only update if the new cooldown is more restrictive
             if not old_cooldown or new_cooldown > old_cooldown:
                 # validator.cooldown_until = new_cooldown
-                 # FIXED: Update BOTH old and new cooldown fields for subnet compliance
-                validator.cooldown_until = new_cooldown  # Backward compatibility
-                validator.validator_enforced_cooldown_until = new_cooldown  # New subnet field
+                 # FIX 2: Use only one cooldown field per cooldown type
+                # validator.cooldown_until = new_cooldown +2 # Backward compatibility
+                validator.validator_enforced_cooldown_until = new_cooldown +2  # New subnet field
                 sync_results['cooldown_updated'] = True
                 
                 if new_cooldown > current_time:
@@ -2844,10 +3534,21 @@ class ContinuousTrellisOrchestrator:
                     backoff_duration = self._calculate_backoff_duration(validator, remaining)
                     sync_results['backoff_strategy'] = f'Backoff for {backoff_duration:.1f}s'
                     
-                    # Set emergency cooldown with backoff
-                    self._set_emergency_cooldown_with_backoff(validator, new_cooldown, backoff_duration, "Validator state sync")
-                    sync_results['emergency_actions'].append('emergency_cooldown_with_backoff')
+                                    # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
+                # self._set_emergency_cooldown_with_backoff(validator, new_cooldown, backoff_duration, "Validator state sync")
+                # sync_results['emergency_actions'].append('emergency_cooldown_with_backoff')
         
+        if 'validator_enforced_cooldown_until' in response_data and response_data['validator_enforced_cooldown_until']:
+            old_cooldown = validator.validator_enforced_cooldown_until
+            new_cooldown = response_data['validator_enforced_cooldown_until']
+            
+            if new_cooldown != old_cooldown:
+                validator.validator_enforced_cooldown_until = new_cooldown
+                sync_results['cooldown_updated'] = True
+                if new_cooldown > current_time:
+                    remaining = new_cooldown - current_time
+                    self.logger.warning(f"🔄 Synchronized DUPLICATE VALIDATOR-ENFORCED cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
+                    
         # Synchronize violation counts
         if 'cooldown_violations' in response_data and response_data['cooldown_violations'] is not None:
             old_violations = getattr(validator, 'cooldown_violations', 0)
@@ -2856,14 +3557,14 @@ class ContinuousTrellisOrchestrator:
             if new_violations != old_violations:
                 # validator.cooldown_violations = new_violations
                 
-                # FIXED: Update BOTH old and new violation fields for subnet compliance
-                validator.cooldown_violations = new_violations  # Backward compatibility
+                # FIX 2: Use only one violation field per violation type
+                # validator.cooldown_violations = new_violations  # Backward compatibility
                 validator.validator_reported_violations = new_violations  # New subnet field
                 sync_results['violations_updated'] = True
                 
                 if new_violations > old_violations:
                     violation_increase = new_violations - old_violations
-                    # self.logger.error(f"🔄 Synchronized violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
+                    self.logger.error(f"🔄 Synchronized violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
                     self.logger.error(f"🔄 Synchronized VALIDATOR-REPORTED violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
 
                     # Implement adaptive backoff based on violation increase
@@ -2925,12 +3626,12 @@ class ContinuousTrellisOrchestrator:
         
         # Factor in violation history
         violation_multiplier = 1.0
-        if hasattr(validator, 'cooldown_violations') and validator.cooldown_violations:
-            if validator.cooldown_violations > 1000:
+        if hasattr(validator, 'validator_reported_violations') and validator.validator_reported_violations:
+            if validator.validator_reported_violations > 1000:
                 violation_multiplier = 3.0  # Extreme violations
-            elif validator.cooldown_violations > 500:
+            elif validator.validator_reported_violations > 500:
                 violation_multiplier = 2.0  # High violations
-            elif validator.cooldown_violations > 200:
+            elif validator.validator_reported_violations > 200:
                 violation_multiplier = 1.5  # Moderate violations
             else:
                 violation_multiplier = 1.0  # Standard violations
@@ -2972,7 +3673,7 @@ class ContinuousTrellisOrchestrator:
         
         # Factor in validator's historical performance
         if hasattr(validator, 'total_tasks_pulled') and validator.total_tasks_pulled > 0:
-            success_rate = validator.total_tasks_pulled / (validator.total_tasks_pulled + getattr(validator, 'cooldown_violations', 0))
+            success_rate = validator.total_tasks_pulled / (validator.total_tasks_pulled + getattr(validator, 'validator_reported_violations', 0))
             if success_rate < 0.5:
                 multiplier *= 1.5  # Poor performance
             elif success_rate < 0.8:
@@ -3001,13 +3702,16 @@ class ContinuousTrellisOrchestrator:
         # Calculate emergency cooldown with backoff
         emergency_cooldown_until = max(cooldown_until, current_time + backoff_duration)
         
-        # Prevent infinite escalation
-        if (validator.cooldown_until and 
-            validator.cooldown_until > emergency_cooldown_until):
+        # Prevent infinite escalation (FIX 2: Use only one cooldown field per cooldown type)
+        # if (validator.cooldown_until and 
+        #     validator.cooldown_until > emergency_cooldown_until):
+        if (validator.validator_enforced_cooldown_until and 
+            validator.validator_enforced_cooldown_until > emergency_cooldown_until):
             self.logger.warning(f"⚠️ Emergency cooldown already set for UID {validator.uid} - not escalating")
             return
         
-        validator.cooldown_until = emergency_cooldown_until
+        # FIX 2: Use only one cooldown field per cooldown type
+        # validator.cooldown_until = emergency_cooldown_until
         
         self.logger.warning(f"🚨 Emergency cooldown with backoff set for UID {validator.uid}: {reason}")
         self.logger.warning(f"   Original cooldown: {cooldown_until}, Emergency cooldown: {emergency_cooldown_until}")
@@ -3043,13 +3747,17 @@ class ContinuousTrellisOrchestrator:
         current_time = time.time()
         emergency_cooldown_until = current_time + backoff_duration
         
-        # Prevent infinite escalation
-        if (validator.cooldown_until and 
-            validator.cooldown_until > emergency_cooldown_until):
+        # Prevent infinite escalation (FIX 2: Use only one cooldown field per cooldown type)
+        # if (validator.cooldown_until and 
+        #     validator.cooldown_until > emergency_cooldown_until):
+        if (validator.validator_enforced_cooldown_until and 
+            validator.validator_enforced_cooldown_until > emergency_cooldown_until):
             self.logger.warning(f"⚠️ Adaptive emergency cooldown already set for UID {validator.uid} - not escalating")
             return
         
-        validator.cooldown_until = emergency_cooldown_until
+        # FIX 2: Use only one cooldown field per cooldown type
+        # validator.cooldown_until = emergency_cooldown_until
+        validator.validator_enforced_cooldown_until = emergency_cooldown_until
         
         self.logger.error(f"🚨 Adaptive emergency cooldown set for UID {validator.uid}")
         self.logger.error(f"   Violation increase: +{violation_increase}, Backoff: {backoff_duration:.1f}s")
@@ -3157,13 +3865,14 @@ class ContinuousTrellisOrchestrator:
         """
         status_parts = []
         
-        # Check cooldown status
-        if validator.cooldown_until:
+        # Check cooldown status (FIX 2: Use the right cooldown field)
+        # if validator.cooldown_until:
+        if validator.validator_enforced_cooldown_until:
             current_time = time.time()
-            if current_time >= validator.cooldown_until:
+            if current_time >= validator.validator_enforced_cooldown_until:
                 status_parts.append("Cooldown expired")
             else:
-                remaining = int(validator.cooldown_until - current_time)
+                remaining = int(validator.validator_enforced_cooldown_until - current_time)
                 if remaining < 60:
                     status_parts.append(f"Cooldown: {remaining}s remaining")
                 elif remaining < 3600:
@@ -3191,9 +3900,10 @@ class ContinuousTrellisOrchestrator:
                     minutes = (remaining % 3600) // 60
                     status_parts.append(f"Validation locked: {hours}h {minutes}m remaining")
         
-        # Add violation count if any
-        if validator.cooldown_violations > 0:
-            status_parts.append(f"Violations: {validator.cooldown_violations}")
+        # Add violation count if any (FIX 2: Use only one violation field per violation type)
+        # if validator.cooldown_violations > 0:
+        if validator.validator_reported_violations > 0:
+            status_parts.append(f"Violations: {validator.validator_reported_violations}")
         
         # Check emergency blacklist status (CRITICAL FIX)
         if validator.emergency_blacklist_until:
@@ -3212,6 +3922,57 @@ class ContinuousTrellisOrchestrator:
                     status_parts.append(f"EMERGENCY BLACKLIST: {hours}h {minutes}m remaining")
         
         return " | ".join(status_parts) if status_parts else "Available"
+
+    def get_detailed_cooldown_report(self, validator: ValidatorState) -> Dict[str, Any]:
+        """Get detailed cooldown status report for debugging cooldown issues"""
+        current_time = time.time()
+
+        report = {
+            "uid": validator.uid,
+            "is_available": self.is_validator_available(validator),
+            "last_submit_time": validator.last_submit_time,
+            "time_since_last_submit": current_time - validator.last_submit_time if validator.last_submit_time else None,
+            "cooldowns": {},
+            "violations": validator.validator_reported_violations,
+            "recently_processed_tasks": len(getattr(self, '_recently_processed_tasks', {}))
+        }
+
+        # Check all cooldown types
+        cooldown_types = [
+            ("emergency_blacklist_until", "Emergency Blacklist"),
+            ("validator_enforced_cooldown_until", "Validator Enforced"),
+            ("miner_cooldown_until", "Miner Local"),
+            ("cooldown_until", "Legacy Cooldown"),
+            ("validation_locked_until", "Validation Lock")
+        ]
+
+        for attr_name, display_name in cooldown_types:
+            cooldown_time = getattr(validator, attr_name, None)
+            if cooldown_time and current_time < cooldown_time:
+                remaining = cooldown_time - current_time
+                report["cooldowns"][display_name] = {
+                    "remaining_seconds": remaining,
+                    "expires_at": cooldown_time,
+                    "human_readable": f"{remaining:.1f}s"
+                }
+
+        # Check rapid submission status
+        if validator.last_submit_time:
+            task_cooldown = self.config.get('generation.task_cooldown', 300)
+            throttle_period = self.config.get('generation.throttle_period', 30)
+            min_time_required = validator.last_submit_time + task_cooldown - throttle_period
+
+            report["rapid_submission_check"] = {
+                "task_cooldown": task_cooldown,
+                "throttle_period": throttle_period,
+                "min_time_required": min_time_required,
+                "current_time": current_time,
+                "would_trigger_rapid_submission": min_time_required > current_time,
+                "time_until_ok": max(0, min_time_required - current_time),
+                "last_submit_age": current_time - validator.last_submit_time
+            }
+
+        return report
     
     def _check_validators_needing_monitoring(self):
         """
@@ -3245,28 +4006,31 @@ class ContinuousTrellisOrchestrator:
         
         for validator in self.validators.values():
             # Check for validators with persistently high violations (DYNAMIC threshold)
-            if (validator.cooldown_violations > violation_threshold and 
+            if (validator.validator_reported_violations > violation_threshold and 
                 not validator.emergency_blacklist_until):
                 
-                self.logger.warning(f"⚠️ UID {validator.uid} needs monitoring: {validator.cooldown_violations} violations")
+                self.logger.warning(f"⚠️ UID {validator.uid} needs monitoring: {validator.validator_reported_violations} violations")
                 self.logger.warning(f"   DYNAMIC threshold: {violation_threshold} (system health: {system_health_ratio:.1%})")
                 
                 # DYNAMIC: Apply immediate cooldown for critical validators in degraded system
-                if system_health_ratio < 0.6 and validator.cooldown_violations > violation_threshold * 1.5:
+                if system_health_ratio < 0.6 and validator.validator_reported_violations > violation_threshold * 1.5:
                     immediate_cooldown = time.time() + 600  # 10 minutes
-                    validator.cooldown_until = immediate_cooldown
+                    # FIX 2: Use only one cooldown field per cooldown type
+                    # validator.cooldown_until = immediate_cooldown
+                    # FIX: Use safe cooldown setting method
+                    self._safe_set_cooldown(validator, immediate_cooldown)
                     self.logger.error(f"🚨 IMMEDIATE cooldown applied to UID {validator.uid}: 10 minutes")
                     self.logger.error(f"   Critical validator in degraded system - protecting remaining validators")
                 
                 monitoring_count += 1
             
             # Check for validators that were recently reset but still have issues (DYNAMIC threshold)
-            if (validator.cooldown_violations > monitoring_threshold and 
+            if (validator.validator_reported_violations > monitoring_threshold and 
                 validator.last_violation_check and
                 current_time - validator.last_violation_check > 300):  # 5 minutes
                 
                 self.logger.warning(f"⚠️ UID {validator.uid} showing persistent issues after reset")
-                self.logger.warning(f"   Violations: {validator.cooldown_violations}, DYNAMIC threshold: {monitoring_threshold}")
+                self.logger.warning(f"   Violations: {validator.validator_reported_violations}, DYNAMIC threshold: {monitoring_threshold}")
                 validator.last_violation_check = current_time
                 monitoring_count += 1
         
@@ -3331,9 +4095,9 @@ class ContinuousTrellisOrchestrator:
                 if uid in self.validators:
                     validator = self.validators[uid]
                     
-                    # Restore critical state information
-                    validator.cooldown_until = saved_state.get('cooldown_until')
-                    validator.cooldown_violations = saved_state.get('cooldown_violations', 0)
+                    # Restore critical state information (FIX 2: Use only one field per type)
+                    # validator.cooldown_until = saved_state.get('cooldown_until')
+                    # validator.cooldown_violations = saved_state.get('cooldown_violations', 0)
                     validator.throttle_period = saved_state.get('throttle_period', 0)
                     validator.validation_locked_until = saved_state.get('validation_locked_until')
                     validator.emergency_blacklist_until = saved_state.get('emergency_blacklist_until')
@@ -3364,7 +4128,7 @@ class ContinuousTrellisOrchestrator:
                     restored_count += 1
                     
                     # Count different types of restored states
-                    if validator.cooldown_violations > 0:
+                    if validator.validator_reported_violations > 0:
                         violation_count += 1
                     if validator.emergency_blacklist_until and time.time() < validator.emergency_blacklist_until:
                         blacklisted_count += 1
@@ -3377,21 +4141,21 @@ class ContinuousTrellisOrchestrator:
                         cooldown_count += 1
                     
                     # Log restoration for validators with critical states
-                    if (validator.cooldown_violations > 50 or 
+                    if (validator.validator_reported_violations > 50 or 
                         validator.emergency_blacklist_until or 
-                        validator.cooldown_until):
+                        validator.validator_enforced_cooldown_until):
                         
                         status = self.get_cooldown_status(validator)
                         self.logger.warning(f"🔄 Restored UID {uid}: {status}")
                         
-                        if validator.cooldown_violations > 100:
+                        if validator.validator_reported_violations > 100:
                             remaining_time = ""
                             if validator.emergency_blacklist_until:
                                 remaining_seconds = validator.emergency_blacklist_until - time.time()
                                 if remaining_seconds > 0:
                                     remaining_time = f" (blacklisted for {remaining_seconds/3600:.1f}h more)"
                             
-                            self.logger.error(f"🚨 CRITICAL: UID {uid} has {validator.cooldown_violations} violations{remaining_time}")
+                            self.logger.error(f"🚨 CRITICAL: UID {uid} has {validator.validator_reported_violations} violations{remaining_time}")
                 else:
                     self.logger.debug(f"⚠️ Saved state for UID {uid} found but validator not in current set")
             
@@ -3412,6 +4176,101 @@ class ContinuousTrellisOrchestrator:
         except Exception as e:
             self.logger.error(f"❌ Failed to restore validator states: {e}")
             self.logger.error(f"   Traceback: {traceback.format_exc()}")
+    
+    def _check_existing_critical_violations(self):
+        """
+        🚨 CRITICAL: Check for existing violations immediately after startup
+        This method detects and alerts on violations that were restored from disk
+        """
+        self.logger.info("🚨 CRITICAL: Checking for existing violations after startup...")
+        
+        critical_violations_found = 0
+        total_violations = 0
+        
+        for uid, validator in self.validators.items():
+            if hasattr(validator, 'validator_reported_violations') and validator.validator_reported_violations > 0:
+                total_violations += validator.validator_reported_violations
+                
+                # CRITICAL: Alert on high violation counts
+                if validator.validator_reported_violations > 100:
+                    self.logger.error(f"🚨 CRITICAL: UID {uid} has {validator.validator_reported_violations} violations!")
+                    self.logger.error(f"   Stake: {validator.stake:.1f} TAO")
+                    self.logger.error(f"   Trust: {getattr(validator, 'trust', 'N/A')}")
+                    self.logger.error(f"   Status: {self.get_cooldown_status(validator)}")
+                    critical_violations_found += 1
+                    
+                    # EMERGENCY: Set immediate cooldown for critical validators
+                    if validator.validator_reported_violations > 200:
+                        emergency_cooldown = time.time() + 3600  # 1 hour
+                        # FIX 2: Use only one cooldown field per cooldown type
+                        # validator.cooldown_until = emergency_cooldown
+                        self.logger.error(f"🚨 EMERGENCY: Set 1-hour cooldown for UID {uid} due to {validator.validator_reported_violations} violations!")
+                        
+                        # EMERGENCY: Implement blacklist for extreme violations
+                        if validator.validator_reported_violations > 300:
+                            blacklist_duration = 7200  # 2 hours
+                            validator.emergency_blacklist_until = time.time() + blacklist_duration
+                            validator.is_active = False
+                            self.logger.error(f"🚨 EMERGENCY BLACKLIST: UID {uid} blacklisted for {blacklist_duration/3600:.1f}h due to {validator.validator_reported_violations} violations!")
+                
+                # WARNING: Alert on moderate violation counts
+                elif validator.validator_reported_violations > 50:
+                    self.logger.warning(f"⚠️ WARNING: UID {uid} has {validator.validator_reported_violations} violations")
+                    self.logger.warning(f"   Status: {self.get_cooldown_status(validator)}")
+        
+        # SUMMARY: Report total violations found
+        if total_violations > 0:
+            self.logger.error(f"🚨 CRITICAL SUMMARY: Found {total_violations} total violations across {critical_violations_found} critical validators!")
+            self.logger.error(f"   This indicates a serious security issue that requires immediate attention!")
+            
+            # EMERGENCY: Update statistics
+            self.stats['cooldown_violations_total'] = total_violations
+            self.stats['critical_violations_detected'] = critical_violations_found
+            
+            # EMERGENCY: Save states immediately
+            self.save_validator_states_to_disk()
+        else:
+            self.logger.info("✅ No existing violations found - system is clean")
+    
+    def _check_runtime_critical_violations(self):
+        """
+        🚨 CRITICAL: Check for violations during runtime
+        This method is called periodically to monitor for new violations
+        """
+        critical_violations_found = 0
+        total_violations = 0
+        
+        for uid, validator in self.validators.items():
+            if hasattr(validator, 'validator_reported_violations') and validator.validator_reported_violations > 0:
+                total_violations += validator.validator_reported_violations
+                
+                # CRITICAL: Alert on high violation counts
+                if validator.validator_reported_violations > 100:
+                    critical_violations_found += 1
+                    
+                    # EMERGENCY: Set immediate cooldown for critical validators
+                    if validator.validator_reported_violations > 200 and not validator.validator_enforced_cooldown_until:
+                        emergency_cooldown = time.time() + 1800  # 30 minutes
+                        # FIX 2: Use only one cooldown field per cooldown type
+                        # validator.cooldown_until = emergency_cooldown
+                        # FIX: Use safe cooldown setting method
+                        self._safe_set_cooldown(validator, emergency_cooldown)
+                        self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {uid} due to {validator.validator_reported_violations} violations!")
+                        
+                        # EMERGENCY: Implement blacklist for extreme violations
+                        if validator.validator_reported_violations > 300 and not validator.emergency_blacklist_until:
+                            blacklist_duration = 3600  # 1 hour
+                            validator.emergency_blacklist_until = time.time() + blacklist_duration
+                            validator.is_active = False
+                            self.logger.error(f"🚨 EMERGENCY BLACKLIST: UID {uid} blacklisted for {blacklist_duration/3600:.1f}h due to {validator.validator_reported_violations} violations!")
+        
+        # Update statistics if violations found
+        if total_violations > 0:
+            self.stats['cooldown_violations_total'] = total_violations
+            self.stats['critical_violations_detected'] = critical_violations_found
+            
+            # Log summary every 5 minutes
+            self.logger.warning(f"🚨 RUNTIME VIOLATION CHECK: {total_violations} total violations across {critical_violations_found} critical validators")
     
     def save_validator_states_to_disk(self):
         """
@@ -3692,15 +4551,22 @@ class ContinuousTrellisOrchestrator:
                 self.stats['server_status_check_errors'] = self.stats.get('server_status_check_errors', 0) + 1
                 return None  # Don't pull tasks when we can't check server status
             
-            # ENHANCED: Pre-emptive cooldown checking before task pull
+            # CRITICAL: Enhanced cooldown checking before task pull - prevents validator from sending tasks when miner is on cooldown
             cooldown_status = self._check_validator_cooldown_state(validator)
             if not cooldown_status['available']:
                 self.logger.debug(f"⏳ Validator UID {validator.uid} not available: {cooldown_status['reason']}")
                 self.logger.debug(f"   Recommendation: {cooldown_status['recommendation']}")
+                # CRITICAL: Don't even attempt to pull tasks when on cooldown - prevents validator from wasting resources
                 return None
-            
-            # ENHANCED: Check if validator is available using existing method
+
+            # SECONDARY: Check if validator is available using existing method (this should be redundant but kept for safety)
             if not self.is_validator_available(validator):
+                return None
+
+            # ADDITIONAL: Check rapid submission timing before pulling to prevent validator from sending tasks we can't process
+            if self._check_rapid_submission_timing_only(validator):
+                self.logger.debug(f"⏳ Validator UID {validator.uid} would trigger rapid submission - skipping task pull")
+                print(f"⏳ Validator UID {validator.uid} would trigger rapid submission - skipping task pull", end='', flush=True)
                 return None
             
             self.logger.debug(f"📡 Pulling from UID {validator.uid} ({validator.stake:.1f} TAO)")
@@ -3732,6 +4598,104 @@ class ContinuousTrellisOrchestrator:
             
             if response and len(response) > 0:
                 resp = response[0]
+
+                # ENHANCED: Post-task state synchronization with graceful degradation
+                response_data = {}
+                if hasattr(resp, 'cooldown_until'):
+                    original_cooldown = resp.cooldown_until
+                    # FIX 3: Use the original cooldown, don't rely on traffic because they are used by the validator
+                    # if original_cooldown > 0:
+                    #     response_data['cooldown_until'] = original_cooldown + 10  # Add 1 second to ensure we pass the cooldown
+                    #     self.logger.debug(f"🛡️ Added 1s buffer to cooldown: {original_cooldown} → {response_data['cooldown_until']}")
+                    # else:
+                    response_data['cooldown_until'] = original_cooldown 
+                    # FIX: Use safe cooldown setting method
+                    self._safe_set_cooldown(validator, original_cooldown + 3)
+                    self.logger.debug(f"🛡️ Using original cooldown from validator: {original_cooldown}")
+
+                if hasattr(resp, 'cooldown_violations'):
+                    response_data['cooldown_violations'] = resp.cooldown_violations
+                    # ALERT: If validator reports violations but cooldown is 0, there's a problem
+                    if resp.cooldown_violations > 0 and original_cooldown == 0:
+                        self.logger.warning(f"🚨 VALIDATOR COOLDOWN MISMATCH: {resp.cooldown_violations} violations but cooldown_until=0 for UID {validator.uid}")
+                if hasattr(resp, 'throttle_period'):
+                    response_data['throttle_period'] = resp.throttle_period
+                
+                # 🚨 CRITICAL: IMMEDIATE VIOLATION DETECTION AND EMERGENCY RESPONSE
+                if hasattr(resp, 'cooldown_violations') and resp.cooldown_violations:
+                    old_violations = getattr(validator, 'cooldown_violations', 0)
+                    new_violations = resp.cooldown_violations
+                    self.logger.info(f"🔍 DEBUG: cooldown_violations found: {resp.cooldown_violations}")
+                    
+                    # IMMEDIATE: Log critical violation detection
+                    self.logger.error(f"🚨 CRITICAL: Validator UID {validator.uid} reported {new_violations} cooldown violations!")
+                    
+                    if new_violations > old_violations:
+                        violation_increase = new_violations - old_violations
+                        self.logger.error(f"🚨 VIOLATIONS INCREASED by {violation_increase} for UID {validator.uid}: {old_violations} → {new_violations}")
+                        
+                        # EMERGENCY: Check for critical violation thresholds
+                        critical_threshold = self.config.get('critical_violation_threshold', 100)
+                        if new_violations > critical_threshold:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} exceeds critical threshold ({critical_threshold}) - implementing immediate blacklist!")
+                            self._blacklist_validator_temporarily(validator, new_violations)
+                        
+                        # EMERGENCY: Check for rapid violation increase
+                        if violation_increase > 50:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} violations increased by {violation_increase} - implementing emergency measures!")
+                            self._handle_critical_violations(validator, new_violations)
+                        
+                        # EMERGENCY: Set immediate cooldown for high violations
+                        if new_violations > 200:
+                            emergency_cooldown = time.time() + 1800  # 30 minutes
+                            # validator.cooldown_until = emergency_cooldown
+                            # FIX: Use safe cooldown setting method
+                            self._safe_set_cooldown(validator, emergency_cooldown)
+                            self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {validator.uid} due to {new_violations} violations!")
+                    
+                    # UPDATE: Immediately update local violation count for real-time tracking
+                    validator.cooldown_violations = new_violations
+                    validator.validator_reported_violations = new_violations
+                    
+                    # STATS: Update violation statistics
+                    self.stats['cooldown_violations_total'] = max(self.stats.get('cooldown_violations_total', 0), new_violations)
+                    self.stats['critical_violations_detected'] = self.stats.get('critical_violations_detected', 0) + 1
+                    
+                    # ALERT: Log detailed violation analysis
+                    self.logger.error(f"🚨 VIOLATION ANALYSIS for UID {validator.uid}:")
+                    self.logger.error(f"   Current violations: {new_violations}")
+                    self.logger.error(f"   Previous violations: {old_violations}")
+                    self.logger.error(f"   Increase: {new_violations - old_violations}")
+                    self.logger.error(f"   Stake: {validator.stake:.1f} TAO")
+                    self.logger.error(f"   Trust: {getattr(validator, 'trust', 'N/A')}")
+                
+                else:
+                    self.logger.info(f"🔍 DEBUG: no cooldown_violations found")
+
+                # ENHANCED: Check for validator-enforced cooldowns
+                if hasattr(resp, 'cooldown_until') and resp.cooldown_until:
+                    current_time = time.time()
+                    if resp.cooldown_until > current_time:
+                        remaining_cooldown = resp.cooldown_until - current_time
+                        self.logger.warning(f"🚨 CRITICAL: Validator UID {validator.uid} enforced cooldown: {remaining_cooldown:.1f}s remaining")
+                        # FIX: Use safe cooldown setting method
+                        self._safe_set_cooldown(validator, resp.cooldown_until)
+                        
+                        # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
+                        # self._set_emergency_cooldown(validator, resp.cooldown_until, "Validator enforced cooldown")
+                    else:
+                        self.logger.info(f"✅ Validator UID {validator.uid} cooldown cleared: {resp.cooldown_until}")
+                
+                if response_data:
+                    sync_results = self._synchronize_validator_state(validator, response_data)
+                    
+                    # Log synchronization results
+                    if sync_results['cooldown_updated'] or sync_results['violations_updated']:
+                        self.logger.info(f"🔄 State synchronized for UID {validator.uid}")
+                        if sync_results['backoff_strategy']:
+                            self.logger.info(f"   Backoff strategy: {sync_results['backoff_strategy']}")
+                        if sync_results['emergency_actions']:
+                            self.logger.info(f"   Emergency actions: {', '.join(sync_results['emergency_actions'])}")
                 
                 if hasattr(resp, 'task') and resp.task and resp.task.prompt:
                     # Update validator state
@@ -3760,26 +4724,9 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"   Threshold: {task.validation_threshold}, Query time: {query_time:.2f}s")
                     
                     self.stats['tasks_pulled'] += 1
-                    
-                    # ENHANCED: Post-task state synchronization with graceful degradation
-                    response_data = {}
-                    if hasattr(resp, 'cooldown_until'):
-                        response_data['cooldown_until'] = resp.cooldown_until
-                    if hasattr(resp, 'cooldown_violations'):
-                        response_data['cooldown_violations'] = resp.cooldown_violations
-                    if hasattr(resp, 'throttle_period'):
-                        response_data['throttle_period'] = resp.throttle_period
-                    
-                    if response_data:
-                        sync_results = self._synchronize_validator_state(validator, response_data)
-                        
-                        # Log synchronization results
-                        if sync_results['cooldown_updated'] or sync_results['violations_updated']:
-                            self.logger.info(f"🔄 State synchronized for UID {validator.uid}")
-                            if sync_results['backoff_strategy']:
-                                self.logger.info(f"   Backoff strategy: {sync_results['backoff_strategy']}")
-                            if sync_results['emergency_actions']:
-                                self.logger.info(f"   Emergency actions: {', '.join(sync_results['emergency_actions'])}")
+
+                    self.logger.info(f"🔍 DEBUG: Validator response attributes: {dir(resp)}")
+                    self.logger.info(f"🔍 DEBUG: Validator response data: {resp.__dict__}")
                     
                     return task
                 else:
@@ -4531,6 +5478,18 @@ class ContinuousTrellisOrchestrator:
         """Generate 3D model using TRELLIS server with prompt optimization"""
         self.logger.info(f"🎨 Generating 3D model: '{task.prompt}' (task: {task.task_id})")
         
+        # Check if fallback mechanism is enabled
+        if self.config.get('enable_fallback_mechanism', False) and CLIP_AVAILABLE:
+            self.logger.info(f"🔄 Using fallback mechanism for generation")
+            return await self.generate_3d_model_with_fallback(task)
+        else:
+            self.logger.info(f"🔄 Using standard generation without fallback")
+            return await self._generate_3d_model_standard(task)
+            
+    async def _generate_3d_model_standard(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
+        """Generate 3D model using TRELLIS server with prompt optimization (standard method)"""
+        self.logger.info(f"🎨 Generating 3D model (standard): '{task.prompt}' (task: {task.task_id})")
+        
         try:
             # CRITICAL: Wait for priority access to the server
             # This is where we ensure subnet tasks get priority over optimizer tasks
@@ -4542,18 +5501,58 @@ class ContinuousTrellisOrchestrator:
             # Mark the start of our priority job
             self.priority_coordinator.mark_priority_job_start(task.task_id, task.prompt)
             
+            ### ONCE
             # Step 1: Optimize prompt and route to optimal LoRA
-            optimization_result = self.optimize_prompt_for_generation(task)
-            optimized_prompt = optimization_result['optimized_prompt']
-            lora_info = optimization_result['lora_info']
-            endpoint = optimization_result['endpoint']
-            
-            # Step 1.5: Clean the optimized prompt to remove artifacts
-            cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
-            # Only add "white background" if it's not already present
-            # cleaned_prompt = optimized_prompt
-            if "white background" not in cleaned_prompt.lower():
-                cleaned_prompt = cleaned_prompt + " front view, white background"
+            # optimization_result = self.optimize_prompt_for_generation(task)
+            # optimized_prompt = optimization_result['optimized_prompt']
+            # lora_info = optimization_result['lora_info']
+            # endpoint = optimization_result['endpoint']
+
+            # # optimized_prompt = task.prompt
+            # # lora_info = {
+            # #     'lora_name': 'Cinema',
+            # #     'endpoint': '/generate/cinema/',
+            # #     'reasoning': 'Default model: Cinema',
+            # #     'confidence': 'High'
+            # # }
+            # # # endpoint = '/generate/cinema/'
+            # # endpoint = '/generate/'
+
+
+            # # Step 1.5: Clean the optimized prompt to remove artifacts
+            # cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
+            # # Only add "white background" if it's not already present
+            # # cleaned_prompt = optimized_prompt
+            # if "white background" not in cleaned_prompt.lower():
+            #     cleaned_prompt = cleaned_prompt + " front view, white background"
+
+            ### lOOP:
+            max_iterations = 3
+            idx = 0
+            while idx < max_iterations:
+                # Step 2: Generate with optimized prompt
+                self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+                optimization_result = self.optimize_prompt_for_generation(task)
+                optimized_prompt = optimization_result['optimized_prompt']
+                lora_info = optimization_result['lora_info']
+                endpoint = optimization_result['endpoint']
+                
+                # Clean the optimized prompt
+                cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
+                if "white background" not in cleaned_prompt.lower():
+                    cleaned_prompt = cleaned_prompt + " front view, white background"
+                
+                # Compute cosine similarity between original and optimized prompts
+                original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
+                
+                # Check similarity threshold
+                if original_optimized_similarity['cosine_similarity'] > 0.65:
+                    break
+                    
+                self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
+                idx += 1
+                    
+
             # Log the final optimization result
             if self.config.get('log_optimization_details', True):
                 if optimized_prompt != task.prompt:
@@ -4562,6 +5561,11 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"   Optimized: '{optimized_prompt}'")
                     self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
                     self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
+                    
+                    self.logger.info(f"   Similarity: {original_optimized_similarity['cosine_similarity']:.4f}")
+                    self.logger.info(f"   Similarity level: {original_optimized_similarity['similarity_level']}")
+                    self.logger.info(f"   Description: {original_optimized_similarity['description']}")
+                    
                 else:
                     self.logger.info(f"ℹ️ No optimization applied - using original prompt")
                     self.logger.info(f"   Prompt: '{task.prompt}'")
@@ -4584,7 +5588,11 @@ class ContinuousTrellisOrchestrator:
                 data={
                     'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
                     'seed': deterministic_seed,  # Use deterministic seed
-                    'return_compressed': True
+                    'return_compressed': True, 
+                    'ss_sampling_steps': 20,
+                    'slat_sampling_steps': 24,
+                    'slat_guidance_strength': 8.0,
+                    'ss_guidance_strength': 4.5
                 },
                 timeout=self.config['generation_timeout']
             )
@@ -4594,6 +5602,26 @@ class ContinuousTrellisOrchestrator:
             
             if response.status_code == 200:
                 ply_data = response.content
+                # is_valid, issues = fast_quality_check(ply_data, verbose=True)
+
+                # if not is_valid:
+                #     self.logger.warning(f"⚠️ Generation failed quality check: {issues}")
+                #     import random
+                #     deterministic_seed = random.randint(0, 1000)
+                #     response = requests.post(
+                #         full_url,
+                #         data={
+                #             'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                #             'seed': deterministic_seed,  # Use deterministic seed
+                #             'return_compressed': True
+                #         },
+                #         timeout=self.config['generation_timeout']
+                #     )
+                #     if response.status_code == 200:
+                #         ply_data = response.content
+                #         is_valid, issues = fast_quality_check(ply_data, verbose=False)
+                #         if not is_valid:
+                #             self.logger.warning(f"⚠️ Generation failed quality check: {issues}")
                 
                 # Get metadata from headers to check compression status
                 compression_ratio = response.headers.get('X-Compression-Ratio', 'unknown')
@@ -4625,6 +5653,365 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Generation exception: {e}")
             # Mark the completion of our priority job even on exception
             self.priority_coordinator.mark_priority_job_end(task.task_id)
+            return None
+
+    async def generate_3d_model_with_fallback(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
+        """
+        Generate 3D model with fallback mechanism for low-fidelity tasks.
+        Generates both original and optimized prompts, compares CLIP scores,
+        and implements fallback if the ratio is below 0.8.
+        """
+        self.logger.info(f"🎨 Generating 3D model with fallback: '{task.prompt}' (task: {task.task_id})")
+        
+        try:
+            # CRITICAL: Wait for priority access to the server
+            if not self.priority_coordinator.wait_for_priority_access(task.task_id):
+                self.logger.error(f"❌ PRIORITY ACCESS TIMEOUT for task {task.task_id} - subnet task will be missed!")
+                task.priority_access_timeout = True
+                return None
+            
+            # Mark the start of our priority job
+            self.priority_coordinator.mark_priority_job_start(task.task_id, task.prompt)
+            
+            # Step 1: Generate with original prompt first
+            self.logger.info(f"🔄 Step 1: Generating with original prompt")
+            original_result = await self._generate_single_3d_model(task, task.prompt, "original")
+            if not original_result:
+                self.logger.error(f"❌ Failed to generate with original prompt")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return None
+            
+            # Step 2: Generate with optimized prompt
+            self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+            optimization_result = self.optimize_prompt_for_generation(task)
+            optimized_prompt = optimization_result['optimized_prompt']
+            lora_info = optimization_result['lora_info']
+            endpoint = optimization_result['endpoint']
+            
+            # Clean the optimized prompt
+            cleaned_prompt = self.clean_optimized_prompt(optimized_prompt)
+            if "white background" not in cleaned_prompt.lower():
+                cleaned_prompt = cleaned_prompt + " front view, white background"
+                # cleaned_prompt = cleaned_prompt + " 3D isometric game asset, white background, object"
+            optimized_result = await self._generate_single_3d_model(task, cleaned_prompt, "optimized", endpoint)
+            if not optimized_result:
+                self.logger.error(f"❌ Failed to generate with optimized prompt")
+                # Fallback to original result
+                self.logger.info(f"🔄 Falling back to original generation result")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return original_result
+            
+            # Step 3: Generate images for CLIP score comparison
+            self.logger.info(f"🔄 Step 3: Generating images for CLIP score comparison")
+            original_image = await self._generate_image_for_clip(task, task.prompt, endpoint)
+            optimized_image = await self._generate_image_for_clip(task, cleaned_prompt, endpoint)
+            
+            if not original_image or not optimized_image:
+                self.logger.warning(f"⚠️ Failed to generate images for CLIP comparison, using original result")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return original_result
+            
+            # Step 4: Calculate CLIP scores
+            self.logger.info(f"🔄 Step 4: Calculating CLIP scores")
+            clip_scores = await self._calculate_clip_scores(
+                task.prompt, cleaned_prompt, original_image, optimized_image
+            )
+            
+            if not clip_scores:
+                self.logger.warning(f"⚠️ Failed to calculate CLIP scores, using original result")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return original_result
+            
+            # Step 5: Analyze CLIP scores and decide on fallback
+            original_vs_original = clip_scores['original_prompt_vs_original_image']
+            original_vs_optimized = clip_scores['original_prompt_vs_optimized_image']
+            optimized_vs_original = clip_scores['optimized_prompt_vs_original_image']
+            optimized_vs_optimized = clip_scores['optimized_prompt_vs_optimized_image']
+            
+            # Calculate the critical ratio for fallback decision
+            fallback_ratio = original_vs_optimized / optimized_vs_optimized
+            fallback_threshold = self.config.get('fallback_ratio_threshold', 0.8)
+            self.logger.info(f"📊 CLIP Score Analysis:")
+            self.logger.info(f"   Original prompt vs Original image: {original_vs_original:.4f}")
+            self.logger.info(f"   Original prompt vs Optimized image: {original_vs_optimized:.4f}")
+            self.logger.info(f"   Optimized prompt vs Original image: {optimized_vs_original:.4f}")
+            self.logger.info(f"   Optimized prompt vs Optimized image: {optimized_vs_optimized:.4f}")
+            self.logger.info(f"   Fallback ratio (original_vs_optimized / optimized_vs_optimized): {fallback_ratio:.4f}")
+            self.logger.info(f"   Fallback threshold: {fallback_threshold:.4f}")
+            
+            # Step 6: Implement fallback mechanism
+            if fallback_ratio < fallback_threshold:
+                self.logger.warning(f"⚠️ Fallback ratio {fallback_ratio:.4f} < 0.8, attempting prompt re-optimization")
+                
+                # Try to get a new optimized prompt using the LLM optimizer with optimized_system_prompt
+                new_optimized_prompt = await self._get_new_optimized_prompt(task.prompt)
+                if new_optimized_prompt and new_optimized_prompt != cleaned_prompt:
+                    self.logger.info(f"🔄 Step 6a: Trying new optimized prompt")
+                    
+                    # Generate with new prompt
+                    new_result = await self._generate_single_3d_model(task, new_optimized_prompt, "new_optimized", endpoint)
+                    if new_result:
+                        new_image = await self._generate_image_for_clip(task, new_optimized_prompt, endpoint)
+                        if new_image:
+                            # Calculate new CLIP scores
+                            new_clip_scores = await self._calculate_clip_scores(
+                                task.prompt, new_optimized_prompt, original_image, new_image
+                            )
+                            
+                            if new_clip_scores:
+                                new_fallback_ratio = new_clip_scores['original_prompt_vs_optimized_image'] / new_clip_scores['optimized_prompt_vs_optimized_image']
+                                self.logger.info(f"📊 New fallback ratio: {new_fallback_ratio:.4f}")
+                                
+                                # Use the better result
+                                if new_fallback_ratio > fallback_ratio:
+                                    self.logger.info(f"✅ New prompt improved fallback ratio, using new result")
+                                    self.priority_coordinator.mark_priority_job_end(task.task_id)
+                                    return new_result
+                                else:
+                                    self.logger.info(f"ℹ️ New prompt didn't improve ratio, using original result")
+                                    self.priority_coordinator.mark_priority_job_end(task.task_id)
+                                    return original_result
+                
+                # If re-optimization failed or didn't help, use original result
+                self.logger.info(f"🔄 Fallback: Using original generation result due to low CLIP alignment")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return original_result
+            else:
+                self.logger.info(f"✅ Fallback ratio {fallback_ratio:.4f} >= 0.8, using optimized result")
+                self.priority_coordinator.mark_priority_job_end(task.task_id)
+                return optimized_result
+        
+        except Exception as e:
+            self.logger.error(f"❌ Generation with fallback exception: {e}")
+            self.priority_coordinator.mark_priority_job_end(task.task_id)
+            return None
+
+    async def _generate_single_3d_model(self, task: TaskRecord, prompt: str, prompt_type: str, endpoint: str = None) -> Optional[Dict[str, Any]]:
+        """Generate a single 3D model with the given prompt"""
+        try:
+            if not endpoint:
+                # Use default endpoint if none specified
+                endpoint = "/generate/"
+            
+            # Clear cache on the server
+            self.priority_coordinator.clear_server_cache()
+            
+            # Get deterministic seed
+            deterministic_seed = self.get_deterministic_seed(task)
+            self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed} for {prompt_type} prompt")
+            
+            generation_start = time.time()
+            
+            # Call TRELLIS generation server
+            full_url = f"{self.config['generation_server_url']}{endpoint}"
+            response = requests.post(
+                full_url,
+                data={
+                    'prompt': prompt,
+                    'seed': deterministic_seed,
+                    'return_compressed': True
+                },
+                timeout=self.config['generation_timeout']
+            )
+            
+            generation_time = time.time() - generation_start
+            
+            if response.status_code == 200:
+                ply_data = response.content
+                compression_ratio = response.headers.get('X-Compression-Ratio', 'unknown')
+                
+                self.logger.info(f"✅ {prompt_type.capitalize()} generation successful in {generation_time:.2f}s ({len(ply_data):,} bytes)")
+                
+                return {'ply_data': ply_data, 'compression_ratio': compression_ratio, 'prompt_type': prompt_type}
+            else:
+                self.logger.error(f"❌ {prompt_type.capitalize()} generation failed: HTTP {response.status_code}")
+                return None
+        
+        except Exception as e:
+            self.logger.error(f"❌ {prompt_type.capitalize()} generation exception: {e}")
+            return None
+
+    async def _generate_image_for_clip(self, task: TaskRecord, prompt: str, endpoint: str) -> Optional[bytes]:
+        """Generate an image for CLIP score calculation"""
+        try:
+            # Convert 3D generation endpoint to image generation endpoint
+            image_endpoint = endpoint.replace("/generate/", "/generate_image/")
+            if not image_endpoint.endswith("/"):
+                image_endpoint += "/"
+            
+            # Get deterministic seed
+            deterministic_seed = self.get_deterministic_seed(task)
+            
+            # Call image generation endpoint
+            full_url = f"{self.config['generation_server_url']}{image_endpoint}"
+            response = requests.post(
+                full_url,
+                data={
+                    'prompt': prompt,
+                    'seed': deterministic_seed
+                },
+                timeout=self.config['generation_timeout']
+            )
+            
+            if response.status_code == 200:
+                image_data = response.content
+                self.logger.info(f"✅ Image generated for CLIP analysis ({len(image_data):,} bytes)")
+                return image_data
+            else:
+                self.logger.error(f"❌ Image generation failed: HTTP {response.status_code}")
+                return None
+        
+        except Exception as e:
+            self.logger.error(f"❌ Image generation exception: {e}")
+            return None
+
+    async def _calculate_clip_scores(self, original_prompt: str, optimized_prompt: str, 
+                                   original_image: bytes, optimized_image: bytes) -> Optional[Dict[str, float]]:
+        """Calculate CLIP scores between prompts and images using the same logic as clip_alignment_with_generation.py"""
+        if not CLIP_AVAILABLE:
+            self.logger.error(f"❌ CLIP dependencies not available - cannot calculate scores")
+            return None
+            
+        try:
+            
+            # Initialize CLIP model if not already loaded
+            if not hasattr(self, '_clip_model') or self._clip_model is None:
+                self.logger.info(f"🔧 Loading CLIP model for score calculation")
+                
+                # CLIP model settings (same as production validation)
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                model_name = "convnext_large_d"
+                pretrained = "laion2b_s26b_b102k_augreg"
+                
+                # Load CLIP model
+                self._clip_model, _, _ = open_clip.create_model_and_transforms(
+                    model_name, 
+                    pretrained=pretrained, 
+                    device=device
+                )
+                self._clip_tokenizer = open_clip.get_tokenizer(model_name)
+                self._clip_model.eval()
+                self._clip_device = device
+                
+                # Normalization transform (same as production)
+                mean = torch.tensor([0.48145466, 0.4578275, 0.40821073]).view(1, 3, 1, 1) * 3
+                std = torch.tensor([0.26862954, 0.26130258, 0.27577711]).view(1, 3, 1, 1) * 3
+                self._clip_normalize_transform = transforms.Normalize(mean, std)
+                
+                self.logger.info(f"✅ CLIP model loaded successfully")
+            
+            # Convert bytes to PIL images
+            original_pil = Image.open(io.BytesIO(original_image))
+            optimized_pil = Image.open(io.BytesIO(optimized_image))
+            
+            # Preprocess images for CLIP (same as clip_alignment_with_generation.py)
+            def preprocess_image_for_clip(image: Image.Image, image_res: int = 224) -> torch.Tensor:
+                # Convert PIL to tensor
+                image_tensor = torch.tensor(np.array(image)).float()
+                
+                # Normalize to [0, 1]
+                image_tensor = image_tensor / 255.0
+                
+                # Convert to channels-first format
+                if len(image_tensor.shape) == 3:
+                    image_tensor = image_tensor.permute(2, 0, 1)
+                
+                # Add batch dimension
+                image_tensor = image_tensor.unsqueeze(0)
+                
+                # Resize to CLIP input size
+                image_tensor = F.interpolate(image_tensor, size=(image_res, image_res), mode="bicubic", align_corners=False)
+                
+                # Apply CLIP normalization
+                image_tensor = self._clip_normalize_transform(image_tensor)
+                
+                return image_tensor.to(self._clip_device)
+            
+            # Preprocess both images
+            original_tensor = preprocess_image_for_clip(original_pil)
+            optimized_tensor = preprocess_image_for_clip(optimized_pil)
+            
+            # Tokenize prompts
+            tokenized_original = self._clip_tokenizer(original_prompt).to(self._clip_device)
+            tokenized_optimized = self._clip_tokenizer(optimized_prompt).to(self._clip_device)
+            
+            # Compute CLIP scores
+            with torch.no_grad(), torch.amp.autocast(self._clip_device.type):
+                # Encode images and texts
+                original_image_features = self._clip_model.encode_image(original_tensor)
+                optimized_image_features = self._clip_model.encode_image(optimized_tensor)
+                original_text_features = self._clip_model.encode_text(tokenized_original)
+                optimized_text_features = self._clip_model.encode_text(tokenized_optimized)
+                
+                # Normalize features
+                original_image_features /= original_image_features.norm(dim=-1, keepdim=True)
+                optimized_image_features /= optimized_image_features.norm(dim=-1, keepdim=True)
+                original_text_features /= original_text_features.norm(dim=-1, keepdim=True)
+                optimized_text_features /= optimized_text_features.norm(dim=-1, keepdim=True)
+                
+                # Compute all four alignment scores
+                # 1. Original prompt vs Original image
+                original_vs_original = (original_text_features @ original_image_features.T).cpu().numpy()[0][0]
+                
+                # 2. Original prompt vs Optimized image
+                original_vs_optimized = (original_text_features @ optimized_image_features.T).cpu().numpy()[0][0]
+                
+                # 3. Optimized prompt vs Original image
+                optimized_vs_original = (optimized_text_features @ original_image_features.T).cpu().numpy()[0][0]
+                
+                # 4. Optimized prompt vs Optimized image
+                optimized_vs_optimized = (optimized_text_features @ optimized_image_features.T).cpu().numpy()[0][0]
+                
+                # Clip to [0, 1] range
+                original_vs_original = np.clip(original_vs_original, 0, 1)
+                original_vs_optimized = np.clip(original_vs_optimized, 0, 1)
+                optimized_vs_original = np.clip(optimized_vs_original, 0, 1)
+                optimized_vs_optimized = np.clip(optimized_vs_optimized, 0, 1)
+                
+                clip_scores = {
+                    'original_prompt_vs_original_image': float(original_vs_original),
+                    'original_prompt_vs_optimized_image': float(original_vs_optimized),
+                    'optimized_prompt_vs_optimized_image': float(optimized_vs_optimized),
+                    'optimized_prompt_vs_original_image': float(optimized_vs_original)
+                }
+                
+                self.logger.info(f"📊 CLIP scores calculated successfully")
+                return clip_scores
+        
+        except Exception as e:
+            self.logger.error(f"❌ CLIP score calculation exception: {e}")
+            return None
+
+    async def _get_new_optimized_prompt(self, original_prompt: str) -> Optional[str]:
+        """Get a new optimized prompt using the LLM optimizer with optimized_system_prompt"""
+        try:
+            # Import the LLM optimizer
+            from llm_prompt_optimizer_v12_f1_lora import LLMPromptOptimizer
+            
+            # Initialize optimizer with vLLM
+            optimizer = LLMPromptOptimizer(
+                use_vllm=True,
+                vllm_url=self.config.get('vllm_url', 'http://localhost:9000'),
+                vllm_model=self.config.get('vllm_model', 'llama-3-2-3b-it')
+            )
+            
+            # Get the optimized system prompt using the function from the file
+            system_prompt = optimized_system_prompt(original_prompt)
+            
+            # Query vLLM directly with the system prompt
+            new_prompt = optimizer._query_vllm(system_prompt, original_prompt)
+            
+            if new_prompt and new_prompt != original_prompt:
+                # Clean the response
+                new_prompt = optimizer._clean_response(new_prompt)
+                self.logger.info(f"🔄 New optimized prompt generated: '{new_prompt[:100]}...'")
+                return new_prompt
+            else:
+                self.logger.warning(f"⚠️ Failed to generate new optimized prompt")
+                return None
+        
+        except Exception as e:
+            self.logger.error(f"❌ New prompt optimization exception: {e}")
             return None
 
     '''
@@ -5201,7 +6588,7 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Validation exception: {e}")
             return None
     
-    async def submit_result(self, task: TaskRecord, generation_result: Dict[str, Any]) -> bool:
+    async def submit_result(self, task: TaskRecord, generation_result: Dict[str, Any], validator: ValidatorState) -> bool:
         """Submit result to validator and process feedback"""
         if not self.config['submit_results']:
             return True
@@ -5265,6 +6652,23 @@ class ContinuousTrellisOrchestrator:
                 timeout=self.config['submission_timeout']
             )
             
+            # 🔍 DEBUG: Log the complete validator response to see what's being sent
+            self.logger.info(f"🔍 DEBUG: Validator submission response type: {type(response)}")
+            self.logger.info(f"🔍 DEBUG: Validator submission response attributes: {dir(response)}")
+            self.logger.info(f"🔍 DEBUG: Validator submission response data: {response.__dict__}")
+            
+            # 🔍 DEBUG: Check specifically for cooldown and violation fields
+            if hasattr(response, 'cooldown_until'):
+                self.logger.info(f"🔍 DEBUG: cooldown_until found: {response.cooldown_until}")
+            else:
+                self.logger.info(f"🔍 DEBUG: cooldown_until NOT found in response")
+                
+            if hasattr(response, 'cooldown_violations'):
+                self.logger.info(f"🔍 DEBUG: cooldown_violations found: {response.cooldown_violations}")
+            else:
+                self.logger.info(f"🔍 DEBUG: cooldown_violations NOT found in response")
+            
+
             submit_time_elapsed = time.time() - start_time
             print("time elapsed: ", submit_time_elapsed)
             task.submitted_at = time.time()
@@ -5274,10 +6678,82 @@ class ContinuousTrellisOrchestrator:
                 task.total_processing_time = task.submitted_at - task.pulled_at
                 self.logger.info(f"⏱️ Total processing time: {task.total_processing_time:.2f}s (from validator response to submission)")
             
+            response_data = {}
+            # 🚨 CRITICAL: Extract cooldown and violation data from validator response
+            # This is where the validator sends the actual cooldown and violation information
+            
+            if hasattr(response, 'cooldown_until'):
+                original_cooldown = response.cooldown_until
+                # FIX 3: Use the original cooldown, don't rely on traffic because they are used by the validator
+                # response_data['cooldown_until'] = original_cooldown + 10  # Add 1 second to ensure we pass the cooldown
+                response_data['cooldown_until'] = original_cooldown
+                # FIX: Use safe cooldown setting method
+                self._safe_set_cooldown(validator, original_cooldown + 3)
+                self.logger.debug(f"🛡️ Using original cooldown from validator: {original_cooldown}")
+            if hasattr(response, 'cooldown_violations'):
+                response_data['cooldown_violations'] = response.cooldown_violations
+            if hasattr(response, 'throttle_period'):
+                response_data['throttle_period'] = response.throttle_period
+
+            if hasattr(response, 'cooldown_until') and response.cooldown_until:
+                current_time = time.time()
+                if response.cooldown_until > current_time:
+                    remaining_cooldown = response.cooldown_until - current_time
+                    self.logger.warning(f"🚨 CRITICAL: Validator UID {validator.uid} enforced cooldown: {remaining_cooldown:.1f}s remaining")
+                    
+                    # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
+                    # self._set_emergency_cooldown(validator, response.cooldown_until, "Validator enforced cooldown")
+                else:
+                    self.logger.info(f"✅ Validator UID {validator.uid} cooldown cleared: {response.cooldown_until}")
+            
+            
+            if hasattr(response, 'cooldown_violations'):
+                old_violations = getattr(validator, 'cooldown_violations', 0)
+                new_violations = response.cooldown_violations
+                
+                if new_violations != old_violations:
+                    validator.cooldown_violations = new_violations
+                    if new_violations > old_violations:
+                        violation_increase = new_violations - old_violations
+                        self.logger.error(f"🚨 CRITICAL: Validator UID {validator.uid} violations increased: {old_violations} → {new_violations} (+{violation_increase})")
+                        
+                        # EMERGENCY: Check for critical violation thresholds
+                        critical_threshold = self.config.get('critical_violation_threshold', 100)
+                        if new_violations > critical_threshold:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} exceeds critical threshold ({critical_threshold}) - implementing immediate blacklist!")
+                            self._blacklist_validator_temporarily(validator, new_violations)
+                        
+                        # EMERGENCY: Check for rapid violation increase
+                        if violation_increase > 50:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} violations increased by {violation_increase} - implementing emergency measures!")
+                            self._handle_critical_violations(validator, new_violations)
+                        
+                        # EMERGENCY: Set immediate cooldown for high violations
+                        if new_violations > 200:
+                            emergency_cooldown = time.time() + 1800  # 30 minutes
+                            # validator.cooldown_until = emergency_cooldown
+                            # FIX: Use safe cooldown setting method
+                            self._safe_set_cooldown(validator, emergency_cooldown)
+                            self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {validator.uid} due to {new_violations} violations!")
+                    
+                    # UPDATE: Immediately update local violation count for real-time tracking
+                    validator.cooldown_violations = new_violations
+                    validator.validator_reported_violations = new_violations
+                    # STATS: Update violation statistics
+                    self.stats['cooldown_violations_total'] = max(self.stats.get('cooldown_violations_total', 0), new_violations)
+                    self.stats['critical_violations_detected'] = self.stats.get('critical_violations_detected', 0) + 1
+                    
+                    # ALERT: Log detailed violation analysis
+                    self.logger.error(f"🚨 VIOLATION ANALYSIS for UID {validator.uid}:")
+                    self.logger.error(f"   Current violations: {new_violations}")
+                    self.logger.error(f"   Previous violations: {old_violations}")
+                    self.logger.error(f"   Increase: {new_violations - old_violations}")
+                    self.logger.error(f"   Stake: {validator.stake:.1f} TAO")
+                    self.logger.error(f"   Trust: {getattr(validator, 'trust', 'N/A')}")
+            
+            # Process feedback scores if available
             if response and hasattr(response, 'feedback') and response.feedback:
                 feedback = response.feedback
-                
-                # Process feedback scores
                 task.feedback_received = True
                 task.submission_success = True
                 task.task_fidelity_score = feedback.task_fidelity_score
@@ -5323,11 +6799,24 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"   Generations in window: {task.generations_in_window}")
                 
                 # Log optimization impact if zero fidelity was avoided
-                if (self.config.get('enable_prompt_optimization', True) and 
-                    task.task_fidelity_score > 0.0 and 
+                if (self.config.get('enable_prompt_optimization', True) and
+                    task.task_fidelity_score > 0.0 and
                     self.stats['optimization_improvements'] > 0):
                     self.logger.info(f"   🎯 Zero fidelity avoided (optimization working!)")
+
+                # Update validator's last submit time (validator-compliant throttle logic)
+                validator.last_submit_time = time.time()
+
+                sync_results = self._synchronize_validator_state(validator, response_data)
                 
+                # Log synchronization results
+                if sync_results['cooldown_updated'] or sync_results['violations_updated']:
+                    self.logger.info(f"🔄 State synchronized for UID {validator.uid}")
+                    if sync_results['backoff_strategy']:
+                        self.logger.info(f"   Backoff strategy: {sync_results['backoff_strategy']}")
+                    if sync_results['emergency_actions']:
+                        self.logger.info(f"   Emergency actions: {', '.join(sync_results['emergency_actions'])}")
+            
                 return True
             else:
                 self.logger.error(f"❌ No feedback received from UID {task.validator_uid}")
@@ -5345,22 +6834,54 @@ class ContinuousTrellisOrchestrator:
             self.logger.error(f"❌ Submission failed: {e}")
             traceback.print_exc()
             task.submission_success = False
-            
-            # Set cooldown for submission exceptions
+
+            # Handle task failure with quality penalties (validator-compliant)
             if task.validator_uid in self.validators:
                 validator = self.validators[task.validator_uid]
-                submission_cooldown = self.config.get('submission_failure_cooldown', 60)
-                self.set_validator_cooldown(validator, submission_cooldown, f"Submission exception: {str(e)[:50]}", task.task_id, task.prompt)
-            
+                self._handle_task_failure(validator, task, 0.0, f"Submission exception: {str(e)[:50]}")
+
             return False
     
-    async def process_task(self, task: TaskRecord) -> bool:
+    async def process_task(self, task: TaskRecord, validator: ValidatorState) -> bool:
         """Process a single task end-to-end with priority access"""
         self.logger.info(f"�� Processing task {task.task_id}: '{task.prompt}'")
-        
+
         task.processed_at = time.time()
         self.stats['tasks_processed'] += 1
-        
+
+        # PREVENT DUPLICATE PROCESSING: Check if this task was already processed recently
+        if hasattr(self, '_recently_processed_tasks'):
+            if task.task_id in self._recently_processed_tasks:
+                last_processed = self._recently_processed_tasks[task.task_id]
+                if time.time() - last_processed < 300:  # 5 minutes window
+                    self.logger.warning(f"🚫 Duplicate task detected - already processed {task.task_id} recently")
+                    task.submission_success = False
+                    self.db.save_task(task)
+                    return False
+        else:
+            self._recently_processed_tasks = {}
+
+        # Check for rapid submission (validator-compliant throttle logic)
+        if self._check_rapid_submission(validator, task.task_id, task.prompt):
+            self.logger.warning(f"❌ Rapid submission detected for UID {validator.uid} - rejecting task {task.task_id}")
+
+            # ENFORCE COOLDOWN: Set validator cooldown to prevent future rapid submissions
+            cooldown_seconds = self.config.get('generation.task_cooldown', 300)
+            self.set_validator_cooldown(validator, cooldown_seconds, "rapid_submission_detected", task_id=task.task_id, cooldown_type="miner")
+
+            task.submission_success = False
+            self.db.save_task(task)
+
+            # CRITICAL: Update last submit time to prevent immediate retry
+            validator.last_submit_time = time.time()
+
+            # Track this task as processed to prevent duplicates
+            if not hasattr(self, '_recently_processed_tasks'):
+                self._recently_processed_tasks = {}
+            self._recently_processed_tasks[task.task_id] = time.time()
+
+            return False
+
         # Detect and log traffic type for compliance monitoring
         traffic_type = self.detect_traffic_type(task.task_id, task.prompt)
         expected_cooldown = self.get_traffic_specific_cooldown(traffic_type)
@@ -5394,13 +6915,13 @@ class ContinuousTrellisOrchestrator:
             elapsed_time_since_pull = time_after_generation - task.pulled_at
 
             # If elapsed time is less than 17 seconds, wait until 18 seconds have passed
-            if elapsed_time_since_pull < 10.0:
-                wait_duration = 10.0 - elapsed_time_since_pull
+            if elapsed_time_since_pull < 15.0:
+                wait_duration = 16.0 - elapsed_time_since_pull
                 self.logger.info(f"⏳ Elapsed time since pull ({elapsed_time_since_pull:.2f}s) is < 17s. Waiting for {wait_duration:.2f}s to reach 18s before submission.")
                 await asyncio.sleep(wait_duration)
                 
             # Step 3: Submit results, passing the full generation result dictionary
-            success = await self.submit_result(task, generation_result)
+            success = await self.submit_result(task, generation_result, validator)
             
             # FIXED: Complete pending task cooldown logic
             if success and task.validator_uid in self.validators:
@@ -5426,7 +6947,23 @@ class ContinuousTrellisOrchestrator:
                     self.db.release_task_lock(task.task_id, self.instance_id, status='failed')
                     self.logger.error(f"❌ Task {task.task_id} submission failed")
                     self.logger.info(f"   🔓 Task lock released: {task.task_id}")
-            
+
+            # TRACK PROCESSED TASKS: Add to recently processed list to prevent duplicates
+            if success:
+                if not hasattr(self, '_recently_processed_tasks'):
+                    self._recently_processed_tasks = {}
+                self._recently_processed_tasks[task.task_id] = time.time()
+
+                # CLEANUP: Remove old entries from recently processed tasks (older than 10 minutes)
+                current_time = time.time()
+                old_tasks = [task_id for task_id, processed_time in self._recently_processed_tasks.items()
+                           if current_time - processed_time > 600]  # 10 minutes
+                for old_task in old_tasks:
+                    del self._recently_processed_tasks[old_task]
+
+                if old_tasks:
+                    self.logger.debug(f"🧹 Cleaned up {len(old_tasks)} old task entries from recently processed cache")
+
             return success
         
         except Exception as e:
@@ -5642,6 +7179,7 @@ class ContinuousTrellisOrchestrator:
         self.logger.info(f"Emergency cooldown management:")
         self.logger.info(f"   Emergency cooldowns applied: {self.stats.get('emergency_cooldowns_applied', 0)}")
         self.logger.info(f"   Critical violations handled: {self.stats.get('critical_violations_handled', 0)}")
+        self.logger.info(f"   Critical violations detected: {self.stats.get('critical_violations_detected', 0)}")
         self.logger.info(f"   Validators temporarily blacklisted: {self.stats.get('validators_temporarily_blacklisted', 0)}")
         self.logger.info(f"   Validators reset from emergency: {self.stats.get('validators_reset_from_emergency', 0)}")
         self.logger.info(f"   Dynamic cooldown scaling applied: {self.stats.get('dynamic_cooldown_scaling', 0)}")
@@ -5806,6 +7344,9 @@ class ContinuousTrellisOrchestrator:
         """Main continuous mining loop"""
         self.logger.info("🚀 Starting continuous TRELLIS mining...")
         
+        # 🚨 CRITICAL: Check for existing violations before starting
+        self._check_existing_critical_violations()
+        
         # Setup Bittensor
         if not self._setup_bittensor():
             self.logger.error("❌ Failed to setup Bittensor")
@@ -5826,6 +7367,12 @@ class ContinuousTrellisOrchestrator:
         last_cleanup = 0
         last_idle_validation = 0
         last_validator_refresh = 0
+
+        # Explain cooldown system at startup
+        self.logger.info("💡 COOLDOWN SYSTEM EXPLANATION:")
+        self.logger.info("   • LOCAL COOLDOWN: Prevents pulling tasks from validator (longer, penalty-based)")
+        self.logger.info("   • RAPID SUBMISSION: Checks if processing would be too soon (shorter, timing-based)")
+        self.logger.info("   • These are DIFFERENT mechanisms serving different purposes!")
         
         try:
             while self.running:
@@ -5835,6 +7382,10 @@ class ContinuousTrellisOrchestrator:
                 if current_time - last_validator_refresh > 600:
                     self.refresh_validators()
                     last_validator_refresh = current_time
+                
+                # 🚨 CRITICAL: Periodic violation monitoring (every 5 minutes)
+                if current_time - last_cleanup > 300:  # Check every 5 minutes
+                    self._check_runtime_critical_violations()
                 
                 # Periodic cleanup
                 if current_time - last_cleanup > self.config['cleanup_interval']:
@@ -5861,9 +7412,46 @@ class ContinuousTrellisOrchestrator:
                     if available_validators:
                         self.logger.debug(f"📊 Available validators: {available_validators}")
                 
+                # DEBUG: Periodic cooldown status reporting (every 30 seconds)
+                if current_time - last_stats_report > 30:
+                    # Report cooldown status for all validators with timing information
+                    for uid, validator in self.validators.items():
+                        if validator.last_submit_time:
+                            cooldown_report = self.get_detailed_cooldown_report(validator)
+
+                            # Show both cooldown types for clarity
+                            # local_cooldown_remaining = None
+                            # for cooldown_name, cooldown_info in cooldown_report["cooldowns"].items():
+                            #     if cooldown_info["remaining_seconds"] > 0:
+                            #         local_cooldown_remaining = cooldown_info["remaining_seconds"]
+                            #         break
+
+                            # rapid_submission_time = cooldown_report["rapid_submission_check"]["time_until_ok"]
+
+                            # if local_cooldown_remaining:
+                            #     self.logger.debug(f"🔍 COOLDOWN DEBUG UID {uid}: Local={local_cooldown_remaining:.1f}s, Rapid={rapid_submission_time:.1f}s")
+                            #     # Only show explanation occasionally to avoid spam
+                            #     if uid == 212 and int(current_time) % 300 < 30:  # Every 5 minutes for UID 212 as example
+                            #         self.logger.info(f"💡 COOLDOWN EXPLANATION: Local cooldown prevents task PULLING, Rapid checks processing TIMING")
+                            # elif rapid_submission_time > 0:
+                            #     self.logger.debug(f"🔍 COOLDOWN DEBUG UID {uid}: Rapid submission would trigger in {rapid_submission_time:.1f}s")
+                            # else:
+                            #     self.logger.debug(f"🔍 COOLDOWN DEBUG UID {uid}: Available for processing")
+                            if cooldown_report["is_available"]:
+                                self.logger.debug(f"�� COOLDOWN DEBUG UID {uid}: AVAILABLE")
+                            else:
+                                # Show why validator is unavailable
+                                reason = "Unknown"
+                                if validator.cooldown_until:
+                                    reason = f"Local cooldown: {cooldown_report['cooldowns'].get('Miner Local', {}).get('remaining_seconds', 0):.1f}s"
+                                elif validator.emergency_blacklist_until:
+                                    reason = f"Emergency blacklist: {validator.emergency_blacklist_until - time.time():.1f}s"
+                                
+                                self.logger.debug(f"�� COOLDOWN DEBUG UID {uid}: UNAVAILABLE - {reason}")
+
                 # Pull tasks from all available validators
                 new_task_found = False
-                
+
                 for validator in self.validators.values():
                     if not self.running:
                         break
@@ -5871,6 +7459,13 @@ class ContinuousTrellisOrchestrator:
                     # Log validator availability check
                     if not self.is_validator_available(validator):
                         continue  # Skip unavailable validators
+                    # import pdb; pdb.set_trace()
+                    cooldown_status = self._check_validator_cooldown_state(validator)
+                    if not cooldown_status['available']:
+                        self.logger.debug(f"⏳ Validator UID {validator.uid} not available: {cooldown_status['reason']}")
+                        # Show recommendation in a clean, single-line format
+                        print(f"\r⏳ Validator {validator.uid}: {cooldown_status['recommendation']}", end='', flush=True)
+                        continue
                     
                     # SHARED TASK TRACKING: Skip validators that are busy with other instances
                     if self.config.get('enable_task_tracking', True) and not self.config.get('disable_task_tracking', False):
@@ -5883,7 +7478,7 @@ class ContinuousTrellisOrchestrator:
                     if task:
                         new_task_found = True
                         # Process task immediately
-                        await self.process_task(task)
+                        await self.process_task(task, validator)
                 
                 # If no new tasks, do idle validation
                 # if not new_task_found and current_time - last_idle_validation > self.config['idle_validation_interval']:
@@ -6892,21 +8487,34 @@ async def main():
     parser.add_argument("--network-error-cooldown", type=int, default=30, help="Cooldown duration after network errors (seconds, default: 30)")
     parser.add_argument("--submission-failure-cooldown", type=int, default=60, help="Cooldown duration after submission failures (seconds, default: 60)")
     parser.add_argument("--validator-error-cooldown", type=int, default=45, help="Cooldown duration after validator errors (seconds, default: 45)")
-    parser.add_argument("--max-cooldown-duration", type=int, default=300, help="Maximum cooldown duration (seconds, default: 300)")
-    parser.add_argument("--synthetic-traffic-cooldown", type=int, default=300, help="Cooldown for synthetic traffic (seconds, default: 300)")
-    parser.add_argument("--organic-traffic-cooldown", type=int, default=120, help="Cooldown for organic traffic (seconds, default: 120)")
+    parser.add_argument("--max-cooldown-duration", type=int, default=301, help="Maximum cooldown duration (seconds, default: 300)")
+    parser.add_argument("--synthetic-traffic-cooldown", type=int, default=301, help="Cooldown for synthetic traffic (seconds, default: 300)")
+    parser.add_argument("--organic-traffic-cooldown", type=int, default=121, help="Cooldown for organic traffic (seconds, default: 120)")
     parser.add_argument("--no-cooldown-logging", action="store_true", help="Disable detailed cooldown logging")
     
     # Enhanced cooldown system arguments
     parser.add_argument("--cooldown-violation-threshold", type=int, default=5, help="Number of violations before applying penalty (default: 5)")
     parser.add_argument("--cooldown-violation-penalty", type=int, default=60, help="Additional penalty cooldown in seconds (default: 60)")
-    parser.add_argument("--validation-lock-duration", type=int, default=30, help="Default validation lock duration in seconds (default: 30)")
+    parser.add_argument("--validation-lock-duration", type=int, default=31, help="Default validation lock duration in seconds (default: 30)")
+
+    # Validator-compliant generation arguments (for miner behavior as orchestrator)
+    parser.add_argument("--generation-throttle-period", type=int, default=34, help="Minimum throttle period for task completion (seconds, default: 30)")
+    parser.add_argument("--generation-task-cooldown", type=int, default=305, help="Cooldown between tasks from same validator (seconds, default: 300)")
+    parser.add_argument("--generation-cooldown-violation-penalty", type=int, default=102, help="Penalty for cooldown violations (seconds, default: 10)")
+    parser.add_argument("--generation-cooldown-violations-threshold", type=int, default=100, help="Threshold for malicious behavior (default: 100)")
+    parser.add_argument("--generation-cooldown-penalty", type=int, default=600, help="Penalty for low quality submissions (seconds, default: 600)")
+    parser.add_argument("--generation-quality-threshold", type=float, default=0.6, help="Minimum score threshold for acceptance (default: 0.6)")
     
     # Emergency cooldown management arguments
     parser.add_argument("--emergency-cooldown-buffer", type=int, default=30, help="Buffer seconds added to validator cooldowns (default: 30)")
     parser.add_argument("--critical-violation-threshold", type=int, default=100, help="Violation count that triggers emergency measures (default: 100)")
     parser.add_argument("--critical-violation-cooldown", type=int, default=3600, help="Emergency cooldown duration for critical violations (default: 3600)")
     parser.add_argument("--base-blacklist-duration", type=int, default=1800, help="Base duration for temporary blacklisting (default: 1800)")
+    
+    # Fallback mechanism arguments
+    parser.add_argument("--no-fallback", action="store_true", help="Disable CLIP-based fallback mechanism for low-fidelity tasks")
+    parser.add_argument("--fallback-ratio-threshold", type=float, default=0.8, help="Ratio threshold for triggering fallback (default: 0.8)")
+    parser.add_argument("--fallback-max-retries", type=int, default=1, help="Maximum number of prompt re-optimization attempts (default: 1)")
     
     args = parser.parse_args()
     
@@ -7022,6 +8630,14 @@ async def main():
     config['cooldown_violation_threshold'] = args.cooldown_violation_threshold
     config['cooldown_violation_penalty'] = args.cooldown_violation_penalty
     config['validation_lock_duration'] = args.validation_lock_duration
+
+    # Validator-compliant generation settings (for miner behavior as orchestrator)
+    config['generation.throttle_period'] = args.generation_throttle_period
+    config['generation.task_cooldown'] = args.generation_task_cooldown
+    config['generation.cooldown_violation_penalty'] = args.generation_cooldown_violation_penalty
+    config['generation.cooldown_violations_threshold'] = args.generation_cooldown_violations_threshold
+    config['generation.cooldown_penalty'] = args.generation_cooldown_penalty
+    config['generation.quality_threshold'] = args.generation_quality_threshold
     
     # Emergency cooldown management configuration
     config['emergency_cooldown_buffer'] = args.emergency_cooldown_buffer
@@ -7032,10 +8648,27 @@ async def main():
     print(f"⏳ Cooldown settings: Network errors: {args.network_error_cooldown}s, Submission failures: {args.submission_failure_cooldown}s, Validator errors: {args.validator_error_cooldown}s, Max: {args.max_cooldown_duration}s")
     print(f"📝 Cooldown logging: {'ENABLED' if not args.no_cooldown_logging else 'DISABLED'}")
     print(f"🚨 Enhanced cooldown: Violation threshold: {args.cooldown_violation_threshold}, Penalty: {args.cooldown_violation_penalty}s, Validation lock: {args.validation_lock_duration}s")
+    print(f"🚨 Validator-compliant generation: Throttle: {args.generation_throttle_period}s, Task cooldown: {args.generation_task_cooldown}s, Quality threshold: {args.generation_quality_threshold}")
+    print(f"🚨 Generation penalties: Violation penalty: {args.generation_cooldown_violation_penalty}s, Quality penalty: {args.generation_cooldown_penalty}s, Violation threshold: {args.generation_cooldown_violations_threshold}")
     print(f"🚨 Emergency cooldown: Buffer: {args.emergency_cooldown_buffer}s, Critical threshold: {args.critical_violation_threshold}, Blacklist base: {args.base_blacklist_duration}s")
+    
+    # Fallback mechanism configuration
+    if args.no_fallback:
+        config['enable_fallback_mechanism'] = False
+        print("⚠️ Fallback mechanism DISABLED - will use standard generation without CLIP-based fallback")
+    else:
+        config['enable_fallback_mechanism'] = True
+        print("✅ Fallback mechanism ENABLED - will use CLIP-based fallback for low-fidelity tasks")
+    
+    config['fallback_ratio_threshold'] = args.fallback_ratio_threshold
+    config['fallback_max_retries'] = args.fallback_max_retries
+    print(f"🔄 Fallback settings: Ratio threshold: {args.fallback_ratio_threshold}, Max retries: {args.fallback_max_retries}")
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)
+    
+    # 🚨 CRITICAL: Check for existing violations before starting
+    orchestrator._check_existing_critical_violations()
     
     try:
         await orchestrator.continuous_mining_loop()

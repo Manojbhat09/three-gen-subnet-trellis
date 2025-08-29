@@ -28,9 +28,11 @@ Options:
     --server-buffer-time INT Buffer time between server uses in seconds (default: 30)
 
 Example:
-    CUDA_VISIBLE_DEVICES=2 python episodic_prompt_optimizer.py --episodes 15 --target 0.95 --max-rounds 2 --log-dir episodic_logs_first --endpoint "generate/cinema/" --ollama-url http://localhost:11434 --port 8097
+    CUDA_VISIBLE_DEVICES=0 python episodic_prompt_optimizer.py --episodes 15 --target 0.95 --max-rounds 2 --log-dir episodic_logs_third --endpoint "generate/cinema/" --ollama-url http://localhost:11434 --port 8096
 
-     CUDA_VISIBLE_DEVICES=0 python episodic_prompt_optimizer.py --episodes 2 --target 0.95 --max-rounds 6 --log-dir episodic_logs_new --endpoint "generate/cinema/" --vllm --vllm-url http://localhost:11300 --port 8096 --vllm-model "llama-3-2-3b-it"  
+     CUDA_VISIBLE_DEVICES=0 python episodic_prompt_optimizer.py --episodes 2 --target 0.95 --max-rounds 12 --log-dir episodic_logs_third --endpoint "generate/cinema/" --vllm --vllm-url http://localhost:11300 --port 8096 --vllm-model "llama-3-2-3b-it"  
+
+    python episodic_prompt_optimizer.py --episodes 2 --target 0.95 --max-rounds 12 --ollama-url http://localhost:11434 --port 8096 --log-dir episodic_logs_usa --endpoint "generate/"
 """
 
 import json
@@ -784,6 +786,7 @@ class EpisodicPromptOptimizer:
             self._cleanup_malformed_prompts()
             
             zero_fid_prompts = self._extract_zero_fidelity_prompts(log_path)
+            
             if zero_fid_prompts:
                 print(f"[INFO] Found {len(zero_fid_prompts)} 0-fidelity prompts in {log_path}")
                 
@@ -896,12 +899,18 @@ class EpisodicPromptOptimizer:
             with open(log_path, 'r') as f:
                 lines = f.readlines()
             for i, line in enumerate(lines):
-                if 'Task fidelity: 0.0000' in line:
+                if 'Task fidelity: 0.0000' in line or 'Task fidelity: 0.000' in line:
                     # Search backwards for the 'Original:' or 'Generating 3D model:' line
-                    for j in range(i-1, max(i-20, -1), -1):
-                        if 'Original:' in lines[j]:
-                            # Example: 'Original: spear with white head and green shaft'
-                            match = re.search(r'Original:\s*(.*)', lines[j])
+                    for j in range(i-1, max(i-30, -1), -1):
+                        # if 'Original:' in lines[j]:
+                        #     # Example: 'Original: spear with white head and green shaft'
+                        #     match = re.search(r'Original:\s*(.*)', lines[j])
+                        #     if match:
+                        #         prompts.append(match.group(1).strip())
+                        #         break
+                        if 'Prompt:' in lines[j]:
+                            # Example: 'Prompt: polished chrome figure of cat with wings'
+                            match = re.search(r'Prompt:\s*(.*)', lines[j])
                             if match:
                                 prompts.append(match.group(1).strip())
                                 break
@@ -911,6 +920,7 @@ class EpisodicPromptOptimizer:
                             if match:
                                 prompts.append(match.group(1).strip())
                                 break
+            print(f"[INFO] Found {len(prompts)} 0-fidelity prompts in {log_path}")
         except Exception as e:
             print(f"[WARN] Could not parse log for 0-fidelity prompts: {e}")
         # Return in reverse chronological order (most recent first)

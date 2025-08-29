@@ -568,5 +568,310 @@ def main():
         print(f"❌ Production-accurate validation workflow failed: {e}")
         sys.exit(1)
 
+# Global variables to keep models loaded on GPU
+_global_clip_model = None
+_global_clip_tokenizer = None
+_global_clip_normalize = None
+_global_clip_device = None
+_global_validator = None
+_global_renderer = None
+_global_ply_data_loader = None
+_global_zstd_decompressor = None
+
+def _ensure_models_loaded():
+    """Ensure all models are loaded and cached globally"""
+    global _global_clip_model, _global_clip_tokenizer, _global_clip_normalize, _global_clip_device
+    global _global_validator, _global_renderer, _global_ply_data_loader, _global_zstd_decompressor
+
+    # Load CLIP model if not already loaded
+    if _global_clip_model is None:
+        _global_clip_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        _global_clip_model, _global_clip_tokenizer, _global_clip_normalize = load_validator_clip(_global_clip_device)
+        print(f"✅ CLIP model loaded on {_global_clip_device}")
+
+    # Load validation components if not already loaded
+    if _global_validator is None:
+        _global_validator = ValidationEngine(verbose=False)  # Less verbose for direct calls
+        with suppress_stdout():
+            _global_validator.load_pipelines()
+
+        _global_zstd_decompressor = zstandard.ZstdDecompressor()
+        _global_renderer = Renderer()
+        _global_ply_data_loader = PlyLoader()
+
+        print("✅ Production validation components loaded and cached")
+
+def validate_prompt_direct(
+    original_prompt: str,
+    optimized_prompt: str = None,
+    endpoint: str = "generate/",
+    num_inference_steps: int = NUM_INFERENCE_STEPS,
+    guidance_scale: float = GUIDANCE_SCALE,
+    ss_sampling_steps: int = SS_SAMPLING_STEPS,
+    slat_sampling_steps: int = SLAT_SAMPLING_STEPS,
+    slat_guidance_strength: float = SLAT_GUIDANCE_STRENGTH,
+    ss_guidance_strength: float = SS_GUIDANCE_STRENGTH,
+    port: int = 8096,
+    pre_generated_ply: bytes = None
+) -> dict:
+    """
+    Direct validation function that keeps models loaded on GPU for speed.
+    Returns the same format as the subprocess-based validation.
+
+    Args:
+        original_prompt: Prompt to compute validation scores against
+        optimized_prompt: Prompt to use for generation (defaults to original_prompt)
+        endpoint: Generation endpoint ("generate/" or "generate/image/")
+        num_inference_steps: Inference steps for image generation
+        guidance_scale: Guidance scale for image generation
+        ss_sampling_steps: Sparse structure sampling steps
+        slat_sampling_steps: SLAT sampling steps
+        slat_guidance_strength: SLAT guidance strength
+        ss_guidance_strength: SS guidance strength
+        port: Server port
+        pre_generated_ply: Pre-generated PLY data bytes (optional)
+
+    Returns:
+        dict: Validation results with all scores and metadata
+    """
+    try:
+        # Ensure models are loaded
+        _ensure_models_loaded()
+
+        # Use optimized prompt for generation if provided, otherwise use original
+        generation_prompt = optimized_prompt if optimized_prompt else original_prompt
+
+        print(f"🎨 Direct validation: generating with '{generation_prompt}'")
+        print(f"🎯 Computing scores against: '{original_prompt}'")
+
+        # Step 1: Generate or use pre-generated PLY data
+        if pre_generated_ply is not None:
+            print("📁 Using pre-generated PLY data")
+            ply_data = pre_generated_ply
+        else:
+            ply_data = generate_and_get_ply_data(
+                generation_prompt,
+                endpoint,
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                ss_sampling_steps=ss_sampling_steps,
+                slat_sampling_steps=slat_sampling_steps,
+                slat_guidance_strength=slat_guidance_strength,
+                ss_guidance_strength=ss_guidance_strength,
+                port=port,
+            )
+
+        # Handle image endpoint vs 3D endpoint
+        if 'image' in endpoint:
+            # Parse image response
+            try:
+                payload = json.loads(ply_data.decode('utf-8'))
+            except Exception:
+                raise RuntimeError("Could not parse image-generation response as JSON")
+
+            b64img = payload.get('image') or payload.get('image_base64')
+            if not b64img:
+                raise RuntimeError("No 'image' field found in response JSON")
+
+            img = Image.open(io.BytesIO(base64.b64decode(b64img))).convert('RGB')
+
+            # Compute CLIP scores using cached models
+            tt_clip = clip_text_text(_global_clip_model, _global_clip_tokenizer, _global_clip_device,
+                                   original_prompt, generation_prompt)
+            ti_clip = clip_text_image(_global_clip_model, _global_clip_tokenizer, _global_clip_normalize,
+                                    _global_clip_device, original_prompt, img)
+
+            return {
+                'original_prompt': original_prompt,
+                'optimized_prompt': optimized_prompt,
+                'prompt_optimized': optimized_prompt != original_prompt,
+                'tt_clip': tt_clip,
+                'ti_clip': ti_clip,
+                'endpoint_type': 'image',
+                'validation_method': 'direct',
+                'image_size': f"{img.width}x{img.height}"
+            }
+        else:
+            # 3D validation using cached production components
+            print("🔬 Running production validation with cached components")
+
+            # Create RequestData
+            encoded_data = base64.b64encode(ply_data).decode('utf-8')
+            request_data = RequestData(
+                prompt=original_prompt,
+                data=encoded_data,
+                compression=2,  # SPZ compression
+                generate_preview=False,
+                preview_score_threshold=0.8
+            )
+
+            # Run validation with cached components
+            validation_result: ValidationResultData = decode_and_validate_txt(
+                request=request_data,
+                ply_data_loader=_global_ply_data_loader,
+                renderer=_global_renderer,
+                zstd_decompressor=_global_zstd_decompressor,
+                validator=_global_validator,
+                include_time_stat=True
+            )
+
+            response = validation_result.response_data
+            time_stats = validation_result.time_stat
+
+            # Calculate demo fidelity score
+            demo_fidelity_score = calculate_demo_fidelity_score(response.score)
+
+            result = {
+                'original_prompt': original_prompt,
+                'optimized_prompt': optimized_prompt,
+                'prompt_optimized': optimized_prompt != original_prompt,
+                'validation_engine_score': response.score,
+                'alignment_score': response.alignment_score,
+                'quality_score': response.iqa,
+                'ssim_score': response.ssim,
+                'lpips_score': response.lpips,
+                'demo_fidelity_score': demo_fidelity_score,
+                'task_fidelity_score': response.score,
+                'validation_passed': response.score > 0.0,
+                'quality_threshold': 0.6,
+                'alignment_threshold_passed': response.alignment_score >= 0.3,
+                'production_logic_applied': True,
+                'endpoint_type': '3d',
+                'validation_method': 'direct',
+                'ply_size': len(ply_data),
+                'time_stats': {
+                    'loading_time': time_stats.loading_data_time if time_stats else 0.0,
+                    'rendering_time': time_stats.image_rendering_time if time_stats else 0.0,
+                    'validation_time': time_stats.validation_time if time_stats else 0.0,
+                    'total_time': time_stats.total_time if time_stats else 0.0,
+                } if time_stats else None
+            }
+
+            print(f"🏆 Validation Engine Score: {response.score:.4f}")
+            print(f"🤝 Alignment Score: {response.alignment_score:.4f}")
+            return result
+
+    except Exception as e:
+        print(f"❌ Direct validation failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+        return {
+            'original_prompt': original_prompt,
+            'optimized_prompt': optimized_prompt,
+            'prompt_optimized': optimized_prompt != original_prompt if optimized_prompt else False,
+            'validation_engine_score': 0.0,
+            'alignment_score': 0.0,
+            'quality_score': 0.0,
+            'ssim_score': 0.0,
+            'lpips_score': 0.0,
+            'demo_fidelity_score': 0.0,
+            'task_fidelity_score': 0.0,
+            'validation_passed': False,
+            'quality_threshold': 0.6,
+            'alignment_threshold_passed': False,
+            'production_logic_applied': True,
+            'endpoint_type': '3d' if 'image' not in endpoint else 'image',
+            'validation_method': 'direct',
+            'error': str(e)
+        }
+
+def unload_cached_models():
+    """Unload cached models to free GPU memory"""
+    global _global_clip_model, _global_clip_tokenizer, _global_clip_normalize, _global_clip_device
+    global _global_validator, _global_renderer, _global_ply_data_loader, _global_zstd_decompressor
+
+    try:
+        # Clear CLIP models
+        if _global_clip_model is not None:
+            del _global_clip_model
+            _global_clip_model = None
+        if _global_clip_tokenizer is not None:
+            del _global_clip_tokenizer
+            _global_clip_tokenizer = None
+        if _global_clip_normalize is not None:
+            del _global_clip_normalize
+            _global_clip_normalize = None
+        _global_clip_device = None
+
+        # Clear validation components
+        if _global_validator is not None:
+            with suppress_stdout():
+                _global_validator.unload_pipelines()
+            del _global_validator
+            _global_validator = None
+
+        if _global_renderer is not None:
+            del _global_renderer
+            _global_renderer = None
+
+        if _global_ply_data_loader is not None:
+            del _global_ply_data_loader
+            _global_ply_data_loader = None
+
+        if _global_zstd_decompressor is not None:
+            del _global_zstd_decompressor
+            _global_zstd_decompressor = None
+
+        # Clear GPU cache
+        gc.collect()
+        torch.cuda.empty_cache()
+        print("✅ Cached models unloaded and GPU memory cleared")
+
+    except Exception as e:
+        print(f"⚠️ Error unloading cached models: {e}")
+
+def demo_direct_validation():
+    """Demo function showing how to use validate_prompt_direct"""
+    print("🚀 Demo: Direct Validation Function")
+    print("=" * 50)
+
+    try:
+        # Example prompts
+        original_prompt = "A beautiful red rose with dew drops"
+        optimized_prompt = "A photorealistic red rose with morning dew, highly detailed petals, 8k"
+
+        print(f"📝 Original: '{original_prompt}'")
+        print(f"🔧 Optimized: '{optimized_prompt}'")
+        print()
+
+        # Validate using direct function (models stay loaded)
+        result = validate_prompt_direct(
+            original_prompt=original_prompt,
+            optimized_prompt=optimized_prompt,
+            endpoint="generate/",
+            port=8096
+        )
+
+        print("\n📊 DIRECT VALIDATION RESULTS:")
+        print("=" * 50)
+
+        if result.get('endpoint_type') == 'image':
+            print(f"🖼️ Image Endpoint Results:")
+            print(f"   tt_clip: {result['tt_clip']:.4f}")
+            print(f"   ti_clip: {result['ti_clip']:.4f}")
+        else:
+            print(f"🏆 Validation Engine Score: {result['validation_engine_score']:.4f}")
+            print(f"🤝 Alignment Score: {result['alignment_score']:.4f}")
+            print(f"💎 Quality Score: {result['quality_score']:.4f}")
+            print(f"🎭 Demo Fidelity Score: {result['demo_fidelity_score']:.4f}")
+
+        print(f"✅ Validation Passed: {result['validation_passed']}")
+        print(f"🚀 Method: {result['validation_method']}")
+
+        return result
+
+    except Exception as e:
+        print(f"❌ Demo failed: {e}")
+        return None
+    finally:
+        # Optionally unload models when done
+        # unload_cached_models()
+        pass
+
 if __name__ == "__main__":
-    main() 
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--demo":
+        demo_direct_validation()
+    else:
+        main() 

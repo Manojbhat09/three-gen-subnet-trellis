@@ -73,7 +73,7 @@ torch.backends.cudnn.benchmark = False       # Disable for reproducibility
 torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
-os.environ['ATTN_BACKEND'] = 'xformers'
+# os.environ['ATTN_BACKEND'] = 'xformers'
 # export ATTN_BACKEND=xformers
 # export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
@@ -234,7 +234,7 @@ GENERATION_CONFIG = {
     'trellis_compile_flow_models': False,
     'flux_use_schnell_socket': False,
     'flux_use_schnell': True,
-    'flux_schnell_steps': 6,
+    'flux_schnell_steps': 4,
     'flux_schnell_guidance': 0.0,
 }
 
@@ -807,8 +807,8 @@ class TrellisGenerator:
                         
             self.flux_pipeline.to("cuda")
 
-            from flux_caching import apply_cache_on_pipe
-            apply_cache_on_pipe(self.flux_pipeline)
+            # from flux_caching import apply_cache_on_pipe
+            # apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
             self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
             # if GENERATION_CONFIG.get('flux_use_schnell', False):
@@ -1811,7 +1811,7 @@ class TrellisGenerator:
                         compressed_data = None
                 
                 # Unload TRELLIS pipeline
-                # self._unload_trellis_pipeline()
+                self._unload_trellis_pipeline()
                 
                 generation_time = time.time() - start_time
                 

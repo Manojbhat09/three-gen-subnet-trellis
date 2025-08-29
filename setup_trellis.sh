@@ -106,11 +106,14 @@ echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 # Activate the conda environment automatically on shell start
 echo "conda activate trellis_new" >> ~/.bashrc
 <<<<<<< HEAD
+<<<<<<< HEAD
 echo "source /home/mbhat/miniconda/bin/activate && conda activate trellis_new" >> ~/.bashrc
 
 echo "Installing validation requirements"
 cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
 pip install -r requirements_validation.txt
+=======
+>>>>>>> 7b6933b (Update setup_trellis.sh)
 =======
 >>>>>>> 7b6933b (Update setup_trellis.sh)
 
