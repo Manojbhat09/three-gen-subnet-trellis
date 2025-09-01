@@ -31,7 +31,7 @@ git checkout -b trellis
 git config pull.rebase true
 git config --global user.email "manojbhat09@gmail.com"
 git config --global user.name "manojbhat09"
-git pull origin multi_a6000ada_3reg3 #trellis
+git pull origin multi_a6000ada_3reg4 #trellis
 
 
 echo "Installing system dependencies..."
@@ -105,17 +105,13 @@ echo "source $WORKSPACE_DIR/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 
 # Activate the conda environment automatically on shell start
 echo "conda activate trellis_new" >> ~/.bashrc
-<<<<<<< HEAD
-<<<<<<< HEAD
+
 echo "source /home/mbhat/miniconda/bin/activate && conda activate trellis_new" >> ~/.bashrc
 
 echo "Installing validation requirements"
 cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
 pip install -r requirements_validation.txt
-=======
->>>>>>> 7b6933b (Update setup_trellis.sh)
-=======
->>>>>>> 7b6933b (Update setup_trellis.sh)
+
 
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
