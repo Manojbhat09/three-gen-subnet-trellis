@@ -65,6 +65,14 @@ export NVCC_FLAGS="--allow-unsupported-compiler"
 echo "Setting CUDA paths..."
 export PATH=/usr/local/cuda-12.1/bin${PATH:+:${PATH}}
 export LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+echo "export TORCH_CUDA_ARCH_LIST=\"8.6\"" >> ~/.bashrc
+echo "export CC=/usr/bin/gcc-11" >> ~/.bashrc
+echo "export CXX=/usr/bin/g++-11" >> ~/.bashrc
+echo "export CUDAHOSTCXX=/usr/bin/g++-11" >> ~/.bashrc
+echo "export NVCC_FLAGS=\"--allow-unsupported-compiler\"" >> ~/.bashrc
+echo "export PATH=/usr/local/cuda-12.1/bin${PATH:+:${PATH}}" >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> ~/.bashrc
+
 
 echo "Creating Conda environment from YAML..."
 conda env create -f environment_trellis.yml
@@ -112,6 +120,9 @@ echo "Installing validation requirements"
 cd "$WORKSPACE_DIR/three-gen-subnet-trellis"
 pip install -r requirements_validation.txt
 
+cd "$WORKSPACE_DIR/three-gen-subnet-trellis/TRELLIS-TextoImagen3D"
+pip install -r requirements.txt
+pip install diffusers==0.32.1
 
 # Step 2: Run the server and mining script in tmux
 echo "Setting up tmux session for server and mining script..."
