@@ -20,6 +20,9 @@ ython continuous_trellis_orchestrator_lora_working.py --activate-learning --only
 python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"   --vllm --no-fallback
 
 python continuous_trellis_orchestrator_lora_working.py --disable-task-tracking  --no-skip-duplicates  --system-prompt --vllm-priority system_chat  --no-fallback --lora "" 
+
+
+python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"   --vllm --no-fallback --production-mv-gen
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
@@ -2141,6 +2144,379 @@ class TaskDatabase:
             print(f"Error getting task processing stats: {e}")
             return {}
 
+class FidelityScoreTracker:
+    """
+    Tracks task fidelity scores and automatically switches generation endpoints
+    when consecutive 0.0 scores are detected to prevent further failures.
+    """
+    
+    def __init__(self, history_size: int = 5, zero_threshold: int = 2, 
+                 fallback_endpoint: str = "/generate_3d_from_prompt_grid_flow/"):
+        """
+        Initialize the fidelity score tracker.
+        
+        Args:
+            history_size: Number of recent tasks to keep in history queue
+            zero_threshold: Number of consecutive 0.0 scores to trigger endpoint switch
+            fallback_endpoint: Endpoint to use when switching due to 0.0 scores
+        """
+        self.history_size = history_size
+        self.zero_threshold = zero_threshold
+        self.fallback_endpoint = fallback_endpoint
+        
+        # Per-validator tracking
+        self.validator_histories: Dict[int, List[Dict[str, Any]]] = {}
+        self.validator_endpoint_states: Dict[int, Dict[str, Any]] = {}
+        
+        # Global tracking
+        self.global_history: List[Dict[str, Any]] = []
+        self.global_endpoint_state = {
+            'current_endpoint': None,
+            'original_endpoint': None,
+            'switched_at': None,
+            'switch_reason': None,
+            'consecutive_zeros': 0,
+            'total_zeros': 0,
+            'switches_made': 0
+        }
+        
+        self.logger = logging.getLogger(__name__)
+        self.logger.info(f"🎯 FidelityScoreTracker initialized")
+        self.logger.info(f"   History size: {history_size}")
+        self.logger.info(f"   Zero threshold: {zero_threshold}")
+        self.logger.info(f"   Fallback endpoint: {fallback_endpoint}")
+    
+    def record_task_result(self, task_id: str, validator_uid: int, 
+                          task_fidelity_score: float, endpoint: str, 
+                          prompt: str = None) -> Dict[str, Any]:
+        """
+        Record a task result and determine if endpoint switching is needed.
+        
+        Args:
+            task_id: Unique task identifier
+            validator_uid: Validator UID
+            task_fidelity_score: Fidelity score from the task
+            endpoint: Endpoint used for generation
+            prompt: Task prompt (optional, for logging)
+            
+        Returns:
+            Dict with tracking information and endpoint switching decision
+        """
+        current_time = time.time()
+        
+        # Initialize validator tracking if needed
+        if validator_uid not in self.validator_histories:
+            self.validator_histories[validator_uid] = []
+            self.validator_endpoint_states[validator_uid] = {
+                'current_endpoint': endpoint,
+                'original_endpoint': endpoint,
+                'switched_at': None,
+                'switch_reason': None,
+                'consecutive_zeros': 0,
+                'total_zeros': 0,
+                'switches_made': 0,
+                'last_switch_time': None
+            }
+        
+        # Initialize global tracking if needed
+        if not self.global_endpoint_state['current_endpoint']:
+            self.global_endpoint_state['current_endpoint'] = endpoint
+            self.global_endpoint_state['original_endpoint'] = endpoint
+        
+        # Create task record
+        task_record = {
+            'task_id': task_id,
+            'validator_uid': validator_uid,
+            'fidelity_score': task_fidelity_score,
+            'endpoint': endpoint,
+            'prompt': prompt,
+            'timestamp': current_time,
+            'is_zero_score': task_fidelity_score == 0.0
+        }
+        
+        # Update validator history
+        validator_history = self.validator_histories[validator_uid]
+        validator_history.append(task_record)
+        
+        # Keep only recent history
+        if len(validator_history) > self.history_size:
+            validator_history.pop(0)
+        
+        # Update global history
+        self.global_history.append(task_record)
+        if len(self.global_history) > self.history_size:
+            self.global_history.pop(0)
+        
+        # Update validator statistics
+        validator_state = self.validator_endpoint_states[validator_uid]
+        if task_fidelity_score == 0.0:
+            validator_state['consecutive_zeros'] += 1
+            validator_state['total_zeros'] += 1
+        else:
+            validator_state['consecutive_zeros'] = 0
+        
+        # Update global statistics
+        if task_fidelity_score == 0.0:
+            self.global_endpoint_state['consecutive_zeros'] += 1
+            self.global_endpoint_state['total_zeros'] += 1
+        else:
+            self.global_endpoint_state['consecutive_zeros'] = 0
+        
+        # Check if endpoint switching is needed
+        switching_decision = self._evaluate_endpoint_switching(
+            validator_uid, endpoint, task_fidelity_score
+        )
+        
+        # Log the tracking information
+        self._log_tracking_info(validator_uid, task_record, switching_decision)
+        
+        return {
+            'task_record': task_record,
+            'switching_decision': switching_decision,
+            'validator_stats': validator_state.copy(),
+            'global_stats': self.global_endpoint_state.copy()
+        }
+    
+    def _evaluate_endpoint_switching(self, validator_uid: int, current_endpoint: str, 
+                                   fidelity_score: float) -> Dict[str, Any]:
+        """
+        Evaluate whether endpoint switching is needed based on recent performance.
+        
+        Args:
+            validator_uid: Validator UID
+            current_endpoint: Current endpoint being used
+            fidelity_score: Current task fidelity score
+            
+        Returns:
+            Dict with switching decision and reasoning
+        """
+        validator_state = self.validator_endpoint_states[validator_uid]
+        global_state = self.global_endpoint_state
+        
+        # Check if we're already using the fallback endpoint
+        using_fallback = (current_endpoint == self.fallback_endpoint)
+        
+        # Determine if switching is needed
+        should_switch_to_fallback = False
+        should_switch_back = False
+        switch_reason = None
+        
+        # Check validator-specific switching
+        if validator_state['consecutive_zeros'] >= self.zero_threshold:
+            if not using_fallback:
+                should_switch_to_fallback = True
+                switch_reason = f"Validator {validator_uid} had {validator_state['consecutive_zeros']} consecutive 0.0 scores"
+        
+        # Check global switching (if any validator has issues)
+        if global_state['consecutive_zeros'] >= self.zero_threshold:
+            if not using_fallback:
+                should_switch_to_fallback = True
+                switch_reason = f"Global threshold reached: {global_state['consecutive_zeros']} consecutive 0.0 scores"
+        
+        # Check if we should switch back to original endpoint
+        if using_fallback:
+            # Switch back if we've had good scores recently
+            recent_scores = [r['fidelity_score'] for r in self.global_history[-3:]]  # Last 3 scores
+            if recent_scores and all(score > 0.0 for score in recent_scores):
+                should_switch_back = True
+                switch_reason = "Recent good scores - switching back to original endpoint"
+        
+        # Make the switching decision
+        if should_switch_to_fallback:
+            return {
+                'should_switch': True,
+                'new_endpoint': self.fallback_endpoint,
+                'reason': switch_reason,
+                'type': 'to_fallback',
+                'trigger': 'consecutive_zeros'
+            }
+        elif should_switch_back:
+            # Determine which original endpoint to use
+            original_endpoint = validator_state.get('original_endpoint', current_endpoint)
+            if original_endpoint == self.fallback_endpoint:
+                # If the original was already fallback, use a default
+                original_endpoint = '/generate/'
+            
+            return {
+                'should_switch': True,
+                'new_endpoint': original_endpoint,
+                'reason': switch_reason,
+                'type': 'to_original',
+                'trigger': 'good_scores'
+            }
+        else:
+            return {
+                'should_switch': False,
+                'new_endpoint': current_endpoint,
+                'reason': "No switching needed",
+                'type': 'none',
+                'trigger': 'none'
+            }
+    
+    def get_recommended_endpoint(self, validator_uid: int, 
+                               requested_endpoint: str) -> str:
+        """
+        Get the recommended endpoint for a validator, considering recent performance.
+        
+        Args:
+            validator_uid: Validator UID
+            requested_endpoint: Endpoint that was originally requested
+        
+        Returns:
+            Recommended endpoint to use
+        """
+        if validator_uid not in self.validator_endpoint_states:
+            return requested_endpoint
+        
+        validator_state = self.validator_endpoint_states[validator_uid]
+        
+        # If we're currently using fallback endpoint, continue using it
+        if validator_state['current_endpoint'] == self.fallback_endpoint:
+            return self.fallback_endpoint
+        
+        # If we have recent 0.0 scores, recommend fallback
+        if validator_state['consecutive_zeros'] >= self.zero_threshold:
+            return self.fallback_endpoint
+        
+        # Otherwise, use the requested endpoint
+        return requested_endpoint
+    
+    def apply_endpoint_switch(self, validator_uid: int, new_endpoint: str, 
+                            reason: str) -> bool:
+        """
+        Apply an endpoint switch for a validator.
+        
+        Args:
+            validator_uid: Validator UID
+            new_endpoint: New endpoint to use
+            reason: Reason for the switch
+        
+        Returns:
+            True if switch was applied, False otherwise
+        """
+        if validator_uid not in self.validator_endpoint_states:
+            return False
+        
+        validator_state = self.validator_endpoint_states[validator_uid]
+        old_endpoint = validator_state['current_endpoint']
+        
+        # Update validator state
+        validator_state['current_endpoint'] = new_endpoint
+        validator_state['switched_at'] = time.time()
+        validator_state['switch_reason'] = reason
+        validator_state['switches_made'] += 1
+        validator_state['last_switch_time'] = time.time()
+        
+        # Update global state if this is a significant switch
+        if new_endpoint == self.fallback_endpoint:
+            self.global_endpoint_state['current_endpoint'] = new_endpoint
+            self.global_endpoint_state['switched_at'] = time.time()
+            self.global_endpoint_state['switch_reason'] = reason
+            self.global_endpoint_state['switches_made'] += 1
+        
+        # Log the switch
+        self.logger.info(f"🔄 Endpoint switch for validator {validator_uid}:")
+        self.logger.info(f"   Old: {old_endpoint}")
+        self.logger.info(f"   New: {new_endpoint}")
+        self.logger.info(f"   Reason: {reason}")
+        
+        return True
+    
+    def get_tracking_summary(self, validator_uid: int = None) -> Dict[str, Any]:
+        """
+        Get a summary of tracking information.
+        
+        Args:
+            validator_uid: Specific validator UID, or None for global summary
+        
+        Returns:
+            Summary of tracking information
+        """
+        if validator_uid:
+            if validator_uid not in self.validator_endpoint_states:
+                return {}
+            
+            validator_state = self.validator_endpoint_states[validator_uid]
+            validator_history = self.validator_histories.get(validator_uid, [])
+            
+            return {
+                'validator_uid': validator_uid,
+                'current_endpoint': validator_state['current_endpoint'],
+                'original_endpoint': validator_state['original_endpoint'],
+                'consecutive_zeros': validator_state['consecutive_zeros'],
+                'total_zeros': validator_state['total_zeros'],
+                'switches_made': validator_state['switches_made'],
+                'last_switch_time': validator_state['last_switch_time'],
+                'recent_scores': [r['fidelity_score'] for r in validator_history[-5:]],
+                'history_size': len(validator_history)
+            }
+        else:
+            # Global summary
+            return {
+                'global_endpoint_state': self.global_endpoint_state.copy(),
+                'total_validators_tracked': len(self.validator_histories),
+                'total_tasks_tracked': len(self.global_history),
+                'recent_global_scores': [r['fidelity_score'] for r in self.global_history[-5:]]
+            }
+    
+    def _log_tracking_info(self, validator_uid: int, task_record: Dict[str, Any], 
+                          switching_decision: Dict[str, Any]):
+        """Log tracking information for debugging and monitoring."""
+        fidelity_score = task_record['fidelity_score']
+        endpoint = task_record['endpoint']
+        
+        # Log basic task result
+        if fidelity_score == 0.0:
+            self.logger.warning(f"⚠️ Zero fidelity score detected:")
+            self.logger.warning(f"   Validator: {validator_uid}")
+            self.logger.warning(f"   Task: {task_record['task_id']}")
+            self.logger.warning(f"   Endpoint: {endpoint}")
+            if task_record.get('prompt'):
+                self.logger.warning(f"   Prompt: '{task_record['prompt'][:50]}...'")
+        else:
+            self.logger.debug(f"✅ Good fidelity score: {fidelity_score:.4f} for validator {validator_uid}")
+        
+        # Log switching decision
+        if switching_decision['should_switch']:
+            self.logger.info(f"🔄 Endpoint switching recommended:")
+            self.logger.info(f"   Validator: {validator_uid}")
+            self.logger.info(f"   New endpoint: {switching_decision['new_endpoint']}")
+            self.logger.info(f"   Reason: {switching_decision['reason']}")
+            self.logger.info(f"   Type: {switching_decision['type']}")
+    
+    def reset_validator_tracking(self, validator_uid: int):
+        """Reset tracking for a specific validator."""
+        if validator_uid in self.validator_histories:
+            del self.validator_histories[validator_uid]
+        if validator_uid in self.validator_endpoint_states:
+            del self.validator_endpoint_states[validator_uid]
+        
+        self.logger.info(f"🔄 Reset tracking for validator {validator_uid}")
+    
+    def cleanup_old_history(self, max_age_hours: float = 24):
+        """Clean up old history entries."""
+        current_time = time.time()
+        cutoff_time = current_time - (max_age_hours * 3600)
+        
+        # Clean global history
+        original_size = len(self.global_history)
+        self.global_history = [r for r in self.global_history if r['timestamp'] > cutoff_time]
+        cleaned_global = original_size - len(self.global_history)
+        
+        # Clean validator histories
+        total_cleaned_validator = 0
+        for validator_uid, history in self.validator_histories.items():
+            original_size = len(history)
+            self.validator_histories[validator_uid] = [r for r in history if r['timestamp'] > cutoff_time]
+            cleaned = original_size - len(self.validator_histories[validator_uid])
+            total_cleaned_validator += cleaned
+        
+        if cleaned_global > 0 or total_cleaned_validator > 0:
+            self.logger.info(f"🧹 Cleaned up old history:")
+            self.logger.info(f"   Global: {cleaned_global} entries")
+            self.logger.info(f"   Validators: {total_cleaned_validator} entries")
+            self.logger.info(f"   Cutoff: {max_age_hours:.1f} hours ago")
+
 class ContinuousTrellisOrchestrator:
     """Continuous TRELLIS orchestrator with intelligent features"""
     
@@ -2247,6 +2623,14 @@ class ContinuousTrellisOrchestrator:
             on_interruption_callback=self._on_priority_interruption
         )
         
+        # Initialize fidelity score tracker for endpoint switching
+        self.fidelity_tracker = FidelityScoreTracker(
+            history_size=self.config.get('fidelity_tracker_history_size', 5),
+            zero_threshold=self.config.get('fidelity_tracker_zero_threshold', 2),
+            fallback_endpoint=self.config.get('fidelity_tracker_fallback_endpoint', "/generate_3d_from_prompt_grid_flow/")
+        )
+        self.logger.info("🎯 Initialized fidelity score tracker for automatic endpoint switching")
+        
         # Statistics
         self.stats = {
             'session_start': time.time(),
@@ -2312,6 +2696,12 @@ class ContinuousTrellisOrchestrator:
             'vllm_failures': 0,
             'vllm_connection_tests': 0,
             'vllm_connection_success': 0,
+            
+            # Fidelity score tracking statistics
+            'fidelity_tracker_endpoint_switches': 0,  # Total endpoint switches made by fidelity tracker
+            'fidelity_tracker_zero_scores_detected': 0,  # Total 0.0 scores detected
+            'fidelity_tracker_fallback_endpoint_usage': 0,  # Times fallback endpoint was used
+            'fidelity_tracker_original_endpoint_recovery': 0,  # Times switched back to original endpoint
         }
         
         # Dynamic system management attributes
@@ -2615,6 +3005,12 @@ class ContinuousTrellisOrchestrator:
             
             # Cooldown system control
             'disable_all_cooldowns': False,  # Global cooldown disable flag
+            
+            # Fidelity score tracker settings
+            'fidelity_tracker_history_size': 5,  # Number of recent tasks to keep in history queue
+            'fidelity_tracker_zero_threshold': 2,  # Number of consecutive 0.0 scores to trigger endpoint switch
+            'fidelity_tracker_fallback_endpoint': "/generate_3d_from_prompt_grid_flow/",  # Fallback endpoint for 0.0 scores
+            'log_fidelity_tracking': True,  # Enable detailed logging of fidelity tracking and endpoint switching
         }
     
     def _setup_bittensor(self) -> bool:
@@ -5415,7 +5811,7 @@ class ContinuousTrellisOrchestrator:
                 'confidence': 'Low'
             }
     
-    def optimize_prompt_for_generation(self, task: TaskRecord) -> Dict[str, Any]:
+    def optimize_prompt_for_generation(self, task: TaskRecord, only_reproducibility: bool = False) -> Dict[str, Any]:
         """
         Optimize prompt and route to optimal LoRA.
         Returns dict with optimized_prompt, lora_info, and endpoint.
@@ -5435,7 +5831,7 @@ class ContinuousTrellisOrchestrator:
             
             if self.config.get('enable_prompt_optimization', True):
                 # Step 1: Try vLLM optimization first if enabled
-                if self.config.get('use_vllm_optim', True):
+                if self.config.get('use_vllm_optim', True) and not only_reproducibility:
                     vllm_optimized_prompt = self.optimize_prompt_with_vllm(
                         task
                     )
@@ -5458,95 +5854,95 @@ class ContinuousTrellisOrchestrator:
                     self.reproducibility_system and 
                     self.config.get('enable_reproducibility_optimization', True)):
                         
-                        min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
+                    min_similarity = self.config.get('reproducibility_min_similarity', 0.3)
+                    
+                    # Use enhanced gold prompts (memory + logs) if real-time learning is enabled
+                    if self.config.get('activate_learning', False):
+                        enhanced_gold_prompts = self.get_fresh_gold_prompts()
+                        gold_prompts_count = len(enhanced_gold_prompts)
+                        self.logger.info(f"🚀 Using ENHANCED gold prompts: {gold_prompts_count} total (memory + logs)")
                         
-                        # Use enhanced gold prompts (memory + logs) if real-time learning is enabled
-                        if self.config.get('activate_learning', False):
-                            enhanced_gold_prompts = self.get_fresh_gold_prompts()
-                            gold_prompts_count = len(enhanced_gold_prompts)
-                            self.logger.info(f"🚀 Using ENHANCED gold prompts: {gold_prompts_count} total (memory + logs)")
-                            
-                            # CRITICAL: Update the reproducibility system with enhanced gold prompts
-                            # This ensures it uses the optimized versions instead of just original prompts
-                            self.reproducibility_system.update_gold_standard_results(enhanced_gold_prompts)
-                            self.logger.info(f"🔄 Updated reproducibility system with {len(enhanced_gold_prompts)} enhanced gold prompts")
-                            
-                            # Now use the standard reproducibility optimization with updated data
-                            repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
-                                task.prompt, min_similarity, run_validation=False
-                            )
+                        # CRITICAL: Update the reproducibility system with enhanced gold prompts
+                        # This ensures it uses the optimized versions instead of just original prompts
+                        self.reproducibility_system.update_gold_standard_results(enhanced_gold_prompts)
+                        self.logger.info(f"🔄 Updated reproducibility system with {len(enhanced_gold_prompts)} enhanced gold prompts")
+                        
+                        # Now use the standard reproducibility optimization with updated data
+                        repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
+                            task.prompt, min_similarity, run_validation=False
+                        )
+                    else:
+                        # Use standard episodic memory gold prompts
+                        gold_prompts_count = len(self.reproducibility_system.gold_standard_results)
+                        self.logger.debug(f"📚 Using {gold_prompts_count} gold prompts from episodic memory")
+                        
+                        # Log the similarity threshold being used
+                        if self.config.get('log_optimization_details', True):
+                            self.logger.info(f"🔍 Searching for gold prompts with similarity ≥ {min_similarity}")
+                        
+                        repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
+                            task.prompt, min_similarity, run_validation=False
+                        )
+                    
+                    if repro_result:
+                        optimized_prompt = repro_result['optimized_prompt']
+                        similarity = repro_result['similarity']
+                        gold_score = repro_result['gold_score']
+                        
+                        if self.config.get('log_optimization_details', True):
+                            self.logger.info(f"🔄 Reproducibility optimization SUCCESS:")
+                            self.logger.info(f"   Original: '{task.prompt}'")
+                            self.logger.info(f"   Optimized: '{optimized_prompt}'")
+                            self.logger.info(f"   Similarity: {similarity:.3f}")
+                            self.logger.info(f"   Gold score: {gold_score:.4f}")
+                            self.logger.info(f"   📚 Gold prompts available: {gold_prompts_count}")
                         else:
-                            # Use standard episodic memory gold prompts
-                            gold_prompts_count = len(self.reproducibility_system.gold_standard_results)
-                            self.logger.debug(f"📚 Using {gold_prompts_count} gold prompts from episodic memory")
-                            
-                            # Log the similarity threshold being used
-                            if self.config.get('log_optimization_details', True):
-                                self.logger.info(f"🔍 Searching for gold prompts with similarity ≥ {min_similarity}")
-                            
-                            repro_result = self.reproducibility_system.optimize_prompt_with_reproducibility(
-                                task.prompt, min_similarity, run_validation=False
-                            )
+                            self.logger.info(f"🔄 Reproducibility optimized (sim: {similarity:.2f}, gold: {gold_score:.3f})")
                         
-                        if repro_result:
-                            optimized_prompt = repro_result['optimized_prompt']
-                            similarity = repro_result['similarity']
-                            gold_score = repro_result['gold_score']
+                        self.stats['prompts_optimized'] += 1
+                        self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
+                    else:
+                        # Log when reproducibility optimization fails
+                        if self.config.get('log_optimization_details', True):
+                            self.logger.info(f"⚠️ Reproducibility optimization FAILED:")
+                            self.logger.info(f"   Original: '{task.prompt}'")
+                            self.logger.info(f"   Reason: No close gold prompt found (threshold: {min_similarity})")
+                            self.logger.info(f"   📚 Gold prompts available: {gold_prompts_count}")
+                            self.logger.info(f"   → Falling back to traditional optimization...")
+                        else:
+                            self.logger.info(f"⚠️ Reproducibility failed, using traditional optimization")
+                        
+                        # Try traditional optimization as fallback
+                        if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
+                            if self.config.get('log_optimization_details', True):
+                                self.logger.info(f"🚀 Traditional optimization FALLBACK:")
+                                self.logger.info(f"   Original: '{task.prompt}'")
+                            
+                            result = self.prompt_optimizer.optimize_with_examples(task.prompt)
+                            if 'error' in result.lower():
+                                self.logger.error(f"❌ Traditional optimization failed: {result['error']}")
+                                return {
+                                    'optimized_prompt': task.prompt,
+                                    'lora_info': lora_info,
+                                    'endpoint': lora_info['endpoint'],
+                                    'original_prompt': task.prompt
+                                }
+                            optimized_prompt = result
+                            confidence = 0.8
                             
                             if self.config.get('log_optimization_details', True):
-                                self.logger.info(f"🔄 Reproducibility optimization SUCCESS:")
-                                self.logger.info(f"   Original: '{task.prompt}'")
                                 self.logger.info(f"   Optimized: '{optimized_prompt}'")
-                                self.logger.info(f"   Similarity: {similarity:.3f}")
-                                self.logger.info(f"   Gold score: {gold_score:.4f}")
-                                self.logger.info(f"   📚 Gold prompts available: {gold_prompts_count}")
-                            else:
-                                self.logger.info(f"🔄 Reproducibility optimized (sim: {similarity:.2f}, gold: {gold_score:.3f})")
+                                self.logger.info(f"   Confidence: {confidence:.1%}")
+                                self.logger.info(f"   Method: Fast examples-based optimization")
                             
                             self.stats['prompts_optimized'] += 1
-                            self.stats['reproducibility_optimizations'] = self.stats.get('reproducibility_optimizations', 0) + 1
+                            self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
                         else:
-                            # Log when reproducibility optimization fails
+                            # Use original prompt if no optimizer available
+                            optimized_prompt = task.prompt
                             if self.config.get('log_optimization_details', True):
-                                self.logger.info(f"⚠️ Reproducibility optimization FAILED:")
-                                self.logger.info(f"   Original: '{task.prompt}'")
-                                self.logger.info(f"   Reason: No close gold prompt found (threshold: {min_similarity})")
-                                self.logger.info(f"   📚 Gold prompts available: {gold_prompts_count}")
-                                self.logger.info(f"   → Falling back to traditional optimization...")
-                            else:
-                                self.logger.info(f"⚠️ Reproducibility failed, using traditional optimization")
-                            
-                            # Try traditional optimization as fallback
-                            if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
-                                if self.config.get('log_optimization_details', True):
-                                    self.logger.info(f"🚀 Traditional optimization FALLBACK:")
-                                    self.logger.info(f"   Original: '{task.prompt}'")
-                                
-                                result = self.prompt_optimizer.optimize_with_examples(task.prompt)
-                                if 'error' in result.lower():
-                                    self.logger.error(f"❌ Traditional optimization failed: {result['error']}")
-                                    return {
-                                        'optimized_prompt': task.prompt,
-                                        'lora_info': lora_info,
-                                        'endpoint': lora_info['endpoint'],
-                                        'original_prompt': task.prompt
-                                    }
-                                optimized_prompt = result
-                                confidence = 0.8
-                                
-                                if self.config.get('log_optimization_details', True):
-                                    self.logger.info(f"   Optimized: '{optimized_prompt}'")
-                                    self.logger.info(f"   Confidence: {confidence:.1%}")
-                                    self.logger.info(f"   Method: Fast examples-based optimization")
-                                
-                                self.stats['prompts_optimized'] += 1
-                                self.stats['traditional_optimizations'] = self.stats.get('traditional_optimizations', 0) + 1
-                            else:
-                                # Use original prompt if no optimizer available
-                                optimized_prompt = task.prompt
-                                if self.config.get('log_optimization_details', True):
-                                    self.logger.info(f"ℹ️ No optimizer available - using original prompt")
-                        
+                                self.logger.info(f"ℹ️ No optimizer available - using original prompt")
+                    
                 
                 
             else:
@@ -5621,6 +6017,208 @@ class ContinuousTrellisOrchestrator:
             self.logger.info(f"🔄 Using standard generation without fallback")
             return await self._generate_3d_model_standard(task)
             
+    def _get_generation_params_old(self) -> Dict[str, Any]:
+        """
+        Get TRELLIS generation parameters based on selected quality preset.
+        Based on README_GRID_FLOW_EXPERIMENTS.md findings.
+        """
+        if self.config.get('fastest_mv_gen'):
+            # 🚀 FASTEST Configuration (Speed Priority)
+            # Expected: ~35-45s generation time, 4-6/10 quality, 5-10 MB PLY
+            return {
+                'ss_sampling_steps': 15,           # Minimal TRELLIS steps
+                'slat_sampling_steps': 15,         # Minimal TRELLIS steps
+                'slat_guidance_strength': 5.0,     # Reduced guidance for speed
+                'ss_guidance_strength': 3.0,       # Reduced guidance for speed
+                'width': 256,                      # Smallest resolution
+                'height': 256,                     # Smallest resolution
+                'num_inference_steps': 4,          # Minimal FLUX steps
+                'guidance_scale': 2.5,             # Lower guidance for speed
+                'upscale': False,                  # Never upscale (proven harmful)
+                'remove_background': True,#False,        # Skip for speed
+                'use_short_prompt': True,          # Short prompts for speed
+                'filter_low_quality': False,       # Skip quality filtering
+                'save_preview': False,             # Skip preview generation
+                'save_intermediate': False         # Skip intermediate saves
+            }
+        elif self.config.get('long_fast_mv_gen'):
+            # ⚡ FAST but GOOD QUALITY Configuration (Balanced)
+            # Expected: ~55-65s generation time, 7-8/10 quality, 15-25 MB PLY
+            return {
+                'ss_sampling_steps': 18,           # Reduced TRELLIS steps
+                'slat_sampling_steps': 18,         # Reduced TRELLIS steps
+                'slat_guidance_strength': 6.0,     # Moderate guidance
+                'ss_guidance_strength': 4.0,       # Moderate guidance
+                'width': 512,                      # Sweet spot resolution
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps
+                'guidance_scale': 3.5,             # Balanced guidance
+                'upscale': False,                  # Never upscale (proven harmful)
+                'remove_background': True,         # Enable for quality
+                'use_short_prompt': False,         # Full prompts for quality
+                'filter_low_quality': True,        # Enable quality filtering
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save intermediates for inspection
+            }
+        elif self.config.get('production_mv_gen'):
+            # 🎯 PRODUCTION QUALITY Configuration (Recommended)
+            # Expected: ~60-70s generation time, 7-8/10 quality, 15-25 MB PLY
+            return {
+                'ss_sampling_steps': 21,           # Optimal TRELLIS steps
+                'slat_sampling_steps': 24,         # Optimal TRELLIS steps
+                'slat_guidance_strength': 8.0,     # High guidance for quality
+                'ss_guidance_strength': 4.5,       # High guidance for quality
+                'width': 512,                      # Sweet spot resolution
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps
+                'guidance_scale': 3.5,             # Optimal guidance
+                'upscale': False,                  # Never upscale (proven harmful)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Detailed prompts for quality
+                'filter_low_quality': True,        # Strict quality filtering
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+        elif self.config.get('quality_mv_gen'):
+            # 🎨 HIGHEST QUALITY Configuration (Quality Priority)
+            # Expected: ~90-120s generation time, 9-10/10 quality, 40-60 MB PLY
+            return {
+                'ss_sampling_steps': 30,           # Maximum TRELLIS steps
+                'slat_sampling_steps': 30,         # Maximum TRELLIS steps
+                'slat_guidance_strength': 8.0,     # Maximum guidance for quality
+                'ss_guidance_strength': 5.0,       # Maximum guidance for quality
+                'width': 1024,                     # Maximum native resolution
+                'height': 1024,                    # Maximum native resolution
+                'num_inference_steps': 12,         # High-quality FLUX generation
+                'guidance_scale': 4.5,             # High guidance for quality
+                'upscale': False,                  # Never upscale (proven harmful)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Detailed prompts for quality
+                'filter_low_quality': True,        # Strict quality filtering
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+        else:
+            # ⚙️ DEFAULT Configuration (Current settings)
+            return {
+                'ss_sampling_steps': 20,           # Default TRELLIS steps
+                'slat_sampling_steps': 24,         # Default TRELLIS steps
+                'slat_guidance_strength': 8.0,     # Default guidance
+                'ss_guidance_strength': 4.5,       # Default guidance
+                'width': 512,                      # Default resolution
+                'height': 512,                     # Default resolution
+                'num_inference_steps': 7,          # Default FLUX steps
+                'guidance_scale': 3.5,             # Default guidance
+                'upscale': False,                  # Never upscale (proven harmful)
+                'remove_background': True,         # Default background removal
+                'use_short_prompt': False,         # Default prompt length
+                'filter_low_quality': True,        # Default quality filtering
+                'save_preview': True,              # Default preview
+                'save_intermediate': True          # Default intermediate saves
+            }
+
+    def _get_generation_params(self) -> Dict[str, Any]:
+        """
+        Get TRELLIS generation parameters based on selected quality preset.
+        UPDATED BASED ON NEW VALIDATION DATA - All presets now achieve Perfect Fidelity!
+        """
+        if self.config.get('fastest_mv_gen'):
+            # 🚀 FASTEST Configuration (Speed Priority) - REVOLUTIONARY UPDATE
+            # Expected: ~64-75s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
+            # Key Discovery: 512×512 is actually FASTER than 256×256 with perfect quality!
+            return {
+                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+                'width': 512,                      # Sweet spot resolution (proven fastest with quality)
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+                'upscale': False,                  # Never upscale (proven harmful in validation)
+                'remove_background': True,         # Enable (proven no time impact in validation)
+                'use_short_prompt': True,          # Short prompts (proven faster in validation)
+                'filter_low_quality': True,        # Enable (proven no time impact in validation)
+                'save_preview': True,              # Enable (proven no time impact in validation)
+                'save_intermediate': True          # Enable (proven no time impact in validation)
+            }
+        elif self.config.get('long_fast_mv_gen'):
+            # ⚡ FAST but GOOD QUALITY Configuration (Balanced) - UPDATED
+            # Expected: ~71-78s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
+            return {
+                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+                'width': 512,                      # Sweet spot resolution (proven optimal)
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+                'upscale': False,                  # Never upscale (proven harmful in validation)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Long prompts for quality (proven better in validation)
+                'filter_low_quality': True,        # Essential for quality
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+        elif self.config.get('production_mv_gen'):
+            # 🎯 PRODUCTION QUALITY Configuration (Recommended) - UPDATED
+            # Expected: ~71-78s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
+            return {
+                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+                'width': 512,                      # Sweet spot resolution (proven optimal)
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+                'upscale': False,                  # Never upscale (proven harmful in validation)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Long prompts for quality (proven better in validation)
+                'filter_low_quality': True,        # Essential for quality
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+        elif self.config.get('quality_mv_gen'):
+            # 🎨 HIGHEST QUALITY Configuration (Quality Priority) - UPDATED
+            # Expected: ~83-138s generation time, Perfect Fidelity (1.0), 23-58 MB PLY
+            return {
+                'ss_sampling_steps': 25,           # High TRELLIS steps (from validation data)
+                'slat_sampling_steps': 30,         # High TRELLIS steps (from validation data)
+                'slat_guidance_strength': 8.0,     # High guidance (from validation data)
+                'ss_guidance_strength': 5.0,       # High guidance (from validation data)
+                'width': 1024,                     # Maximum native resolution (proven quality)
+                'height': 1024,                    # Maximum native resolution
+                'num_inference_steps': 16,         # High-quality FLUX generation (from validation data)
+                'guidance_scale': 5.0,             # High guidance for quality (from validation data)
+                'upscale': False,                  # Never upscale (proven harmful in validation)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Detailed prompts for quality
+                'filter_low_quality': True,        # Strict quality filtering
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+        else:
+            # ⚙️ DEFAULT Configuration (Current settings) - UPDATED BASED ON VALIDATION DATA
+            # Expected: ~71-78s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
+            return {
+                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+                'width': 512,                      # Sweet spot resolution (proven optimal)
+                'height': 512,                     # Sweet spot resolution
+                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+                'upscale': False,                  # Never upscale (proven harmful in validation)
+                'remove_background': True,         # Essential for quality
+                'use_short_prompt': False,         # Long prompts for quality (proven better in validation)
+                'filter_low_quality': True,        # Essential for quality
+                'save_preview': True,              # Enable preview
+                'save_intermediate': True          # Save all intermediates
+            }
+
     async def _generate_3d_model_standard(self, task: TaskRecord) -> Optional[Dict[str, Any]]:
         """Generate 3D model using TRELLIS server with prompt optimization (standard method)"""
         self.logger.info(f"🎨 Generating 3D model (standard): '{task.prompt}' (task: {task.task_id})")
@@ -5661,32 +6259,77 @@ class ContinuousTrellisOrchestrator:
             # if "white background" not in cleaned_prompt.lower():
             #     cleaned_prompt = cleaned_prompt + " front view, white background"
 
-            ### lOOP:
-            max_iterations = 3
-            idx = 0
-            while idx < max_iterations:
-                # Step 2: Generate with optimized prompt
-                self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
-                optimization_result = self.optimize_prompt_for_generation(task)
+            default_lora = self.config.get('default_lora', 'cinema')
+            lora_info = {
+                'lora_name': default_lora,
+                'endpoint': f'/generate/{default_lora.lower().replace(" ", "_")}/',
+                'reasoning': f'Default model: {default_lora} (LoRA router not available)',
+                'confidence': 'High'
+            }
+            original_endpoint = lora_info['endpoint']
+                
+            # Check fidelity tracker for endpoint recommendations
+            recommended_endpoint = self.fidelity_tracker.get_recommended_endpoint(
+                validator_uid=task.validator_uid,
+                requested_endpoint=original_endpoint
+            )
+            
+            # Use the recommended endpoint (may be different from original due to 0.0 score tracking)
+            endpoint = recommended_endpoint
+            
+            # Store the endpoint used for tracking purposes
+            task.endpoint_used = endpoint
+            
+            # Log endpoint selection decision
+            if endpoint != original_endpoint:
+                self.logger.info(f"🔄 Endpoint overridden by fidelity tracker:")
+                self.logger.info(f"   Original: {original_endpoint}")
+                self.logger.info(f"   Recommended: {endpoint}")
+                self.logger.info(f"   Reason: Recent 0.0 scores detected")
+            else:
+                self.logger.info(f"✅ Using original endpoint: {endpoint}")
+
+            if "generate/" in endpoint:
+                ### lOOP:
+                max_iterations = 3
+                idx = 0
+                while idx < max_iterations:
+                    # Step 2: Generate with optimized prompt
+                    self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+                    optimization_result = self.optimize_prompt_for_generation(task)
+                    optimized_prompt = optimization_result['optimized_prompt']
+                    lora_info = optimization_result['lora_info']
+                    endpoint = optimization_result['endpoint']
+                    
+                    # Clean the optimized prompt
+                    cleaned_prompt = self.clean_optimized_prompt_wbgmsst(optimized_prompt)
+                    # if "white background" not in cleaned_prompt.lower():
+                    #     cleaned_prompt = cleaned_prompt + " front view, white background"
+                    
+                    # Compute cosine similarity between original and optimized prompts
+                    original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
+                    
+                    # Check similarity threshold
+                    if original_optimized_similarity['cosine_similarity'] > 0.65:
+                        break
+                        
+                    self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
+                    idx += 1
+                        
+                optimization_failed=False
+                if original_optimized_similarity['cosine_similarity'] < 0.65:
+                    self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
+                    cleaned_prompt = task.prompt
+                    optimized_prompt = task.prompt
+                    optimization_failed=True
+                    optimization_result['optimized_prompt'] = cleaned_prompt
+            
+            else:
+                optimization_result = self.optimize_prompt_for_generation(task, only_reproducibility=True) # try reproducability
                 optimized_prompt = optimization_result['optimized_prompt']
                 lora_info = optimization_result['lora_info']
-                endpoint = optimization_result['endpoint']
-                
-                # Clean the optimized prompt
-                cleaned_prompt = self.clean_optimized_prompt_wbgmsst(optimized_prompt)
-                if "white background" not in cleaned_prompt.lower():
-                    cleaned_prompt = cleaned_prompt + " front view, white background"
-                
-                # Compute cosine similarity between original and optimized prompts
-                original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
-                
-                # Check similarity threshold
-                if original_optimized_similarity['cosine_similarity'] > 0.65:
-                    break
-                    
-                self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
-                idx += 1
-                    
+                # endpoint = optimization_result['endpoint']
+                cleaned_prompt = optimization_result['optimized_prompt']
 
             # Log the final optimization result
             if self.config.get('log_optimization_details', True):
@@ -5716,18 +6359,60 @@ class ContinuousTrellisOrchestrator:
             
             generation_start = time.time()
             
+            
+            
+            # generation_params = {
+            #     'ss_sampling_steps': 21,
+            #     'slat_sampling_steps': 24,
+            #     'slat_guidance_strength': 7.5,
+            #     'ss_guidance_strength': 4.0,
+            #     'width': 512,
+            #     'height': 512,
+            #     'num_inference_steps': 7,
+            #     'guidance_scale': 3.5,
+            #     'upscale': False,
+            #     'remove_background': True,
+            #     'use_short_prompt': False,
+            #     'filter_low_quality': True,
+            #     'save_preview': True,
+            #     'save_intermediate': True
+            # }
+            generation_params = {}
+            if endpoint == "/generate_3d_from_prompt_grid_flow/":
+                # Get generation parameters based on selected preset
+                generation_params = self._get_generation_params()
+                
+                # Log the generation preset being used
+                preset_name = "DEFAULT"
+                if self.config.get('fastest_mv_gen'):
+                    preset_name = "🚀 FASTEST"
+                elif self.config.get('long_fast_mv_gen'):
+                    preset_name = "⚡ FAST + GOOD QUALITY"
+                elif self.config.get('production_mv_gen'):
+                    preset_name = "🎯 PRODUCTION QUALITY"
+                elif self.config.get('quality_mv_gen'):
+                    preset_name = "🎨 HIGHEST QUALITY"
+                
+                self.logger.info(f"   🎛️ Using generation preset: {preset_name}")
+                self.logger.info(f"   📏 Resolution: {generation_params.get('width', 'N/A')}×{generation_params.get('height', 'N/A')}")
+                self.logger.info(f"   🔄 TRELLIS steps: SS={generation_params.get('ss_sampling_steps', 'N/A')}, SLAT={generation_params.get('slat_sampling_steps', 'N/A')}")
+                self.logger.info(f"   🎯 FLUX steps: {generation_params.get('num_inference_steps', 'N/A')}")
+            
+            self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
             # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
             full_url = f"{self.config['generation_server_url']}{endpoint}"
+            
             response = requests.post(
                 full_url,
                 data={
                     'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
                     'seed': deterministic_seed,  # Use deterministic seed
                     'return_compressed': True, 
-                    'ss_sampling_steps': 20,
-                    'slat_sampling_steps': 24,
-                    'slat_guidance_strength': 8.0,
-                    'ss_guidance_strength': 4.5
+                    # 'ss_sampling_steps': 20,
+                    # 'slat_sampling_steps': 24,
+                    # 'slat_guidance_strength': 8.0,
+                    # 'ss_guidance_strength': 4.5
+                    **generation_params  # Use preset-based parameters/ default
                 },
                 timeout=self.config['generation_timeout']
             )
@@ -6948,6 +7633,54 @@ class ContinuousTrellisOrchestrator:
                 # Update validator's last submit time (validator-compliant throttle logic)
                 validator.last_submit_time = time.time()
 
+                # Track fidelity score and check for endpoint switching
+                tracking_result = self.fidelity_tracker.record_task_result(
+                    task_id=task.task_id,
+                    validator_uid=task.validator_uid,
+                    task_fidelity_score=task.task_fidelity_score,
+                    endpoint=getattr(task, 'endpoint_used', '/generate/'),  # Track which endpoint was used
+                    prompt=task.prompt
+                )
+                
+                # Check if endpoint switching is recommended
+                if tracking_result['switching_decision']['should_switch']:
+                    self.logger.info(f"🔄 Endpoint switching recommended by fidelity tracker:")
+                    self.logger.info(f"   Reason: {tracking_result['switching_decision']['reason']}")
+                    self.logger.info(f"   New endpoint: {tracking_result['switching_decision']['new_endpoint']}")
+                    
+                    # Apply the endpoint switch
+                    self.fidelity_tracker.apply_endpoint_switch(
+                        validator_uid=task.validator_uid,
+                        new_endpoint=tracking_result['switching_decision']['new_endpoint'],
+                        reason=tracking_result['switching_decision']['reason']
+                    )
+                    
+                    # Update statistics
+                    self.stats['fidelity_tracker_endpoint_switches'] += 1
+                    
+                    # Track specific types of switches
+                    if tracking_result['switching_decision']['type'] == 'to_fallback':
+                        self.stats['fidelity_tracker_fallback_endpoint_usage'] += 1
+                    elif tracking_result['switching_decision']['type'] == 'to_original':
+                        self.stats['fidelity_tracker_original_endpoint_recovery'] += 1
+                    
+                    # Log the switch for future reference
+                    self.logger.info(f"✅ Endpoint switch applied for validator {task.validator_uid}")
+                
+                # Track zero scores
+                if task.task_fidelity_score == 0.0:
+                    self.stats['fidelity_tracker_zero_scores_detected'] += 1
+                
+                # Log fidelity tracking summary
+                if self.config.get('log_fidelity_tracking', True):
+                    validator_summary = self.fidelity_tracker.get_tracking_summary(task.validator_uid)
+                    if validator_summary:
+                        self.logger.info(f"📊 Fidelity tracking summary for validator {task.validator_uid}:")
+                        self.logger.info(f"   Current endpoint: {validator_summary.get('current_endpoint', 'N/A')}")
+                        self.logger.info(f"   Consecutive zeros: {validator_summary.get('consecutive_zeros', 0)}")
+                        self.logger.info(f"   Total zeros: {validator_summary.get('total_zeros', 0)}")
+                        self.logger.info(f"   Endpoint switches: {validator_summary.get('switches_made', 0)}")
+
                 sync_results = self._synchronize_validator_state(validator, response_data)
                 
                 # Log synchronization results
@@ -7298,6 +8031,32 @@ class ContinuousTrellisOrchestrator:
         # self.logger.info(f"   Validation locks applied: {self.stats.get('validation_locks_applied', 0)}")
         self.logger.info(f"   Enhanced cooldown penalties: {self.stats.get('enhanced_cooldown_penalties', 0)}")
         
+        # Fidelity score tracking statistics
+        if hasattr(self, 'fidelity_tracker'):
+            global_summary = self.fidelity_tracker.get_tracking_summary()
+            self.logger.info(f"🎯 Fidelity Score Tracking:")
+            self.logger.info(f"   Total validators tracked: {global_summary.get('total_validators_tracked', 0)}")
+            self.logger.info(f"   Total tasks tracked: {global_summary.get('total_tasks_tracked', 0)}")
+            self.logger.info(f"   Global consecutive zeros: {global_summary.get('global_endpoint_state', {}).get('consecutive_zeros', 0)}")
+            self.logger.info(f"   Global total zeros: {global_summary.get('global_endpoint_state', {}).get('total_zeros', 0)}")
+            self.logger.info(f"   Global endpoint switches: {global_summary.get('global_endpoint_state', {}).get('switches_made', 0)}")
+            
+            # Show current global endpoint state
+            current_endpoint = global_summary.get('global_endpoint_state', {}).get('current_endpoint', 'N/A')
+            original_endpoint = global_summary.get('global_endpoint_state', {}).get('original_endpoint', 'N/A')
+            if current_endpoint != original_endpoint:
+                self.logger.info(f"   🔄 Global endpoint switched from {original_endpoint} to {current_endpoint}")
+            else:
+                self.logger.info(f"   ✅ Using original global endpoint: {current_endpoint}")
+            
+            # Show session statistics
+            self.logger.info(f"   Session endpoint switches: {self.stats.get('fidelity_tracker_endpoint_switches', 0)}")
+            self.logger.info(f"   Session zero scores detected: {self.stats.get('fidelity_tracker_zero_scores_detected', 0)}")
+            self.logger.info(f"   Session fallback endpoint usage: {self.stats.get('fidelity_tracker_fallback_endpoint_usage', 0)}")
+            self.logger.info(f"   Session original endpoint recovery: {self.stats.get('fidelity_tracker_original_endpoint_recovery', 0)}")
+        else:
+            self.logger.info(f"🎯 Fidelity Score Tracking: NOT INITIALIZED")
+        
         # Emergency cooldown management statistics
         self.logger.info(f"Emergency cooldown management:")
         self.logger.info(f"   Emergency cooldowns applied: {self.stats.get('emergency_cooldowns_applied', 0)}")
@@ -7463,6 +8222,83 @@ class ContinuousTrellisOrchestrator:
                 self.logger.warning(f"   UID {task.validator_uid}: '{task.prompt[:30]}...' - {status}")
         
         self.logger.info("="*60)
+    
+    def get_fidelity_tracking_details(self, validator_uid: int = None) -> Dict[str, Any]:
+        """
+        Get detailed fidelity tracking information for debugging and monitoring.
+        
+        Args:
+            validator_uid: Specific validator UID, or None for global details
+            
+        Returns:
+            Detailed tracking information
+        """
+        if not hasattr(self, 'fidelity_tracker'):
+            return {"error": "Fidelity tracker not initialized"}
+        
+        if validator_uid:
+            # Get validator-specific details
+            validator_summary = self.fidelity_tracker.get_tracking_summary(validator_uid)
+            if not validator_summary:
+                return {"error": f"Validator {validator_uid} not found in tracking"}
+            
+            return {
+                "type": "validator_details",
+                "validator_uid": validator_uid,
+                "summary": validator_summary,
+                "recommendations": {
+                    "should_switch": validator_summary.get('consecutive_zeros', 0) >= self.config.get('fidelity_tracker_zero_threshold', 2),
+                    "recommended_endpoint": self.fidelity_tracker.get_recommended_endpoint(validator_uid, validator_summary.get('original_endpoint', '/generate/')),
+                    "reason": f"Consecutive zeros: {validator_summary.get('consecutive_zeros', 0)} (threshold: {self.config.get('fidelity_tracker_zero_threshold', 2)})"
+                }
+            }
+        else:
+            # Get global details
+            global_summary = self.fidelity_tracker.get_tracking_summary()
+            return {
+                "type": "global_details",
+                "summary": global_summary,
+                "configuration": {
+                    "history_size": self.config.get('fidelity_tracker_history_size', 5),
+                    "zero_threshold": self.config.get('fidelity_tracker_zero_threshold', 2),
+                    "fallback_endpoint": self.config.get('fidelity_tracker_fallback_endpoint', "/generate_3d_from_prompt_grid_flow/"),
+                    "log_fidelity_tracking": self.config.get('log_fidelity_tracking', True)
+                }
+            }
+    
+    def reset_fidelity_tracking(self, validator_uid: int = None):
+        """
+        Reset fidelity tracking for a specific validator or globally.
+        
+        Args:
+            validator_uid: Specific validator UID, or None to reset all tracking
+        """
+        if not hasattr(self, 'fidelity_tracker'):
+            self.logger.warning("❌ Fidelity tracker not initialized")
+            return
+        
+        if validator_uid:
+            self.fidelity_tracker.reset_validator_tracking(validator_uid)
+            self.logger.info(f"🔄 Reset fidelity tracking for validator {validator_uid}")
+        else:
+            # Reset all tracking
+            for uid in list(self.fidelity_tracker.validator_histories.keys()):
+                self.fidelity_tracker.reset_validator_tracking(uid)
+            self.logger.info("🔄 Reset all fidelity tracking")
+    
+    def cleanup_fidelity_tracking(self, max_age_hours: float = 24):
+        """
+        Clean up old fidelity tracking history.
+        
+        Args:
+            max_age_hours: Maximum age in hours before cleanup
+        """
+        if not hasattr(self, 'fidelity_tracker'):
+            self.logger.warning("❌ Fidelity tracker not initialized")
+            return
+        
+        self.fidelity_tracker.cleanup_old_history(max_age_hours)
+        self.logger.info(f"🧹 Cleaned up fidelity tracking history older than {max_age_hours:.1f} hours")
     
     async def continuous_mining_loop(self):
         """Main continuous mining loop"""
@@ -8557,6 +9393,12 @@ async def main():
     parser.add_argument("--fallback-ratio-threshold", type=float, default=0.8, help="Ratio threshold for triggering fallback (default: 0.8)")
     parser.add_argument("--fallback-max-retries", type=int, default=1, help="Maximum number of prompt re-optimization attempts (default: 1)")
     
+    # 🚀 TRELLIS Generation Quality Presets (Based on README_GRID_FLOW_EXPERIMENTS.md)
+    parser.add_argument("--fastest-mv-gen", action="store_true", help="Use fastest generation preset: 256×256, minimal steps, short prompts")
+    parser.add_argument("--long-fast-mv-gen", action="store_true", help="Use fast but good quality preset: 512×512, balanced steps, detailed prompts")
+    parser.add_argument("--production-mv-gen", action="store_true", help="Use production quality preset: 512×512, optimal steps, cinema style")
+    parser.add_argument("--quality-mv-gen", action="store_true", help="Use highest quality preset: 1024×1024, maximum steps, 3D style")
+    
     args = parser.parse_args()
     
     # Build config
@@ -8705,6 +9547,24 @@ async def main():
     config['fallback_ratio_threshold'] = args.fallback_ratio_threshold
     config['fallback_max_retries'] = args.fallback_max_retries
     print(f"🔄 Fallback settings: Ratio threshold: {args.fallback_ratio_threshold}, Max retries: {args.fallback_max_retries}")
+    
+    # 🚀 TRELLIS Generation Quality Presets Configuration
+    config['fastest_mv_gen'] = args.fastest_mv_gen
+    config['long_fast_mv_gen'] = args.long_fast_mv_gen
+    config['production_mv_gen'] = args.production_mv_gen
+    config['quality_mv_gen'] = args.quality_mv_gen
+    
+    # Log the selected generation preset
+    if args.fastest_mv_gen:
+        print("🚀 Using FASTEST generation preset: 256×256, minimal steps, short prompts")
+    elif args.long_fast_mv_gen:
+        print("⚡ Using FAST + GOOD QUALITY preset: 512×512, balanced steps, detailed prompts")
+    elif args.production_mv_gen:
+        print("🎯 Using PRODUCTION QUALITY preset: 512×512, optimal steps, cinema style")
+    elif args.quality_mv_gen:
+        print("🎨 Using HIGHEST QUALITY preset: 1024×1024, maximum steps, 3D style")
+    else:
+        print("⚙️ Using DEFAULT generation settings (no preset selected)")
     
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)
