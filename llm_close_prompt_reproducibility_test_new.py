@@ -47,7 +47,7 @@ class LLMClosePromptReproducibility:
 
     def __init__(self, episodic_memory_file: str = "episodic_logs/episodic_memory.json", 
                  use_vllm: bool = True, vllm_url: str = "http://localhost:9000", 
-                 vllm_model: str = "llama-3-2-3b-it", ollama_url: str = "http://localhost:11434"):
+                 vllm_model: str = "llama-3-2-3b-it", ollama_url: str = "http://localhost:11434", ollama_model: str = "llama3.2:3b"):
         self.episodic_memory_file = episodic_memory_file
         self.gold_standard_results = self._load_episodic_memory()
         
@@ -55,7 +55,7 @@ class LLMClosePromptReproducibility:
         if use_vllm:
             self.optimizer = LLMPromptOptimizer(
                 ollama_url=ollama_url,
-                model="llama3.2:3b",  # Default model for compatibility
+                model=ollama_model,  # Default model for compatibility
                 use_vllm=True,
                 vllm_url=vllm_url,
                 vllm_model=vllm_model

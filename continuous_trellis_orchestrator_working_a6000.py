@@ -42,6 +42,15 @@ python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile ep
 
 python trellis_subnit_server_mix_lora_flash_unload.py  --port 8096 --unload-flux
 vllm serve manbeast3b/dpo-full_03-step20-three-gen-1   --served-model-name llama-3-2-3b-it   --generation-config auto   --port 11300   --max-model-len 1000   --gpu-memory-utilization 0.14   --dtype=bfloat16   --kv-cache-dtype=auto   --swap-space 4   --cpu-offload-gb 2
+
+python continuous_trellis_orchestrator_working_a6000.py --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora " cinema"  --no-fallback--vllm --vllm-optim  --system-prompt --vllm-priority "system_chat"
+
+python continuous_trellis_orchestrator_working_a6000.py --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"  --no-fallback --vllm --vllm-optim  --system-prompt --vllm-priority "system_chat"
+
+first start
+rm -rf ~/.cache/vllm/torch_compile_cache/
+vllm serve manbeast3b/dpo-full_03-step20-three-gen-1   --served-model-name llama-3-2-3b-it   --generation-config auto   --port 11300   --max-model-len 1500   --gpu-memory-utilization 0.16   --dtype=bfloat16   --kv-cache-dtype=auto
+python continuous_trellis_orchestrator_working_a6000.py --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"  --no-fallback --vllm --vllm-optim  --system-prompt --vllm-priority "system_chat"
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
@@ -61,6 +70,7 @@ import hashlib
 import sqlite3
 import subprocess
 from pathlib import Path
+import typing
 from typing import List, Dict, Optional, Any, Set
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -137,7 +147,7 @@ except ImportError:
 
 # Setup logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('continuous_trellis.log'),
@@ -832,7 +842,7 @@ class CLIPTextSimilarityServer:
                             # Compute cosine similarity
                             similarity = (text1_features @ text2_features.T).cpu().numpy()[0][0]
                     
-                    print(f"   Warmup {i + 1}/{warmup_runs} completed with similarity: {similarity:.4f}")
+                    print(f"\r   Warmup {i + 1}/{warmup_runs} completed with similarity: {similarity:.4f}", end='', flush=True)
                         
                 except Exception as e:
                     print(f"❌ Error in warmup run {i + 1}: {e}")
@@ -908,7 +918,7 @@ class CLIPTextSimilarityServer:
                     times.append(run_time)
                 
                 if (i + 1) % 5 == 0:
-                    print(f"   Completed {i + 1}/{num_runs} runs...")
+                    print(f"\r   Completed {i + 1}/{num_runs} runs...", end='', flush=True)
                 
             except Exception as e:
                 print(f"❌ Error in run {i + 1}: {e}")
@@ -1633,7 +1643,6 @@ class TaskDatabase:
                 consensus REAL NOT NULL,
                 last_task_pull REAL,
                 last_task_received REAL,
-                # cooldown_until REAL,  # DEPRECATED: Replaced by validator_enforced_cooldown_until and miner_cooldown_until
                 total_tasks_pulled INTEGER DEFAULT 0,
                 total_tasks_received INTEGER DEFAULT 0,
                 total_tasks_submitted INTEGER DEFAULT 0,
@@ -2611,11 +2620,12 @@ class ContinuousTrellisOrchestrator:
                 # return {"error": f"Gold prompt loading failed: {e}"}
 
             self.reproducibility_system = LLMClosePromptReproducibility(
-                episodic_memory_file="episodic_logs_usa/episodic_memory.json",
+                episodic_memory_file="episodic_logs_sunrise/episodic_memory.json",
                 use_vllm=self.config.get('use_vllm', False),
                 vllm_url=self.config.get('vllm_url', 'http://localhost:9000'),
                 vllm_model=self.config.get('vllm_model', 'llama-3-2-3b-it'),
-                ollama_url=self.config.get('ollama_url', 'http://localhost:11434')
+                ollama_url=self.config.get('ollama_url', 'http://localhost:11434'), 
+                ollama_model=self.config.get('ollama_model', 'llama3.2:3b')
             )
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
             self.reproducibility_system.gold_standard_results = self.reproducibility_system._load_episodic_memory()
@@ -3915,17 +3925,18 @@ class ContinuousTrellisOrchestrator:
             })
             return cooldown_status
         
+        # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
         # Check validation lock
-        if validator.validation_locked_until and current_time < validator.validation_locked_until:
-            remaining = validator.validation_locked_until - current_time
-            cooldown_status.update({
-                'available': False,
-                'reason': 'Validation lock active',
-                'remaining_time': remaining,
-                'cooldown_type': 'validation_lock',
-                'recommendation': f'Wait {remaining:.1f}s for validation lock to expire'
-            })
-            return cooldown_status
+        # if validator.validation_locked_until and current_time < validator.validation_locked_until:
+        #     remaining = validator.validation_locked_until - current_time
+        #     cooldown_status.update({
+        #         'available': False,
+        #         'reason': 'Validation lock active',
+        #         'remaining_time': remaining,
+        #         'cooldown_type': 'validation_lock',
+        #         'recommendation': f'Wait {remaining:.1f}s for validation lock to expire'
+        #     })
+        #     return cooldown_status
         
         # Check pull interval (following _pull_task logic from trellis_miner.py)
         if validator.last_task_pull:
@@ -5082,6 +5093,7 @@ class ContinuousTrellisOrchestrator:
             if not cooldown_status['available']:
                 self.logger.debug(f"⏳ Validator UID {validator.uid} not available: {cooldown_status['reason']}")
                 self.logger.debug(f"   Recommendation: {cooldown_status['recommendation']}")
+                print(f"\r⏳ Validator UID {validator.uid} not available: {cooldown_status['reason']}", end='', flush=True)
                 # CRITICAL: Don't even attempt to pull tasks when on cooldown - prevents validator from wasting resources
                 return None
 
@@ -5092,7 +5104,7 @@ class ContinuousTrellisOrchestrator:
             # ADDITIONAL: Check rapid submission timing before pulling to prevent validator from sending tasks we can't process
             if self._check_rapid_submission_timing_only(validator):
                 self.logger.debug(f"⏳ Validator UID {validator.uid} would trigger rapid submission, enforcing buffer time - skipping task pull")
-                print(f"⏳ Validator UID {validator.uid} would trigger rapid submission, enforcing buffer time - skipping task pull")
+                print(f"\r⏳ Validator UID {validator.uid} would trigger rapid submission, enforcing buffer time - skipping task pull", end='', flush=True)
                 return None
             
 
@@ -5112,6 +5124,12 @@ class ContinuousTrellisOrchestrator:
             
             neuron = self.metagraph.neurons[validator.uid]
             
+            # Validate axon endpoint to avoid connection failures
+            axon_info = neuron.axon_info
+            if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
+                self.logger.warning(f"⚠️ Skipping UID {validator.uid} due to invalid axon endpoint: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                return None
+            
             start_time = time.time()
             
             # Query the validator
@@ -5124,7 +5142,7 @@ class ContinuousTrellisOrchestrator:
             response = typing.cast(
                 PullTask,
                 await self.dendrite.call(
-                    target_axon=neuron.axon_info,
+                    target_axon=axon_info,
                     synapse=synapse,
                     deserialize=False,
                     timeout=self.config['submission_timeout']
@@ -5132,14 +5150,14 @@ class ContinuousTrellisOrchestrator:
             )
 
             if response.dendrite.status_code != 200:
-                self.logger.error(f"❌ Failed to get task from [{metagraph.hotkeys[validator_uid]}]. Reason: {response.dendrite.status_message}.")
+                self.logger.error(f"❌ Failed to get task from [{self.metagraph.hotkeys[validator.uid]}]. Reason: {response.dendrite.status_message}.")
                 validator.validator_enforced_cooldown_until = int(time.time()) + FAILED_VALIDATOR_DELAY
                 return None 
             query_time = time.time() - start_time
             validator.last_task_pull = time.time()
             
 
-            if response and len(response) > 0:
+            if response and hasattr(response, 'task') and response.task:
                 # resp = response[0]
                 resp = response
 
@@ -5830,7 +5848,7 @@ class ContinuousTrellisOrchestrator:
                 'confidence': 'Low'
             }
     
-    def [optimize_prompt_for_generation](self, task: TaskRecord) -> Dict[str, Any]:
+    def optimize_prompt_for_generation(self, task: TaskRecord) -> Dict[str, Any]:
         """
         Optimize prompt and route to optimal LoRA.
         Returns dict with optimized_prompt, lora_info, and endpoint.
@@ -5931,6 +5949,26 @@ class ContinuousTrellisOrchestrator:
                             else:
                                 self.logger.info(f"⚠️ Reproducibility failed, using traditional optimization")
                             
+                            if self.config.get('use_vllm_optim', True):
+                                vllm_optimized_prompt = self.optimize_prompt_with_vllm(
+                                    task
+                                )
+                                if vllm_optimized_prompt:
+                                    self.logger.info(f"🚀 vLLM optimization successful, using vLLM result")
+                                    optimized_prompt = vllm_optimized_prompt
+                                    self.stats['vllm_optimizations'] = self.stats.get('vllm_optimizations', 0) + 1
+                                    return {
+                                        'optimized_prompt': optimized_prompt,
+                                        'lora_info': lora_info,
+                                        'endpoint': lora_info['endpoint'],
+                                        'original_prompt': task.prompt,
+                                        'method': f"vllm_{self.config.get('vllm_optimization_priority', 'system_chat')}"
+                                    }
+                                else:
+                                    self.logger.warning(f"⚠️ vLLM optimization failed, falling back to other methods")
+                            
+
+
                             # Try traditional optimization as fallback
                             if OPTIMIZED_PROMPT_OPTIMIZER_AVAILABLE:
                                 if self.config.get('log_optimization_details', True):
@@ -7703,6 +7741,13 @@ class ContinuousTrellisOrchestrator:
             
             neuron = self.metagraph.neurons[task.validator_uid]
             
+            # Validate axon endpoint to avoid connection failures
+            axon_info = neuron.axon_info
+            if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
+                self.logger.warning(f"⚠️ Axon endpoint appears invalid for UID {task.validator_uid}: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                self.logger.warning(f"   This validator previously provided a task, so attempting submission anyway...")
+                # Don't return False - try the submission since this validator was working before
+            
             # Create task object
             task_obj = Task(id=task.task_id, prompt=task.prompt)
             
@@ -7740,12 +7785,16 @@ class ContinuousTrellisOrchestrator:
             
             # Submit to validator using the correct API call
             response = await self.dendrite.call(
-                target_axon=neuron.axon_info,
+                target_axon=axon_info,
                 synapse=synapse,
                 deserialize=False,
                 timeout=self.config['submission_timeout']
             )
             
+            if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
+                self.logger.info(f"⚠️ Axon endpoint appears invalid for UID {task.validator_uid}: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+
+                sleep(20)
             # 🔍 DEBUG: Log the complete validator response to see what's being sent
             self.logger.info(f"🔍 DEBUG: Validator submission response type: {type(response)}")
             self.logger.info(f"🔍 DEBUG: Validator submission response attributes: {dir(response)}")
@@ -8351,9 +8400,9 @@ class ContinuousTrellisOrchestrator:
         
         # Enhanced cooldown statistics with DYNAMIC system health analysis
         active_validators = [v for v in self.validators.values() if v.is_active]
-        validators_on_cooldown = [v for v in active_validators if v.cooldown_until and time.time() < v.cooldown_until]
+        validators_on_cooldown = [v for v in active_validators if self._is_validator_on_cooldown(v)[0]]
         # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
-        # validators_validation_locked = [v for v in active_validators if v.validation_locked_until and time.time() < v.validation_locked_until]
+        validators_validation_locked = []  # Empty list since validation locking is deprecated
         validators_with_violations = [v for v in active_validators if v.cooldown_violations > 0]
         validators_emergency_blacklisted = [v for v in self.validators.values() if v.emergency_blacklist_until and time.time() < v.emergency_blacklist_until]
         
@@ -8705,6 +8754,7 @@ class ContinuousTrellisOrchestrator:
                     if self.config.get('enable_task_tracking', True) and not self.config.get('disable_task_tracking', False):
                         if self.db.is_validator_busy(validator.uid, exclude_instance_id=self.instance_id):
                             self.logger.debug(f"⏳ Validator UID {validator.uid} busy with other instance - skipping")
+                            print(f"\r⏳ Validator UID {validator.uid} busy with other instance - skipping", end='', flush=True)
                             continue
                     
                     self.logger.debug(f"📡 Attempting to pull task from UID {validator.uid}")

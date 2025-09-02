@@ -117,6 +117,82 @@ def direct_validation_callback(original_prompt: str, optimized_prompt: str, endp
         print(f"      ⏱️ Total direct validation (failed): {total_time:.2f}s")
         return 0.0
 
+def separated_validation_callback(original_prompt: str, optimized_prompt: str, endpoint: str) -> float:
+    """
+    Separated validation callback that generates PLY first, then validates it separately
+    This avoids GPU memory conflicts between generation and validation models
+    """
+    validation_start_time = time.time()
+    try:
+        print(f"      🔍 Separated validation: '{optimized_prompt[:50]}...'")
+        
+        # Import validation components
+        try:
+            from subnet_accurate_validator_multigpu import generate_and_get_ply_data, validate_ply_data
+            print(f"      ✅ Validation modules imported successfully")
+        except ImportError as e:
+            print(f"      ❌ Could not import validation modules: {e}")
+            return 0.0
+        
+        # Phase 1: Generate PLY data only (with caching)
+        print(f"      🎨 Phase 1: Generating PLY data...")
+        generation_start = time.time()
+        
+        # Create temporary file for PLY data
+        import tempfile
+        import os
+        temp_dir = tempfile.gettempdir()
+        ply_file = os.path.join(temp_dir, f"rl_ply_{int(time.time())}_{hash(optimized_prompt) % 10000}.ply")
+        
+        try:
+            generate_ply_with_cache(
+                prompt=optimized_prompt,
+                endpoint=endpoint,
+                output_file=ply_file,
+                use_cache=True  # Enable caching to avoid re-generation
+            )
+            generation_time = time.time() - generation_start
+            print(f"      ⏱️ PLY generation: {generation_time:.2f}s")
+            
+            # Phase 2: Validate PLY file
+            print(f"      🔍 Phase 2: Validating PLY file...")
+            validation_start = time.time()
+            
+            result = validate_ply_file(
+                ply_file_path=ply_file,
+                prompt=original_prompt,
+                use_cached_models=False,  # Disable model caching by default
+                force_cpu=False
+            )
+            validation_time = time.time() - validation_start
+            print(f"      ⏱️ PLY validation: {validation_time:.2f}s")
+            
+            # Extract score from result
+            score = result.get("validation_engine_score", 0.0)
+            alignment_score = result.get("alignment_score", 0.0)
+            
+            total_time = time.time() - validation_start_time
+            print(f"      ✅ Separated validation score: {score:.4f}")
+            print(f"      🤝 Alignment score: {alignment_score:.4f}")
+            print(f"      ⏱️ Total separated validation: {total_time:.2f}s")
+            
+            return score
+            
+        finally:
+            # Clean up temporary PLY file
+            try:
+                if os.path.exists(ply_file):
+                    os.remove(ply_file)
+                    print(f"      🗑️ Cleaned up temporary PLY file")
+            except Exception as e:
+                print(f"      ⚠️ Could not clean up PLY file: {e}")
+        
+    except Exception as e:
+        total_time = time.time() - validation_start_time
+        print(f"      ❌ Separated validation error: {e}")
+        print(f"      ⏱️ Total separated validation (failed): {total_time:.2f}s")
+        return 0.0
+
 def generate_both_from_trellis(prompt: str, trellis_url: str = "http://localhost:8096", 
                               seed: int = None, endpoint: str = "generate_both/") -> Optional[Dict[str, str]]:
     """
@@ -899,6 +975,118 @@ def test_rl_optimization_enhanced(prompt: str, use_vllm: bool = True, vllm_url: 
     else:
         print(f"\n⚠️ RL optimization did not achieve target score. Final score: {result['final_score']:.4f}")
 
+def test_rl_optimization_separated(prompt: str, use_vllm: bool = True, vllm_url: str = "http://localhost:11300", 
+                                  ollama_url: str = "http://localhost:11434", endpoint: str = "generate/"):
+    """Test RL optimization with separated generation and validation phases"""
+    
+    total_start_time = time.time()
+    
+    print("🧪 Standalone RL Optimization Test (Separated Phases)")
+    print("=" * 60)
+    print(f"Prompt: '{prompt}'")
+    print(f"LLM: {'vLLM' if use_vllm else 'Ollama'}")
+    print(f"Endpoint: {endpoint}")
+    print("🔄 Using separated generation and validation phases")
+    print("   (Avoids GPU memory conflicts)")
+    print("=" * 60)
+    
+    # Setup logging
+    setup_start = time.time()
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logger = logging.getLogger(__name__)
+    setup_time = time.time() - setup_start
+    print(f"⏱️ Setup time: {setup_time:.2f}s")
+    
+    # Initialize RL optimizer
+    init_start = time.time()
+    rl_optimizer = LightweightRLOptimizer(
+        logger=logger,
+        trellis_server_url="http://localhost:8096",
+        use_vllm=use_vllm,
+        vllm_url=vllm_url,
+        ollama_url=ollama_url
+    )
+    init_time = time.time() - init_start
+    print(f"⏱️ RL optimizer initialization: {init_time:.2f}s")
+    
+    # Get initial score using separated validation
+    print(f"\n🔍 Step 1: Getting initial validation score (separated phases)...")
+    initial_validation_start = time.time()
+    initial_score = separated_validation_callback(prompt, prompt, endpoint)
+    initial_validation_time = time.time() - initial_validation_start
+    print(f"⏱️ Initial validation: {initial_validation_time:.2f}s")
+    
+    print(f"\n📊 Initial Results:")
+    print(f"   Original prompt: '{prompt}'")
+    print(f"   Initial score: {initial_score:.4f}")
+    print(f"   Trigger threshold: {rl_optimizer.trigger_threshold}")
+    
+    # Check if RL should trigger
+    trigger_check_start = time.time()
+    should_trigger = rl_optimizer.should_trigger_rl_optimization(initial_score)
+    trigger_check_time = time.time() - trigger_check_start
+    print(f"   Should trigger RL: {should_trigger}")
+    print(f"⏱️ Trigger check: {trigger_check_time:.2f}s")
+    
+    if not should_trigger:
+        total_time = time.time() - total_start_time
+        print(f"\n✅ Initial score {initial_score:.4f} is already above threshold {rl_optimizer.trigger_threshold}")
+        print("   No RL optimization needed!")
+        print(f"⏱️ Total test time: {total_time:.2f}s")
+        return
+    
+    # Run RL optimization with separated validation
+    print(f"\n🔄 Step 2: Running 3-round RL optimization (separated phases)...")
+    optimization_start = time.time()
+    result = rl_optimizer.optimize_with_3_rounds(
+        original_prompt=prompt,
+        initial_score=initial_score,
+        validation_callback=separated_validation_callback,
+        endpoint=endpoint
+    )
+    optimization_time = time.time() - optimization_start
+    print(f"⏱️ RL optimization: {optimization_time:.2f}s")
+    
+    # Display results
+    print(f"\n🎯 Final Results:")
+    print(f"   Success: {result['success']}")
+    print(f"   Final score: {result['final_score']:.4f}")
+    print(f"   Improvement: {result['improvement']:+.4f}")
+    print(f"   Rounds used: {result['rounds_used']}")
+    print(f"   Final prompt: '{result['final_optimized_prompt']}'")
+    
+    print(f"\n📈 Optimization Attempts:")
+    for i, attempt in enumerate(result['attempts'], 1):
+        print(f"   Round {i}: {attempt['strategy']}")
+        print(f"     Prompt: '{attempt['prompt']}'")
+        print(f"     Score: {attempt['score']:.4f}")
+        print(f"     Confidence: {attempt['confidence']:.2f}")
+    
+    # Strategy insights
+    insights_start = time.time()
+    print(f"\n🧠 Strategy Performance:")
+    insights = rl_optimizer.get_strategy_insights()
+    print(f"   Best strategy: {insights['best_strategy']}")
+    print(f"   Average performance: {insights['average_performance']:.3f}")
+    insights_time = time.time() - insights_start
+    print(f"⏱️ Strategy insights: {insights_time:.2f}s")
+    
+    # Final timing summary
+    total_time = time.time() - total_start_time
+    print(f"\n⏱️ TIMING SUMMARY (Separated Phases):")
+    print(f"   Setup: {setup_time:.2f}s")
+    print(f"   RL optimizer init: {init_time:.2f}s")
+    print(f"   Initial validation: {initial_validation_time:.2f}s")
+    print(f"   Trigger check: {trigger_check_time:.2f}s")
+    print(f"   RL optimization: {optimization_time:.2f}s")
+    print(f"   Strategy insights: {insights_time:.2f}s")
+    print(f"   TOTAL TIME: {total_time:.2f}s")
+    
+    if result['success']:
+        print(f"\n🎉 RL optimization successful! Score improved from {initial_score:.4f} to {result['final_score']:.4f}")
+    else:
+        print(f"\n⚠️ RL optimization did not achieve target score. Final score: {result['final_score']:.4f}")
+
 def test_rl_optimization_direct(prompt: str, use_vllm: bool = True, vllm_url: str = "http://localhost:11300", 
                                ollama_url: str = "http://localhost:11434", endpoint: str = "generate/"):
     """Test RL optimization with direct validation (no subprocess)"""
@@ -1152,6 +1340,7 @@ def main():
     parser.add_argument('--both-scores', action='store_true', help='Calculate both alignment and CLIP scores (fast)')
     parser.add_argument('--rl-alignment', action='store_true', help='Run RL optimization using alignment score for grading (faster than full validation)')
     parser.add_argument('--rl-clip', action='store_true', help='Run RL optimization using CLIP score only (no validation system, works with --cpu-loading)')
+    parser.add_argument('--rl-separated', action='store_true', help='Run RL optimization using separated generation and validation phases (avoids GPU memory conflicts)')
     parser.add_argument('--cpu-loading', action='store_true', help='Load CLIP/alignment models on CPU (3D rendering still requires CUDA)')
     
     args = parser.parse_args()
@@ -1161,6 +1350,7 @@ def main():
     print(f"   --alignment-score: {args.alignment_score}")
     print(f"   --rl-alignment: {args.rl_alignment}")
     print(f"   --rl-clip: {args.rl_clip}")
+    print(f"   --rl-separated: {args.rl_separated}")
     print(f"   --clip-score: {args.clip_score}")
     print(f"   --both-scores: {args.both_scores}")
     print(f"   --enhanced: {args.enhanced}")
@@ -1195,6 +1385,26 @@ def main():
                 ollama_url=args.ollama_url,
                 endpoint=args.endpoint,
                 force_cpu=args.cpu_loading
+            )
+            
+        elif args.rl_separated:
+            # Run RL optimization using separated generation and validation phases
+            print("🧪 RL Optimization with Separated Phases")
+            print("=" * 60)
+            print(f"Prompt: '{args.prompt}'")
+            print(f"LLM: {'vLLM' if not args.use_ollama else 'Ollama'}")
+            print(f"Endpoint: {args.endpoint}")
+            print("🔄 Using separated generation and validation phases")
+            print("   (Avoids GPU memory conflicts)")
+            print("=" * 60)
+            
+            # Run RL optimization with separated phases
+            test_rl_optimization_separated(
+                prompt=args.prompt,
+                use_vllm=not args.use_ollama,
+                vllm_url=args.vllm_url,
+                ollama_url=args.ollama_url,
+                endpoint=args.endpoint
             )
             
         elif args.rl_alignment:

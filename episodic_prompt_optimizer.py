@@ -595,7 +595,8 @@ class EpisodicPromptOptimizer:
                  vllm_url: str = "http://localhost:9000",  # New parameter for vLLM URL
                  vllm_model: str = "llama-3-2-3b-it",  # New parameter for vLLM model
                  reverse_prompts: bool = False,  # New parameter for reverse prompt order
-                 disable_convergence: bool = False):  # New parameter to disable convergence checking
+                 disable_convergence: bool = False,  # New parameter to disable convergence checking
+                 ollama_model: str = "llama3.2:3b"):  # New parameter for Ollama model
         """
         Initialize the episodic optimizer.
         
@@ -621,6 +622,8 @@ class EpisodicPromptOptimizer:
         self.use_vllm = use_vllm
         self.vllm_url = vllm_url
         self.vllm_model = vllm_model
+        self.ollama_url = ollama_url
+        self.ollama_model = ollama_model
         self.reverse_prompts = reverse_prompts
         self.disable_convergence = disable_convergence
 
@@ -686,7 +689,9 @@ class EpisodicPromptOptimizer:
             use_vllm=self.use_vllm,  # Pass vLLM preference
             vllm_url=self.vllm_url,  # Pass vLLM URL
             vllm_model=self.vllm_model,  # Pass vLLM model
-            disable_convergence=self.disable_convergence # Pass the new parameter
+            disable_convergence=self.disable_convergence, # Pass the new parameter
+            use_separated_validation=True, 
+            ollama_model="my-model:latest"
         )
         
         # Override RL parameters to match episodic settings
@@ -723,7 +728,9 @@ class EpisodicPromptOptimizer:
                 episodic_memory_file=os.path.join(self.log_dir, "episodic_memory.json"),
                 use_vllm=self.use_vllm,
                 vllm_url=self.vllm_url,
-                vllm_model=self.vllm_model
+                vllm_model=self.vllm_model,
+                ollama_url=self.ollama_url,
+                ollama_model=self.ollama_model
             )
             self.logger.info("🔄 Initialized reproducibility system for pre-optimization")
         else:
@@ -1680,7 +1687,7 @@ def main():
     parser.add_argument("--reverse", action="store_true", help="Process prompts in reverse order (oldest first)")
     parser.add_argument("--fix-prompts", action="store_true", help="Fix malformed prompts in episodic_test_prompts.py and exit")
     parser.add_argument("--show-prompts", action="store_true", help="Show prompt order configuration and exit")
-    
+    parser.add_argument("--ollama-model", type=str, default="llama3.2:3b", help="Ollama model name (default: llama3.2:3b)")
     args = parser.parse_args()
     
     # If --fix-prompts is specified, just fix the file and exit
@@ -1698,6 +1705,7 @@ def main():
     VLLM_URL = args.vllm_url
     VLLM_MODEL = args.vllm_model
     REVERSE_PROMPTS = args.reverse
+    OLLAMA_MODEL = args.ollama_model
     
     print(f"🚀 Starting Episodic Prompt Optimization")
     print(f"Episodes: {NUM_EPISODES}")
@@ -1742,7 +1750,8 @@ def main():
         use_vllm=USE_VLLM,
         vllm_url=VLLM_URL,
         vllm_model=VLLM_MODEL,
-        reverse_prompts=REVERSE_PROMPTS
+        reverse_prompts=REVERSE_PROMPTS,
+        ollama_model=OLLAMA_MODEL
     )
     
     # Handle special arguments that don't require running episodes

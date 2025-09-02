@@ -92,13 +92,18 @@ class RLLoopAgent:
                  trellis_server_url_w_port: str = "http://localhost:8096",
                  endpoint: str = "generate/",
                  ollama_coordinator=None,  # New parameter
+                 ollama_model: str = None,
                  port: int = 8096,  # Add port parameter
                  use_vllm: bool = False,  # New parameter for vLLM
                  vllm_url: str = "http://localhost:9000",  # New parameter for vLLM URL
                  vllm_model: str = "llama-3-2-3b-it",  # New parameter for vLLM model
-                 disable_convergence: bool = False):  # New parameter to disable convergence
+                 disable_convergence: bool = False,  # New parameter to disable convergence
+                 use_separated_validation: bool = False,  # New parameter for separated validation
+                 cache_models: bool = False):  # New parameter for model caching
         self.ollama_url = ollama_url
-        self.model = None  # Will be set based on user input
+        if ollama_model:
+            self.model = ollama_model
+        # self.model = None  # Will be set based on user input
         self.memory_file = Path(memory_file)
         self.api_base_url = api_base_url
         self.use_openrouter = False
@@ -106,6 +111,8 @@ class RLLoopAgent:
         self.vllm_url = vllm_url  # Store vLLM URL
         self.vllm_model = vllm_model  # Store vLLM model
         self.disable_convergence = disable_convergence  # Store convergence preference
+        self.use_separated_validation = use_separated_validation  # Store separated validation preference
+        self.cache_models = cache_models  # Store model caching preference
         self.provider = None
         self.api_key = None
         self.site_url = "http://localhost"
@@ -165,6 +172,8 @@ class RLLoopAgent:
         self.logger.info(f"   Max rounds per optimization: {self.max_optimization_rounds}")
         self.logger.info(f"   Min rounds before convergence: {self.min_rounds_before_convergence}")
         self.logger.info(f"   Adaptive convergence: {'DISABLED - Force all rounds' if self.disable_convergence else 'ENABLED'}")
+        self.logger.info(f"   Validation method: {'SEPARATED (two-stage)' if self.use_separated_validation else 'DIRECT (single-stage)'}")
+        self.logger.info(f"   Model caching: {'ENABLED (uses more GPU memory)' if self.cache_models else 'DISABLED (safer for GPU memory)'}")
         if self.use_vllm:
             self.logger.info(f"   Using vLLM: {self.vllm_url} with model {self.vllm_model}")
         elif self.use_openrouter:
@@ -221,7 +230,11 @@ class RLLoopAgent:
             print(f"🚀 CONFIGURED: Using OpenRouter model: {self.model} (provider: {self.provider})")
         else:
             self.use_openrouter = False
-            self.model = "llama3.2:3b"
+            model = input("Enter Ollama model (or press Enter for default): ").strip()
+            if not model:
+                model = "llama3.2:3b"
+            self.model = model
+            # self.model = "llama3.2:3b"
             print(f"🚀 CONFIGURED: Using local Ollama model: {self.model}")
 
     def _load_memory(self):
@@ -423,7 +436,14 @@ class RLLoopAgent:
                 prompt_with_context=prompt_with_context
             )
             if use_validation:
-                attempt.validation_score = self._validate_prompt(prompt, attempt.optimized_prompt, endpoint = endpoint, use_direct=True)
+                attempt.validation_score = self._validate_prompt(
+                    prompt, 
+                    attempt.optimized_prompt, 
+                    endpoint=endpoint, 
+                    use_direct=not self.use_separated_validation,
+                    use_separated=self.use_separated_validation,
+                    cache_models=self.cache_models  # Use stored cache_models parameter
+                )
                 self.logger.info(f"      📊 Validation score: {attempt.validation_score:.4f}")
             else:
                 attempt.validation_score = attempt.predicted_confidence
@@ -903,7 +923,8 @@ OPTIMIZATION: {{
         except Exception as e:
             self.logger.warning(f"[TRELLIS] Exception clearing GPU cache: {e}")
 
-    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/", use_direct: bool = False) -> float:
+    def _validate_prompt(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/", 
+                        use_direct: bool = False, use_separated: bool = False, cache_models: bool = False) -> float:
         """Run validation with conda environment, clearing GPU cache first via TRELLIS server.
 
         Args:
@@ -911,9 +932,12 @@ OPTIMIZATION: {{
             optimized_prompt: Optimized prompt for generation (optional)
             endpoint: Generation endpoint
             use_direct: If True, use direct validation function instead of subprocess
+            use_separated: If True, use separated two-stage validation to avoid GPU memory conflicts
         """
         try:
-            if use_direct:
+            if use_separated:
+                return self._validate_prompt_separated(original_prompt, optimized_prompt, endpoint, cache_models)
+            elif use_direct:
                 return self._validate_prompt_direct(original_prompt, optimized_prompt, endpoint)
             else:
                 return self._validate_prompt_subprocess(original_prompt, optimized_prompt, endpoint)
@@ -963,6 +987,65 @@ OPTIMIZATION: {{
 
         except Exception as e:
             self.logger.error(f"   ❌ Direct validation failed: {e}")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            return 0.0
+
+    def _validate_prompt_separated(self, original_prompt: str, optimized_prompt: str = None, endpoint: str = "generate/", cache_models: bool = False) -> float:
+        """Separated validation using two-stage approach to avoid GPU memory conflicts."""
+        try:
+            self.logger.info("      🔍 Separated validation (two-stage)...")
+            self._clear_trellis_gpu_cache()  # Clear GPU cache before validation
+
+            # Import the separated validation functions
+            sys.path.append('/home/mbhat/three-gen-subnet-trellis')
+            from subnet_accurate_validator_multigpu import generate_and_get_ply_data, validate_ply_data
+
+            # Use optimized prompt for generation if provided, otherwise use original
+            generation_prompt = optimized_prompt if optimized_prompt else original_prompt
+            if optimized_prompt and optimized_prompt != original_prompt:
+                self.logger.info(f"      📝 Using optimized prompt for generation: '{generation_prompt}...'")
+                self.logger.info(f"      🎯 Computing scores against original prompt: '{original_prompt}...'")
+            else:
+                self.logger.info(f"      📝 Using same prompt for generation and validation: '{generation_prompt[:50]}...'")
+
+            # Stage 1: Generate PLY data directly in memory
+            self.logger.info(f"      🎨 Stage 1: Generating PLY data...")
+            generation_start = time.time()
+            
+            # Generate PLY data directly in memory (no temporary file)
+            ply_data = generate_and_get_ply_data(
+                prompt=generation_prompt,
+                endpoint=endpoint,
+                port=self.port
+            )
+            generation_time = time.time() - generation_start
+            self.logger.info(f"      ⏱️ PLY generation: {generation_time:.2f}s")
+            
+            # Stage 2: Validate PLY data directly in memory
+            self.logger.info(f"      🔍 Stage 2: Validating PLY data...")
+            validation_start = time.time()
+            
+            result = validate_ply_data(
+                ply_data=ply_data,
+                prompt=original_prompt,
+                use_cached_models=False,  # Always use non-cached for clean memory management
+                force_cpu=False
+            )
+            validation_time = time.time() - validation_start
+            self.logger.info(f"      ⏱️ PLY validation: {validation_time:.2f}s")
+            
+            # Extract score from result
+            score = result.get('validation_engine_score', 0.0)
+            alignment_score = result.get('alignment_score', 0.0)
+            
+            self.logger.info(f"      ✅ Separated validation score: {score:.4f}")
+            self.logger.info(f"      🤝 Alignment score: {alignment_score:.4f}")
+            
+            return float(score)
+
+        except Exception as e:
+            self.logger.error(f"   ❌ Separated validation failed: {e}")
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             return 0.0
@@ -1467,7 +1550,7 @@ OPTIMIZATION: {{
 def main():
     """Command line interface"""
     if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
-        print("Usage: python smart_prompt_optimizer_v5_rl_loop_lora.py \"prompt\" [--validate] [--endpoint] [--port] [--insights] [--vllm] [--vllm-url] [--vllm-model]")
+        print("Usage: python smart_prompt_optimizer_v5_rl_loop_lora.py \"prompt\" [--validate] [--endpoint] [--port] [--insights] [--vllm] [--vllm-url] [--vllm-model] [--separated] [--cache-models]")
         print("\nCommands:")
         print("  \"prompt\"        Optimize with RL learning loop")
         print("  dummy --insights Show RL learning insights")
@@ -1475,6 +1558,8 @@ def main():
         print("  --multi-insights Show insights across all sessions")
         print("\nOptions:")
         print("  --validate       Use real validation scores (recommended)")
+        print("  --separated      Use separated two-stage validation (avoids GPU memory conflicts)")
+        print("  --cache-models   Enable model caching (uses more GPU memory but faster validation)")
         print("  --endpoint       Use specific endpoint (default: generate/)")
         print("  --port           Port for TRELLIS server (default: 8096)")
         print("  --vllm           Use vLLM instead of Ollama")
@@ -1514,6 +1599,8 @@ def main():
         
         user_prompt = sys.argv[1]
         use_validation = "--validate" in sys.argv
+        use_separated = "--separated" in sys.argv
+        cache_models = "--cache-models" in sys.argv
         
         # Parse command line arguments
         endpoint = "generate/"
@@ -1544,13 +1631,21 @@ def main():
         print("✅ Exploration/exploitation based on performance")
         print(f"✅ Using TRELLIS server on port {port}")
         print(f"✅ Using endpoint: {endpoint}")
+        if use_separated:
+            print("✅ Using SEPARATED two-stage validation (avoids GPU memory conflicts)")
+        else:
+            print("✅ Using DIRECT single-stage validation")
+        if cache_models:
+            print("✅ Model caching ENABLED (uses more GPU memory but faster validation)")
+        else:
+            print("✅ Model caching DISABLED (safer for GPU memory)")
         if use_vllm:
             print(f"✅ Using vLLM: {vllm_url} with model {vllm_model}")
         else:
             print("✅ Using Ollama (default)")
         print("=" * 60)
         
-        agent = RLLoopAgent(port=port, use_vllm=use_vllm, vllm_url=vllm_url, vllm_model=vllm_model)
+        agent = RLLoopAgent(port=port, use_vllm=use_vllm, vllm_url=vllm_url, vllm_model=vllm_model, use_separated_validation=use_separated, cache_models=cache_models)
         result = agent.optimize_with_rl_loop(user_prompt, use_validation=use_validation, endpoint=endpoint)
         
         print("\n" + "="*20 + " RL LOOP SUMMARY " + "="*20)

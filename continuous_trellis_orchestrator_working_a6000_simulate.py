@@ -44,6 +44,7 @@ import hashlib
 import sqlite3
 import subprocess
 from pathlib import Path
+import typing
 from typing import List, Dict, Optional, Any, Set
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -3914,17 +3915,18 @@ class ContinuousTrellisOrchestrator:
             })
             return cooldown_status
         
+        # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
         # Check validation lock
-        if validator.validation_locked_until and current_time < validator.validation_locked_until:
-            remaining = validator.validation_locked_until - current_time
-            cooldown_status.update({
-                'available': False,
-                'reason': 'Validation lock active',
-                'remaining_time': remaining,
-                'cooldown_type': 'validation_lock',
-                'recommendation': f'Wait {remaining:.1f}s for validation lock to expire'
-            })
-            return cooldown_status
+        # if validator.validation_locked_until and current_time < validator.validation_locked_until:
+        #     remaining = validator.validation_locked_until - current_time
+        #     cooldown_status.update({
+        #         'available': False,
+        #         'reason': 'Validation lock active',
+        #         'remaining_time': remaining,
+        #         'cooldown_type': 'validation_lock',
+        #         'recommendation': f'Wait {remaining:.1f}s for validation lock to expire'
+        #     })
+        #     return cooldown_status
         
         # Check pull interval (following _pull_task logic from trellis_miner.py)
         if validator.last_task_pull:
@@ -5111,6 +5113,12 @@ class ContinuousTrellisOrchestrator:
             
             neuron = self.metagraph.neurons[validator.uid]
             
+            # Validate axon endpoint to avoid connection failures
+            axon_info = neuron.axon_info
+            if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
+                self.logger.warning(f"⚠️ Skipping UID {validator.uid} due to invalid axon endpoint: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                return None
+            
             start_time = time.time()
             
             # Query the validator
@@ -5123,7 +5131,7 @@ class ContinuousTrellisOrchestrator:
             response = typing.cast(
                 PullTask,
                 await self.dendrite.call(
-                    target_axon=neuron.axon_info,
+                    target_axon=axon_info,
                     synapse=synapse,
                     deserialize=False,
                     timeout=self.config['submission_timeout']
@@ -5131,14 +5139,14 @@ class ContinuousTrellisOrchestrator:
             )
 
             if response.dendrite.status_code != 200:
-                self.logger.error(f"❌ Failed to get task from [{metagraph.hotkeys[validator_uid]}]. Reason: {response.dendrite.status_message}.")
+                self.logger.error(f"❌ Failed to get task from [{self.metagraph.hotkeys[validator.uid]}]. Reason: {response.dendrite.status_message}.")
                 validator.validator_enforced_cooldown_until = int(time.time()) + FAILED_VALIDATOR_DELAY
                 return None 
             query_time = time.time() - start_time
             validator.last_task_pull = time.time()
             
 
-            if response and len(response) > 0:
+            if response and hasattr(response, 'task') and response.task:
                 # resp = response[0]
                 resp = response
 
@@ -7642,6 +7650,13 @@ class ContinuousTrellisOrchestrator:
             
             neuron = self.metagraph.neurons[task.validator_uid]
             
+            # Validate axon endpoint to avoid connection failures
+            axon_info = neuron.axon_info
+            if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
+                self.logger.warning(f"⚠️ Axon endpoint appears invalid for UID {task.validator_uid}: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                self.logger.warning(f"   This validator previously provided a task, so attempting submission anyway...")
+                # Don't return False - try the submission since this validator was working before
+            
             # Create task object
             task_obj = Task(id=task.task_id, prompt=task.prompt)
             
@@ -7679,7 +7694,7 @@ class ContinuousTrellisOrchestrator:
             
             # Submit to validator using the correct API call
             response = await self.dendrite.call(
-                target_axon=neuron.axon_info,
+                target_axon=axon_info,
                 synapse=synapse,
                 deserialize=False,
                 timeout=self.config['submission_timeout']
@@ -8297,9 +8312,9 @@ class ContinuousTrellisOrchestrator:
         
         # Enhanced cooldown statistics with DYNAMIC system health analysis
         active_validators = [v for v in self.validators.values() if v.is_active]
-        validators_on_cooldown = [v for v in active_validators if v.cooldown_until and time.time() < v.cooldown_until]
+        validators_on_cooldown = [v for v in active_validators if self._is_validator_on_cooldown(v)[0]]
         # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
-        # validators_validation_locked = [v for v in active_validators if v.validation_locked_until and time.time() < v.validation_locked_until]
+        validators_validation_locked = []  # Empty list since validation locking is deprecated
         validators_with_violations = [v for v in active_validators if v.cooldown_violations > 0]
         validators_emergency_blacklisted = [v for v in self.validators.values() if v.emergency_blacklist_until and time.time() < v.emergency_blacklist_until]
         
