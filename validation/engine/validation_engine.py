@@ -11,15 +11,18 @@ from validation.engine.utils.gs_data_checker_utils import sigmoid
 class ValidationEngine:
     """Class that handles all validation metrics"""
 
-    def __init__(self, verbose: bool = False) -> None:
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, verbose: bool = False, device: str = None) -> None:
+        if device is not None:
+            self.device = torch.device(device)
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         torch.set_default_device(self.device)
 
         self._verbose = verbose
-        self._image_quality_metric = ImageQualityMetric()
-        self._text_vs_image_metric = TextVSImageMetric()
-        self._image_vs_image_metric = ImageVSImageMetric()
-        self._similarity_metric = SimilarityMetrics()
+        self._image_quality_metric = ImageQualityMetric(device=device)
+        self._text_vs_image_metric = TextVSImageMetric(device=device)
+        self._image_vs_image_metric = ImageVSImageMetric(device=device)
+        self._similarity_metric = SimilarityMetrics(device=device)
 
     def load_pipelines(self) -> None:
         """Function for loading all pipelines (metrics) that are used within the engine"""

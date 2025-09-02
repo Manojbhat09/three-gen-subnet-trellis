@@ -12,8 +12,11 @@ from validation.engine.utils.statistics_computation_utils import compute_mean, f
 class SimilarityMetrics:
     """Metric that computes two similarity scores: SSIM and LPIPS"""
 
-    def __init__(self) -> None:
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, device: str = None) -> None:
+        if device is not None:
+            self._device = torch.device(device)
+        else:
+            self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._lpips_metric: LearnedPerceptualImagePatchSimilarity | None = None
         self._ssim_metric: StructuralSimilarityIndexMeasure | None = None
 

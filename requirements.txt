@@ -44,7 +44,7 @@ pyod==2.0.5
 pytod==0.0.3
 
 # TRELLIS/SPZ compression
-pyspz @ git+https://github.com/404-Repo/spz.git@0.1
+git+https://github.com/404-Repo/spz.git@0.1
 
 # Networking
 requests>=2.32.0

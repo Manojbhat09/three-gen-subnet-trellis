@@ -10,9 +10,12 @@ from validation.engine.utils.statistics_computation_utils import compute_mean, f
 class ImageQualityMetric:
     """Metric that measures the quality of the rendered images using DinoNet"""
 
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, verbose: bool = False, device: str = None) -> None:
         self._quality_classifier_model: QualityClassifierModel = QualityClassifierModel()
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is not None:
+            self._device = torch.device(device)
+        else:
+            self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         torch.set_default_device(self._device)
         self._verbose = verbose
 

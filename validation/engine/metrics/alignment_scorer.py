@@ -16,8 +16,11 @@ from validation.engine.utils.statistics_computation_utils import compute_mean, f
 class TextVSImageMetric:
     """Metric that checks the alignment of prompt vs rendered images of the input 3D data"""
 
-    def __init__(self, verbose: bool = False) -> None:
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, verbose: bool = False, device: str = None) -> None:
+        if device is not None:
+            self._device = torch.device(device)
+        else:
+            self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model: CLIP | None = None
         self._tokenizer: HFTokenizer | None = None
         self._verbose = verbose
@@ -103,8 +106,11 @@ class TextVSImageMetric:
 class ImageVSImageMetric:
     """Metric that checks the alignment of prompt-image vs rendered images of the input 3D data"""
 
-    def __init__(self, verbose: bool = False) -> None:
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, verbose: bool = False, device: str = None) -> None:
+        if device is not None:
+            self._device = torch.device(device)
+        else:
+            self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._model: CLIP | None = None
         self._verbose = verbose
 

@@ -23,6 +23,8 @@ python continuous_trellis_orchestrator_lora_working.py --disable-task-tracking  
 
 
 python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"   --vllm --no-fallback --production-mv-gen
+
+python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile episodic_test_prompts.py --simulate --fastest-mv-gen --no-skip-duplicates --disable-task-tracking --lora  "cinema" --vllm --vllm-url "http://localhost:11300"  --vllm-optim --vllm-optim-port 11300 --system-prompt --vllm-priority "system_chat" --no-optimize --no-submit --no-fallback
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
@@ -117,14 +119,27 @@ except ImportError:
     bt = None
 
 # Setup logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('continuous_trellis.log'),
-        logging.StreamHandler()
-    ]
-)
+# Log file will be set dynamically based on --simulate flag
+def setup_logging(simulate_mode=False):
+    """Setup logging with appropriate file name based on mode"""
+    log_filename = 'continuous_trellis_simulator.log' if simulate_mode else 'continuous_trellis.log'
+    
+    # Clear any existing handlers
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler()
+        ]
+    )
+    return log_filename
+
+# Initial setup (will be reconfigured in main if simulate mode is used)
+setup_logging()
 
 # Cooldown constants - conservative values to avoid violations
 NETWORK_DELAY_TIME_BUFFER = 60
@@ -1614,7 +1629,6 @@ class TaskDatabase:
                 consensus REAL NOT NULL,
                 last_task_pull REAL,
                 last_task_received REAL,
-                # cooldown_until REAL,  # DEPRECATED: Replaced by validator_enforced_cooldown_until and miner_cooldown_until
                 total_tasks_pulled INTEGER DEFAULT 0,
                 total_tasks_received INTEGER DEFAULT 0,
                 total_tasks_submitted INTEGER DEFAULT 0,
@@ -2531,8 +2545,12 @@ class ContinuousTrellisOrchestrator:
         self.output_dir = Path(self.config['output_dir'])
         self.output_dir.mkdir(exist_ok=True)
         
-        # Initialize database
-        self.db = TaskDatabase()
+        # Initialize database with appropriate name based on mode
+        if self.config.get('simulation_mode', False):
+            db_name = "continuous_trellis_simulator_tasks.db"
+        else:
+            db_name = "continuous_trellis_tasks.db"
+        self.db = TaskDatabase(db_path=db_name)
         
         # Generate unique instance ID for shared task tracking
         self.instance_id = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}"
@@ -6338,7 +6356,7 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"   Optimized: '{optimized_prompt}'")
                     self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
                     self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
-                    if optimize_generation: 
+                    if optimize_generation:     
                         self.logger.info(f"   Similarity: {original_optimized_similarity['cosine_similarity']:.4f}")
                         self.logger.info(f"   Similarity level: {original_optimized_similarity['similarity_level']}")
                         self.logger.info(f"   Description: {original_optimized_similarity['description']}")
@@ -7356,6 +7374,10 @@ class ContinuousTrellisOrchestrator:
         
         self.logger.info(f"📊 Validating model: '{task.prompt[:50]}...'")
         
+        # Check if we're in simulation mode and use command-line validation
+        if self.config.get('simulation_mode', False):
+            return await self._validate_model_simulation_mode(task, ply_data)
+        
         try:
             validation_start = time.time()
             
@@ -7410,6 +7432,104 @@ class ContinuousTrellisOrchestrator:
         except Exception as e:
             self.logger.error(f"❌ Validation exception: {e}")
             return None
+
+    async def _validate_model_simulation_mode(self, task: TaskRecord, ply_data: bytes) -> Optional[float]:
+        """Validate model in simulation mode using command-line validation (like test_rl_standalone.py)"""
+        try:
+            import subprocess
+            import json
+            import os
+            
+            validation_start = time.time()
+            self.logger.info(f"      🔍 Simulation validation: '{task.prompt[:50]}...'")
+            
+            # Save PLY data to temporary file for validation
+            temp_file = self.output_dir / f"temp_validation_{task.task_id}_{int(time.time())}.ply.spz"
+            with open(temp_file, 'wb') as f:
+                f.write(ply_data)
+            self.logger.info(f"      💾 Saved PLY data to temp file: {temp_file}")
+            
+            try:
+                # Clear old validation results to prevent reading stale data
+                validation_file = "subnet_validation_results_8096.json"
+                if os.path.exists(validation_file):
+                    os.remove(validation_file)
+                    self.logger.info(f"      🗑️ Cleared old validation results file")
+                
+                # Check if we have an optimized prompt for this task
+                optimized_prompt = getattr(task, 'final_optimized_prompt', None)
+                
+                # Run validation using the same command as test_rl_standalone.py
+                if optimized_prompt and optimized_prompt != task.prompt:
+                    self.logger.info(f"      📝 Using optimized prompt for validation: '{optimized_prompt[:50]}...'")
+                    self.logger.info(f"      🎯 Computing scores against original prompt: '{task.prompt[:50]}...'")
+                    cmd = [
+                        "bash", "-c",
+                        f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{task.prompt}\" \"{optimized_prompt}\" --pre-generated-ply \"{temp_file}\""
+                    ]
+                else:
+                    self.logger.info(f"      📝 Using same prompt for generation and validation: '{task.prompt[:50]}...'")
+                    cmd = [
+                        "bash", "-c",
+                        f"source /home/mbhat/miniconda/bin/activate && conda activate trellis_new && python subnet_accurate_validator_multigpu.py \"{task.prompt}\" --pre-generated-ply \"{temp_file}\""
+                    ]
+                
+                self.logger.info(f"      🚀 Running validation command...")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                cmd_time = time.time() - validation_start
+                self.logger.info(f"      ⏱️ Validation command: {cmd_time:.2f}s")
+                
+                if result.returncode != 0:
+                    self.logger.error(f"      ❌ Validation failed (return code {result.returncode})")
+                    if result.stderr:
+                        self.logger.error(f"      Error: {result.stderr}")
+                    return 0.0
+                
+                # Wait for file writing to complete
+                time.sleep(2)
+                
+                # Read validation results
+                try:
+                    with open(validation_file, 'r') as f:
+                        data = json.load(f)
+                        score = data.get("validation_engine_score", 0.0)
+                        alignment_score = data.get("alignment_score", 0.0)
+                        quality_score = data.get("quality_score", 0.0)
+                        
+                        validation_time = time.time() - validation_start
+                        task.validation_time = validation_time
+                        task.local_validation_score = score
+                        
+                        self.logger.info(f"      ✅ Validation completed in {validation_time:.2f}s")
+                        self.logger.info(f"      📊 Validation Results:")
+                        self.logger.info(f"         🏆 Validation Engine Score: {score:.4f}")
+                        self.logger.info(f"         🤝 Alignment Score: {alignment_score:.4f}")
+                        self.logger.info(f"         💎 Quality Score: {quality_score:.4f}")
+                        self.logger.info(f"         ✅ Validation Passed: {data.get('validation_passed', False)}")
+                        
+                        self.stats['successful_validations'] += 1
+                        self.stats['total_validation_time'] += validation_time
+                        
+                        return score
+                        
+                except (FileNotFoundError, json.JSONDecodeError) as e:
+                    self.logger.error(f"      ❌ Could not read validation results: {e}")
+                    return 0.0
+                    
+            finally:
+                # Clean up temp file
+                if temp_file.exists():
+                    try:
+                        temp_file.unlink()
+                        self.logger.info(f"      🧹 Cleaned up temp file: {temp_file}")
+                    except Exception as e:
+                        self.logger.warning(f"      ⚠️ Failed to clean up temp file: {e}")
+                
+        except Exception as e:
+            validation_time = time.time() - validation_start
+            self.logger.error(f"      ❌ Simulation validation error: {e}")
+            self.logger.error(f"      ⏱️ Total validation (failed): {validation_time:.2f}s")
+            return 0.0
     
     async def submit_result(self, task: TaskRecord, generation_result: Dict[str, Any], validator: ValidatorState) -> bool:
         """Submit result to validator and process feedback"""
@@ -7757,14 +7877,17 @@ class ContinuousTrellisOrchestrator:
                 self.db.save_task(task)
                 return False
             
-            # ply_data = generation_result['ply_data']
-
-            # # Step 2: Validate locally
-            # local_score = await self.validate_model(task, ply_data)
-            # if local_score is not None and local_score < self.config['min_local_score']:
-            #     self.logger.warning(f"⚠️ Local score too low ({local_score:.3f}), skipping submission")
-            #     self.db.save_task(task)
-            #     return False
+            # Step 2: Validate locally (only in simulation mode or when validation is enabled)
+            if self.config.get('simulation_mode', False) or self.config.get('validate_generations', False):
+                ply_data = generation_result['ply_data']
+                local_score = await self.validate_model(task, ply_data)
+                if local_score is not None and local_score < self.config['min_local_score']:
+                    self.logger.warning(f"⚠️ Local score too low ({local_score:.3f}), skipping submission")
+                    self.db.save_task(task)
+                    return False
+            else:
+                # In normal mode without validation, we'll get the score from the validation server response later
+                self.logger.info(f"📊 Skipping local validation - will use validation server response")
             
             # Calculate time elapsed since task was pulled
             time_after_generation = time.time()
@@ -7778,8 +7901,12 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"⏳ Elapsed time since pull ({elapsed_time_since_pull:.2f}s) is < 17s. Waiting for {wait_duration:.2f}s to reach 18s before submission.")
                 await asyncio.sleep(wait_duration)
                 
-            # Step 3: Submit results, passing the full generation result dictionary
-            success = await self.submit_result(task, generation_result, validator)
+            # Step 3: Submit results (skip in simulation mode)
+            if self.config.get('simulation_mode', False):
+                self.logger.info(f"🎯 Simulation mode: Skipping result submission")
+                success = True  # Mark as successful for simulation
+            else:
+                success = await self.submit_result(task, generation_result, validator)
             
             # FIXED: Complete pending task cooldown logic
             if success and task.validator_uid in self.validators:
@@ -8484,6 +8611,126 @@ class ContinuousTrellisOrchestrator:
             self.print_status()
             self.save_statistics()
             self.logger.info("🏁 Continuous mining stopped")
+    
+    def load_prompts_from_file(self, filepath: str) -> List[str]:
+        """Dynamically load the EPISODIC_TEST_PROMPTS list from a Python file."""
+        try:
+            import importlib.util
+            path = Path(filepath)
+            spec = importlib.util.spec_from_file_location(path.stem, path.resolve())
+            prompt_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(prompt_module)
+            
+            prompts = getattr(prompt_module, 'EPISODIC_TEST_PROMPTS', None)
+            
+            if prompts is None or not isinstance(prompts, list):
+                self.logger.error(f"❌ Could not find a list named 'EPISODIC_TEST_PROMPTS' in {filepath}")
+                return []
+            
+            self.logger.info(f"✅ Successfully loaded {len(prompts)} prompts from {filepath}")
+            return prompts
+        except Exception as e:
+            self.logger.error(f"❌ Failed to load prompts from {filepath}: {e}")
+            return []
+
+    async def run_simulation(self):
+        """Main simulation loop - process prompts from file instead of harvesting from network."""
+        self.logger.info("🚀 Starting TRELLIS simulation...")
+        
+        prompts = self.load_prompts_from_file(self.config['promptfile'])
+        if not prompts:
+            self.logger.error("❌ No prompts loaded, exiting simulation")
+            return
+        
+        # Skip Bittensor setup for simulation mode - we don't need network connectivity
+        self.logger.info("🎯 Simulation mode: Skipping Bittensor setup (not needed for file-based processing)")
+        
+        # Create a mock validator for simulation
+        mock_validator = ValidatorState(
+            uid=1,
+            hotkey="simulator",
+            stake=1000.0,
+            trust=1.0,
+            consensus=1.0
+        )
+        self.validators = {1: mock_validator}
+        self.logger.info("✅ Created mock validator for simulation")
+        
+        self.running = True
+        self.start_time = time.time()
+        
+        # Process prompts sequentially
+        tasks_processed = 0
+        tasks_skipped = 0
+        
+        try:
+            for i, prompt_text in enumerate(prompts):
+                if not self.running:
+                    self.logger.info("🛑 Simulation interrupted.")
+                    break
+                
+                # Create a simulated task
+                task_id = f"sim_{i+1}"
+                prompt_hash = hashlib.sha256(prompt_text.encode()).hexdigest()
+                
+                # Check if already processed
+                if self.db.is_duplicate_prompt(prompt_text, 1, hours_window=24):
+                    self.logger.info(f"⏭️ Skipping already processed prompt: '{prompt_text[:50]}...'")
+                    tasks_skipped += 1
+                    continue
+                
+                # Create task record
+                task = TaskRecord(
+                    task_id=task_id,
+                    prompt=prompt_text,
+                    prompt_hash=prompt_hash,
+                    validator_uid=1,  # Simulated validator
+                    validator_hotkey="simulator",
+                    validator_stake=1000.0,
+                    validation_threshold=0.3,
+                    pulled_at=time.time()
+                )
+                
+                self.logger.info(f"🔄 Processing simulation task {task_id}: '{prompt_text[:50]}...'")
+                
+                # Process the task using existing methods
+                success = await self.process_task(task, mock_validator)
+                if success:
+                    tasks_processed += 1
+                    self.logger.info(f"✅ Simulation task {task_id} completed successfully")
+                else:
+                    self.logger.error(f"❌ Simulation task {task_id} failed")
+                
+                # Small delay between tasks
+                await asyncio.sleep(1)
+                
+        except KeyboardInterrupt:
+            self.logger.info("🛑 Simulation interrupted by user.")
+        except Exception as e:
+            self.logger.error(f"❌ Simulation error: {e}")
+            traceback.print_exc()
+        finally:
+            self.running = False
+            
+            # Print simulation results
+            self.logger.info("\n" + "="*60)
+            self.logger.info("📊 SIMULATION COMPLETE")
+            self.logger.info(f"Prompts loaded: {len(prompts)}")
+            self.logger.info(f"Tasks processed: {tasks_processed}")
+            self.logger.info(f"Tasks skipped: {tasks_skipped}")
+            
+            # Show validation statistics if validation was enabled
+            if self.config.get('validate_generations', False):
+                self.logger.info(f"Successful validations: {self.stats.get('successful_validations', 0)}")
+                if self.stats.get('successful_validations', 0) > 0:
+                    avg_val_time = self.stats.get('total_validation_time', 0) / self.stats.get('successful_validations', 1)
+                    self.logger.info(f"Average validation time: {avg_val_time:.2f}s")
+            else:
+                self.logger.info("Validation: DISABLED")
+            
+            self.logger.info(f"Outputs saved in: {self.output_dir}")
+            self.logger.info("="*60)
+            self.logger.info("🏁 Simulation stopped")
     
     def _on_priority_interruption(self):
         """Callback when priority interruption occurs"""
@@ -9305,7 +9552,7 @@ async def main():
     parser.add_argument("--no-submit", action="store_true", help="Disable result submission")
     parser.add_argument("--generation-server", default="http://localhost:8096", help="TRELLIS generation server URL")
     parser.add_argument("--validation-server", default="http://localhost:10006", help="Validation server URL")
-    parser.add_argument("--output-dir", default="./continuous_trellis_outputs", help="Output directory")
+    parser.add_argument("--output-dir", help="Output directory (default: ./continuous_trellis_simulation_outputs for simulate mode, ./continuous_trellis_outputs otherwise)")
     parser.add_argument("--min-score", type=float, default=0.3, help="Minimum local validation score")
     
     # Prompt optimization arguments
@@ -9402,6 +9649,10 @@ async def main():
     parser.add_argument("--production-mv-gen", action="store_true", help="Use production quality preset: 512×512, optimal steps, cinema style")
     parser.add_argument("--quality-mv-gen", action="store_true", help="Use highest quality preset: 1024×1024, maximum steps, 3D style")
     
+    # Simulation mode arguments
+    parser.add_argument("--simulate", action="store_true", help="Enable simulation mode - process prompts from a file instead of harvesting from network")
+    parser.add_argument("--promptfile", help="Path to Python file with EPISODIC_TEST_PROMPTS list (required for simulation mode)")
+    
     args = parser.parse_args()
     
     # Build config
@@ -9416,7 +9667,13 @@ async def main():
     
     config['generation_server_url'] = args.generation_server
     config['validation_server_url'] = args.validation_server
-    config['output_dir'] = args.output_dir
+    
+    # Set output directory with different defaults for simulate mode
+    if args.output_dir:
+        config['output_dir'] = args.output_dir
+    else:
+        config['output_dir'] = './continuous_trellis_simulation_outputs' if args.simulate else './continuous_trellis_outputs'
+    
     config['min_local_score'] = args.min_score
     
     # Prompt optimization configuration
@@ -9557,6 +9814,28 @@ async def main():
     config['production_mv_gen'] = args.production_mv_gen
     config['quality_mv_gen'] = args.quality_mv_gen
     
+    # Simulation mode configuration
+    config['simulation_mode'] = args.simulate
+    if args.simulate:
+        if not args.promptfile:
+            print("❌ Error: --promptfile is required when using --simulate mode")
+            exit(1)
+        config['promptfile'] = args.promptfile
+        # Enable validation by default in simulation mode (unless explicitly disabled)
+        if not args.no_validate:
+            config['validate_generations'] = True
+            print(f"🎯 Simulation mode ENABLED - will process prompts from: {args.promptfile}")
+            print(f"📊 Validation ENABLED in simulation mode (use --no-validate to disable)")
+        else:
+            print(f"🎯 Simulation mode ENABLED - will process prompts from: {args.promptfile}")
+            print(f"📊 Validation DISABLED in simulation mode")
+        
+        # Reconfigure logging for simulation mode
+        log_filename = setup_logging(simulate_mode=True)
+        print(f"📝 Logging configured for simulation mode: {log_filename}")
+    else:
+        print("🔄 Normal mode ENABLED - will harvest tasks from network")
+    
     # Log the selected generation preset
     if args.fastest_mv_gen:
         print("🚀 Using FASTEST generation preset: 256×256, minimal steps, short prompts")
@@ -9572,11 +9851,16 @@ async def main():
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)
     
-    # 🚨 CRITICAL: Check for existing violations before starting
-    orchestrator._check_existing_critical_violations()
-    
     try:
-        await orchestrator.continuous_mining_loop()
+        if config.get('simulation_mode', False):
+            # Run in simulation mode (skip Bittensor-related checks)
+            print("🎯 Simulation mode: Skipping Bittensor-related startup checks")
+            await orchestrator.run_simulation()
+        else:
+            # Run in normal mining mode
+            # 🚨 CRITICAL: Check for existing violations before starting
+            orchestrator._check_existing_critical_violations()
+            await orchestrator.continuous_mining_loop()
     except Exception as e:
         logger.error(f"❌ Orchestrator failed: {e}")
         traceback.print_exc()

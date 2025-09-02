@@ -17,9 +17,10 @@ curl "http://localhost:8096/assets/"
 # Download compressed PLY file
 curl "http://localhost:8096/assets/gaussian_splatting_ply" -o model.ply.spz
 
-python test_reproducibility_quality.py "stone-etched armor with leafy pattern" --port 8099 --endpoint "generate/" --min-similarity 0.3 --log-count 7 --ss_steps 12 --slat_steps 12 --slat_guidance  3.5 --ss_guidance 7.5
+ython test_reproducibility_quality.py "stone-etched armor with leafy pattern" --port 8099 --endpoint "generate/" --min-similarity 0.3 --log-count 7 --ss_steps 12 --slat_steps 12 --slat_guidance  3.5 --ss_guidance 7.5
 
-vllm serve NousResearch/Hermes-3-Llama-3.2-3B   --served-model-name llama-3-2-3b-it   --generation-config auto   --port 11300   --max-model-len 1000   --gpu-memory-utilization 0.13   --dtype=bfloat16   --kv-cache-dtype=auto   --swap-space 4   --cpu-offload-gb 2
+python trellis_subnit_server_mix_lora_flash_unload.py  --port 8096
+python trellis_subnit_server_mix_lora_flash_grid.py  --port 8096
 """
 
 import os
@@ -74,7 +75,7 @@ torch.backends.cudnn.benchmark = False       # Disable for reproducibility
 torch.backends.cuda.matmul.allow_tf32 = True
 # Set environment variables
 os.environ['SPCONV_ALGO'] = 'native'
-# os.environ['ATTN_BACKEND'] = 'xformers'
+os.environ['ATTN_BACKEND'] = 'xformers'
 # export ATTN_BACKEND=xformers
 # export SPARSE_ATTN_BACKEND=xformers
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
@@ -112,9 +113,6 @@ from patcher import patch_final_layer_adaLN
 # NUM_INFERENCE_STEPS = 8
 NUM_INFERENCE_STEPS = 7
 MAX_SEED = np.iinfo(np.int32).max
-
-# Global flag to control Flux unload behavior (set by command line argument)
-UNLOAD_FLUX_AFTER_GENERATION = False
 
 # # Configuration
 # GENERATION_CONFIG = {
@@ -238,7 +236,7 @@ GENERATION_CONFIG = {
     'trellis_compile_flow_models': False,
     'flux_use_schnell_socket': False,
     'flux_use_schnell': True,
-    'flux_schnell_steps': 4,
+    'flux_schnell_steps': 6,
     'flux_schnell_guidance': 0.0,
 }
 
@@ -811,8 +809,8 @@ class TrellisGenerator:
                         
             self.flux_pipeline.to("cuda")
 
-            # from flux_caching import apply_cache_on_pipe
-            # apply_cache_on_pipe(self.flux_pipeline)
+            from flux_caching import apply_cache_on_pipe
+            apply_cache_on_pipe(self.flux_pipeline)
             self.flux_pipeline.to(memory_format=torch.channels_last)
             self.flux_pipeline.vae = torch.compile(self.flux_pipeline.vae, mode="max-autotune")
             # if GENERATION_CONFIG.get('flux_use_schnell', False):
@@ -827,16 +825,16 @@ class TrellisGenerator:
             if GENERATION_CONFIG.get('flux_use_schnell', False):
                 try:
                     print("🧪 Warming up FLUX.1-schnell (2x empty prompt, 4 steps)...")
-                    # for _ in range(2):
-                    #     gc.collect()
-                    #     with torch.no_grad():
-                    #         _ = self.flux_pipeline(
-                    #             prompt="",
-                    #             width=1024,
-                    #             height=1024,
-                    #             guidance_scale=GENERATION_CONFIG.get('flux_schnell_guidance', 0.0),
-                    #             num_inference_steps=GENERATION_CONFIG.get('flux_schnell_steps', 4)
-                    #         )
+                    for _ in range(2):
+                        gc.collect()
+                        with torch.no_grad():
+                            _ = self.flux_pipeline(
+                                prompt="",
+                                width=1024,
+                                height=1024,
+                                guidance_scale=GENERATION_CONFIG.get('flux_schnell_guidance', 0.0),
+                                num_inference_steps=GENERATION_CONFIG.get('flux_schnell_steps', 4)
+                            )
                     print("✓ FLUX schnell warmup complete")
                 except Exception as we:
                     print(f"⚠️ FLUX schnell warmup skipped: {we}")
@@ -1616,7 +1614,7 @@ class TrellisGenerator:
                 generation_asset.add_asset(AssetType.FLUX_IMAGE, image)  # Keep same asset type for compatibility
                 
                 # Unload FLUX models
-                self._unload_flux_models()
+                # self._unload_flux_models()
                 
                 # # Step 1.3: Center object in image before background removal
                 # if GENERATION_CONFIG.get('enable_object_centering', True):
@@ -2437,7 +2435,7 @@ async def generate_3d_model_endpoint(
                 print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
                 print(f"   Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
             
-            response = _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -2453,56 +2451,20 @@ async def generate_3d_model_endpoint(
         except Exception as e:
             print(f"⚠️ SPZ compression failed: {e}")
             # Fall back to uncompressed
-            response = _create_response_with_flux_unload(
-                content=ply_data,
-                media_type="application/octet-stream",
-                headers={
-                    "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
-                    "X-Generation-Seed": str(seed),
-                    "X-Generation-Prompt": prompt,
-                    "X-Model-Format": "gaussian_splatting_ply",
-                    "X-Pipeline": "flux_trellis",
-                    "X-Compression": "none"
-                }
-            )
-    else:
-        # Return uncompressed PLY data
-        response = _create_response_with_flux_unload(
-            content=ply_data,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
-                "X-Generation-Seed": str(seed),
-                "X-Generation-Prompt": prompt,
-                "X-Model-Format": "gaussian_splatting_ply",
-                "X-Pipeline": "flux_trellis",
-                "X-Compression": "none"
-            }
-        )
     
-    return response
-
-async def _unload_flux_after_response():
-    """Background task to unload Flux models after response is sent"""
-    try:
-        await asyncio.sleep(0.1)  # Small delay to ensure response is sent
-        generator._unload_flux_models()
-    except Exception as e:
-        print(f"⚠️ Error unloading Flux models: {e}")
-
-def _create_response_with_flux_unload(content, media_type, headers):
-    """Helper function to create response and schedule Flux unload if enabled"""
-    response = Response(content=content, media_type=media_type, headers=headers)
-    if UNLOAD_FLUX_AFTER_GENERATION:
-        asyncio.create_task(_unload_flux_after_response())
-    return response
-
-def _create_json_response_with_flux_unload(content, status_code=200):
-    """Helper function to create JSON response and schedule Flux unload if enabled"""
-    response = JSONResponse(content=content, status_code=status_code)
-    if UNLOAD_FLUX_AFTER_GENERATION:
-        asyncio.create_task(_unload_flux_after_response())
-    return response
+    # Return uncompressed PLY data
+    return Response(
+        content=ply_data,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename=trellis_model_{seed}.ply",
+            "X-Generation-Seed": str(seed),
+            "X-Generation-Prompt": prompt,
+            "X-Model-Format": "gaussian_splatting_ply",
+            "X-Pipeline": "flux_trellis",
+            "X-Compression": "none"
+        }
+    )
 
 @app.post("/validate/")
 async def validate_generation(
@@ -2855,7 +2817,7 @@ async def generate_with_isometric_3d_lora(
         
         # Return compressed data if requested
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -2870,7 +2832,7 @@ async def generate_with_isometric_3d_lora(
             )
         
         # Return uncompressed PLY data
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -2931,7 +2893,7 @@ async def generate_with_live_3d_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -2945,7 +2907,7 @@ async def generate_with_live_3d_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3006,7 +2968,7 @@ async def generate_with_game_assets_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3020,7 +2982,7 @@ async def generate_with_game_assets_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3081,7 +3043,7 @@ async def generate_with_patched_realism_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3095,7 +3057,7 @@ async def generate_with_patched_realism_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3156,7 +3118,7 @@ async def generate_with_tf2_style_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3170,7 +3132,7 @@ async def generate_with_tf2_style_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3231,7 +3193,7 @@ async def generate_with_baolei_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3245,7 +3207,7 @@ async def generate_with_baolei_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3306,7 +3268,7 @@ async def generate_with_cartoon_3d_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3320,7 +3282,7 @@ async def generate_with_cartoon_3d_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3381,7 +3343,7 @@ async def generate_with_cinema_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3395,7 +3357,7 @@ async def generate_with_cinema_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3459,7 +3421,7 @@ async def generate_with_sd15_game_icon_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3473,7 +3435,7 @@ async def generate_with_sd15_game_icon_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3537,7 +3499,7 @@ async def generate_with_necklace_lora(
         ply_data, compressed_data = result
         
         if return_compressed and compressed_data:
-            return _create_response_with_flux_unload(
+            return Response(
                 content=compressed_data,
                 media_type="application/octet-stream",
                 headers={
@@ -3551,7 +3513,7 @@ async def generate_with_necklace_lora(
                 }
             )
         
-        return _create_response_with_flux_unload(
+        return Response(
             content=ply_data,
             media_type="application/octet-stream",
             headers={
@@ -3629,7 +3591,7 @@ async def generate_image_with_isometric_3d_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -3702,7 +3664,7 @@ async def generate_image_with_live_3d_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -3775,7 +3737,7 @@ async def generate_image_with_game_assets_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -3848,7 +3810,7 @@ async def generate_image_with_patched_realism_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -3921,7 +3883,7 @@ async def generate_image_with_tf2_style_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -3994,7 +3956,7 @@ async def generate_image_with_baolei_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -4067,7 +4029,7 @@ async def generate_image_with_cartoon_3d_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -4140,7 +4102,7 @@ async def generate_image_with_cinema_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -4280,7 +4242,7 @@ async def generate_image_with_necklace_lora(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -4614,7 +4576,7 @@ async def optimize_and_generate_endpoint(
             ply_base64 = base64.b64encode(ply_data).decode('utf-8')
             response_data["ply_data"] = ply_base64
         
-        return _create_json_response_with_flux_unload(content=response_data)
+        return JSONResponse(content=response_data)
         
     except Exception as e:
         print(f"❌ Optimize-and-generate failed: {e}")
@@ -4783,7 +4745,7 @@ async def generate_both_ply_and_image(
             ply_base64 = base64.b64encode(ply_data).decode('utf-8')
             response_data["ply_data"] = ply_base64
         
-        return _create_json_response_with_flux_unload(content=response_data)
+        return JSONResponse(content=response_data)
         
     except Exception as e:
         print(f"❌ Generate both failed: {e}")
@@ -4879,7 +4841,7 @@ async def generate_both_with_cinema_lora(
             ply_base64 = base64.b64encode(ply_data).decode('utf-8')
             response_data["ply_data"] = ply_base64
         
-        return _create_json_response_with_flux_unload(content=response_data)
+        return JSONResponse(content=response_data)
         
     except Exception as e:
         print(f"❌ Generate both with Cinema LoRA failed: {e}")
@@ -4975,7 +4937,7 @@ async def generate_flux_socket_image(
         # Encode as base64 for JSON response
         image_base64 = base64.b64encode(image_data).decode('utf-8')
         
-        return _create_json_response_with_flux_unload(content={
+        return JSONResponse(content={
             "status": "success",
             "prompt": prompt,
             "seed": seed,
@@ -5191,7 +5153,7 @@ async def generate_flux_socket_3d_model(
             ply_base64 = base64.b64encode(ply_data).decode('utf-8')
             response_data["ply_data"] = ply_base64
         
-        return _create_json_response_with_flux_unload(content=response_data)
+        return JSONResponse(content=response_data)
         
     except Exception as e:
         print(f"❌ FLUX socket + TRELLIS generation failed: {e}")
@@ -5583,7 +5545,7 @@ async def generate_flux_socket_3d_model_with_lora(
             ply_base64 = base64.b64encode(ply_data).decode('utf-8')
             response_data["ply_data"] = ply_base64
         
-        return _create_json_response_with_flux_unload(content=response_data)
+        return JSONResponse(content=response_data)
         
     except Exception as e:
         print(f"❌ FLUX socket + TRELLIS generation with LoRA failed: {e}")
@@ -5594,22 +5556,774 @@ async def generate_flux_socket_3d_model_with_lora(
         }, status_code=500)
 
 
+@app.post("/generate_3d_from_prompt_grid_flow/")
+async def generate_3d_from_prompt_grid_flow_endpoint(
+    base_prompt: str = Form(...),
+    style: str = Form("standard", description="Style to use: standard, cinema, 3d"),
+    seed: int = Form(42, description="Random seed for reproducibility"),
+    num_inference_steps: int = Form(8, description="Number of inference steps for image generation"),
+    guidance_scale: float = Form(3.5, description="Guidance scale for image generation"),
+    width: int = Form(1024, description="Image width"),
+    height: int = Form(1024, description="Image height"),
+    upscale: bool = Form(False, description="Whether to upscale images using Real-ESRGAN (4x)"),
+    remove_background: bool = Form(True, description="Whether to remove backgrounds from images"),
+    ss_guidance_strength: float = Form(7.5, description="Sparse structure guidance strength"),
+    ss_sampling_steps: int = Form(21, description="Sparse structure sampling steps"),
+    slat_guidance_strength: float = Form(4.0, description="SLAT guidance strength"),
+    slat_sampling_steps: int = Form(24, description="SLAT sampling steps"),
+    return_compressed: bool = Form(True, description="Whether to return compressed PLY"),
+    save_preview: bool = Form(False, description="Whether to save preview video"),
+    save_intermediate: bool = Form(False, description="Whether to save intermediate outputs (grid, cropped images, background-removed images)"),
+    filter_low_quality: bool = Form(True, description="Whether to filter low-quality Gaussians"),
+    timing: bool = Form(False, description="Whether to enable detailed timing measurements"),
+    image_endpoint: str = Form("standard", description="Image generation endpoint: standard, cinema, lora"),
+    lora_model: Optional[str] = Form(None, description="LoRA model to use if endpoint is 'lora'"),
+    use_short_prompt: bool = Form(True, description="Whether to use short prompt to avoid CLIP token limits")
+):
+    """
+    Comprehensive endpoint that follows the exact flow from test_img2img_prompt.py:
+    1. Generate grid image with multiple views
+    2. Crop grid into individual images
+    3. Optionally upscale images using Real-ESRGAN
+    4. Optionally remove backgrounds
+    5. Generate 3D model using TRELLIS multi-image pipeline
+    """
+    
+    try:
+        # Check if generator is available
+        if generator is None:
+            raise HTTPException(status_code=500, detail="Generator not initialized")
+        
+        # Input validation
+        if not base_prompt or not base_prompt.strip():
+            raise HTTPException(status_code=400, detail="base_prompt cannot be empty")
+        
+        if width <= 0 or height <= 0:
+            raise HTTPException(status_code=400, detail="width and height must be positive")
+        
+        if width > 2048 or height > 2048:
+            raise HTTPException(status_code=400, detail="width and height cannot exceed 2048")
+        
+        if num_inference_steps <= 0 or num_inference_steps > 50:
+            raise HTTPException(status_code=400, detail="num_inference_steps must be between 1 and 50")
+        
+        if guidance_scale <= 0 or guidance_scale > 20:
+            raise HTTPException(status_code=400, detail="guidance_scale must be between 0.1 and 20")
+        
+        if style not in ["standard", "cinema", "3d"]:
+            raise HTTPException(status_code=400, detail="style must be one of: standard, cinema, 3d")
+        
+        print(f"🎯 Starting comprehensive grid flow 3D generation for: '{base_prompt}'")
+        print(f"   Style: {style}, Seed: {seed}, Upscale: {upscale}, Background removal: {remove_background}")
+        start_time = time.time()
+        
+        # Step 1: Generate grid image with multiple views
+        print("\n🎨 Step 1: Generating grid image with multiple views...")
+        grid_start_time = time.time() if timing else None
+        
+        # Create grid prompt based on style and short_prompt option
+        if use_short_prompt:
+            grid_prompt = create_grid_prompt_short(base_prompt, style)
+            print(f"   Using short prompt ({len(grid_prompt)} chars): '{grid_prompt}'")
+        else:
+            grid_prompt = create_grid_prompt(base_prompt, style)
+            print(f"   Using full prompt ({len(grid_prompt)} chars): '{grid_prompt[:100]}...'")
+        
+        # Generate grid image using FLUX
+        try:
+            # Check if FLUX pipeline is loaded
+            if generator.flux_pipeline is None:
+                print("   Loading FLUX pipeline...")
+                generator._load_flux_models()
+                if generator.flux_pipeline is None:
+                    raise RuntimeError("Failed to load FLUX pipeline")
+                print("   ✓ FLUX pipeline loaded successfully")
+            
+            # Validate pipeline is callable
+            if not callable(generator.flux_pipeline):
+                raise RuntimeError("FLUX pipeline is not callable")
+            
+            print("   Generating grid image with FLUX...")
+            
+            # Load appropriate LoRA based on image_endpoint
+            if image_endpoint == "cinema":
+                print("   🎬 Loading Cinema LoRA...")
+                success = generator._load_lora('cinema')
+                if not success:
+                    print("   ⚠️ Failed to load Cinema LoRA, continuing without it...")
+                else:
+                    print("   ✅ Cinema LoRA loaded successfully")
+            elif image_endpoint == "lora" and lora_model:
+                print(f"   🎭 Loading custom LoRA: {lora_model}")
+                success = generator._load_lora(lora_model)
+                if not success:
+                    print(f"   ⚠️ Failed to load {lora_model} LoRA, continuing without it...")
+                else:
+                    print(f"   ✅ {lora_model} LoRA loaded successfully")
+            
+            # Create proper seed generator for FLUX
+            seed_generator = torch.Generator(device=GENERATION_CONFIG.get('device', 'cuda')).manual_seed(seed)
+            
+            # Use the correct FLUX pipeline parameters based on working examples
+            with torch.no_grad():
+                flux_output = generator.flux_pipeline(
+                    prompt=grid_prompt,
+                    generator=seed_generator,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    width=width,
+                    height=height
+                )
+            
+            if flux_output is None or not hasattr(flux_output, 'images') or len(flux_output.images) == 0:
+                raise RuntimeError("FLUX pipeline returned invalid output")
+            
+            grid_image = flux_output.images[0]
+            
+            if grid_image is None or grid_image.size[0] == 0 or grid_image.size[1] == 0:
+                raise RuntimeError("Failed to generate valid grid image")
+            
+            print(f"   ✓ Grid image generated successfully ({grid_image.size[0]}x{grid_image.size[1]})")
+            
+            # Save grid image if requested
+            if save_intermediate:
+                try:
+                    grid_filename = f"grid_{base_prompt[:30]}_{seed}.png"
+                    grid_path = os.path.join(GENERATION_CONFIG['output_dir'], grid_filename)
+                    grid_image.save(grid_path)
+                    print(f"   💾 Grid image saved: {grid_path}")
+                except Exception as save_e:
+                    print(f"   ⚠️ Failed to save grid image: {save_e}")
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate grid image: {str(e)}"
+            )
+        
+        if timing:
+            grid_time = time.time() - grid_start_time
+            print(f"   Grid generation time: {grid_time:.2f}s")
+        
+        # Step 2: Crop grid into individual views
+        print("\n✂️ Step 2: Cropping grid into individual views...")
+        crop_start_time = time.time() if timing else None
+        
+        try:
+            cropped_images = crop_grid_image(grid_image, grid_size=(2, 2))
+            print(f"   ✓ Grid cropped into 4 views:")
+            for view_name, image in cropped_images.items():
+                print(f"     - {view_name}: {image.size[0]}x{image.size[1]}")
+                
+                # Save cropped images if requested
+                if save_intermediate:
+                    try:
+                        cropped_filename = f"cropped_{view_name}_{base_prompt[:30]}_{seed}.png"
+                        cropped_path = os.path.join(GENERATION_CONFIG['output_dir'], cropped_filename)
+                        image.save(cropped_path)
+                        print(f"       💾 Saved: {cropped_path}")
+                    except Exception as save_e:
+                        print(f"       ⚠️ Failed to save {view_name} image: {save_e}")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to crop grid image: {str(e)}"
+            )
+        
+        if timing:
+            crop_time = time.time() - crop_start_time
+            print(f"   Cropping time: {crop_time:.2f}s")
+        
+        # Step 3: Optionally upscale images using Real-ESRGAN
+        upscaled_images = {}
+        upscale_time = 0  # Initialize timing variable
+        if upscale:
+            print("\n🚀 Step 3: Upscaling images with Real-ESRGAN (4x)...")
+            
+            # Check GPU memory before upscaling
+            if torch.cuda.is_available():
+                try:
+                    gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
+                    allocated_memory = torch.cuda.memory_allocated() / 1024**3  # GB
+                    free_memory = gpu_memory - allocated_memory
+                    
+                    if free_memory < 4.0:  # Need at least 4GB for upscaling
+                        print(f"   ⚠️ Insufficient GPU memory for upscaling: {free_memory:.1f}GB free, need 4GB+")
+                        print("   Skipping upscaling to avoid OOM errors...")
+                        upscale = False
+                    else:
+                        print(f"   GPU Memory: {free_memory:.1f}GB free, proceeding with upscaling")
+                except Exception as e:
+                    print(f"   ⚠️ Could not check GPU memory: {e}")
+                    print("   Proceeding with upscaling...")
+            
+            upscale_start_time = time.time() if timing else None
+            
+            try:
+                # Check if Real-ESRGAN is available
+                try:
+                    from RealESRGAN import RealESRGAN
+                    realesrgan_available = True
+                except ImportError:
+                    realesrgan_available = False
+                    print("   ⚠️ Real-ESRGAN not available, skipping upscaling")
+                
+                if realesrgan_available:
+                    # Initialize Real-ESRGAN
+                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    model = RealESRGAN(device, scale=4)
+                    
+                    # Load weights with fallback
+                    weights_path = 'weights/RealESRGAN_x4.pth'
+                    try:
+                        model.load_weights(weights_path, download=True)
+                    except Exception as e:
+                        print(f"   ⚠️ Failed to load Real-ESRGAN weights: {e}")
+                        print("   Skipping upscaling...")
+                        realesrgan_available = False
+                    
+                    if realesrgan_available:
+                        # Upscale the three main views
+                        for view_name in ["front", "side", "back"]:
+                            if view_name in cropped_images:
+                                print(f"   Upscaling {view_name} view...")
+                                image = cropped_images[view_name]
+                                
+                                # Process with Real-ESRGAN
+                                sr_image = model.predict(image, batch_size=4, patches_size=192)
+                                
+                                # Store upscaled image
+                                upscaled_images[view_name] = sr_image
+                                
+                                # Save upscaled image if requested
+                                if save_intermediate:
+                                    try:
+                                        upscaled_filename = f"upscaled_{view_name}_{base_prompt[:30]}_{seed}.png"
+                                        upscaled_path = os.path.join(GENERATION_CONFIG['output_dir'], upscaled_filename)
+                                        sr_image.save(upscaled_path)
+                                        print(f"       💾 Saved: {upscaled_path}")
+                                    except Exception as save_e:
+                                        print(f"       ⚠️ Failed to save {view_name} upscaled image: {save_e}")
+                                
+                                # Print size info
+                                scale_factor = sr_image.size[0] / image.size[0]
+                                print(f"     ✓ {view_name}: {image.size[0]}x{image.size[1]} → {sr_image.size[0]}x{sr_image.size[1]} ({scale_factor}x)")
+                        
+                        print(f"   ✓ Upscaling completed for {len(upscaled_images)} views")
+                    else:
+                        print("   ⚠️ Real-ESRGAN weights not available, using original images")
+                else:
+                    print("   ⚠️ Real-ESRGAN not available, using original images")
+                    
+            except Exception as e:
+                print(f"   ⚠️ Upscaling failed: {e}")
+                print("   Continuing with original images...")
+            
+            if timing:
+                upscale_time = time.time() - upscale_start_time
+                print(f"   Upscaling time: {upscale_time:.2f}s")
+        
+        # Step 4: Prepare images for 3D generation (use upscaled if available, otherwise original)
+        print("\n🖼️ Step 4: Preparing images for 3D generation...")
+        prep_start_time = time.time() if timing else None
+        
+        # Use upscaled images if available, otherwise use original cropped images
+        images_for_3d = []
+        image_names = ["front", "side", "back"]
+        
+        for view_name in image_names:
+            if view_name in upscaled_images:
+                images_for_3d.append(upscaled_images[view_name])
+                print(f"   Using upscaled {view_name} view: {upscaled_images[view_name].size[0]}x{upscaled_images[view_name].size[1]}")
+            elif view_name in cropped_images:
+                images_for_3d.append(cropped_images[view_name])
+                print(f"   Using original {view_name} view: {cropped_images[view_name].size[0]}x{cropped_images[view_name].size[1]}")
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Missing {view_name} view for 3D generation"
+                )
+        
+        if timing:
+            prep_time = time.time() - prep_start_time
+            print(f"   Image preparation time: {prep_time:.2f}s")
+        
+        # Step 5: Optionally remove backgrounds
+        bg_total_time = 0  # Initialize timing variable
+        if remove_background:
+            print("\n🧹 Step 5: Removing backgrounds from images...")
+            bg_start_time = time.time() if timing else None
+            
+            try:
+                if generator.background_remover is None:
+                    print("   Loading background remover...")
+                    generator._load_background_remover()
+                    if generator.background_remover is None:
+                        raise RuntimeError("Failed to load background remover")
+                    print("   ✓ Background remover loaded successfully")
+                
+                # Validate background remover is callable
+                if not callable(generator.background_remover):
+                    raise RuntimeError("Background remover is not callable")
+                
+                cleaned_images = []
+                for i, (image, name) in enumerate(zip(images_for_3d, image_names)):
+                    print(f"   Removing background from {name} image...")
+                    bg_single_start = time.time() if timing else None
+                    
+                    cleaned_image = generator.background_remover(image)
+                    
+                    if timing:
+                        bg_single_time = time.time() - bg_single_start
+                        print(f"     ✓ {name} background removed in {bg_single_time:.2f}s")
+                    else:
+                        print(f"     ✓ {name} background removed")
+                    
+                    # Save background-removed image if requested
+                    if save_intermediate:
+                        try:
+                            bg_removed_filename = f"bg_removed_{name}_{base_prompt[:30]}_{seed}.png"
+                            bg_removed_path = os.path.join(GENERATION_CONFIG['output_dir'], bg_removed_filename)
+                            cleaned_image.save(bg_removed_path)
+                            print(f"       💾 Saved: {bg_removed_path}")
+                        except Exception as save_e:
+                            print(f"       ⚠️ Failed to save {name} background-removed image: {save_e}")
+                    
+                    cleaned_images.append(cleaned_image)
+                
+                # Update images for 3D generation
+                images_for_3d = cleaned_images
+                print(f"   ✓ Background removal completed for all {len(cleaned_images)} images")
+                
+            except Exception as e:
+                print(f"   ⚠️ Background removal failed: {e}")
+                print("   Continuing with original images...")
+            
+            if timing:
+                bg_total_time = time.time() - bg_start_time
+                print(f"   Background removal time: {bg_total_time:.2f}s")
+        
+        # Step 6: Generate 3D model using TRELLIS multi-image pipeline
+        print("\n🎨 Step 6: Generating 3D model using TRELLIS pipeline...")
+        trellis_start_time = time.time() if timing else None
+        
+        try:
+            # Check if TRELLIS pipeline is available
+            if generator.trellis_pipeline is None:
+                print("   Loading TRELLIS pipeline...")
+                generator._load_trellis_pipeline()
+                if generator.trellis_pipeline is None:
+                    raise RuntimeError("Failed to load TRELLIS pipeline")
+                print("   ✓ TRELLIS pipeline loaded successfully")
+            
+            # Validate pipeline is callable
+            if not hasattr(generator.trellis_pipeline, 'run_multi_image'):
+                raise RuntimeError("TRELLIS pipeline missing run_multi_image method")
+            
+            # Enhanced TRELLIS parameters for maximum quality (Gaussian only)
+            use_fp16 = GENERATION_CONFIG.get('trellis_use_fp16', True) and torch.cuda.is_available()
+            
+            if use_fp16:
+                try:
+                    print("   Using FP16 optimization...")
+                    fp16_start = time.time() if timing else None
+                    
+                    with torch.autocast(device_type="cuda", dtype=torch.float16):
+                        outputs = generator.trellis_pipeline.run_multi_image(
+                            images_for_3d,
+                            seed=seed,
+                            formats=["gaussian"],  # Only Gaussian splatting, no mesh
+                            preprocess_image=True,
+                            sparse_structure_sampler_params={
+                                "steps": ss_sampling_steps,
+                                "cfg_strength": ss_guidance_strength,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            slat_sampler_params={
+                                "steps": slat_sampling_steps,
+                                "cfg_strength": slat_guidance_strength,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            mode="stochastic",
+                        )
+                    
+                    if timing:
+                        fp16_time = time.time() - fp16_start
+                        print(f"     ✓ FP16 generation completed in {fp16_time:.2f}s")
+                    else:
+                        print(f"     ✓ FP16 generation completed")
+                    
+                except RuntimeError as e:
+                    print("   ⚠️ FP16 generation failed, retrying without autocast...")
+                    fp16_fallback_start = time.time() if timing else None
+                    
+                    with torch.autocast(device_type="cuda", enabled=False):
+                        outputs = generator.trellis_pipeline.run_multi_image(
+                            images_for_3d,
+                            seed=seed,
+                            formats=["gaussian"],
+                            preprocess_image=True,
+                            sparse_structure_sampler_params={
+                                "steps": ss_sampling_steps,
+                                "cfg_strength": ss_guidance_strength,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            slat_sampler_params={
+                                "steps": slat_sampling_steps,
+                                "cfg_strength": slat_guidance_strength,
+                                "cfg_interval": (0.3, 0.98),
+                                "rescale_t": 3.0,
+                            },
+                            mode="stochastic",
+                        )
+                    
+                    if timing:
+                        fp16_fallback_time = time.time() - fp16_fallback_start
+                        print(f"     ✓ FP16 fallback generation completed in {fp16_fallback_time:.2f}s")
+                    else:
+                        print(f"     ✓ FP16 fallback generation completed")
+            else:
+                print("   Using FP32 generation...")
+                fp32_start = time.time() if timing else None
+                
+                outputs = generator.trellis_pipeline.run_multi_image(
+                    images_for_3d,
+                    seed=seed,
+                    formats=["gaussian"],
+                    preprocess_image=True,
+                    sparse_structure_sampler_params={
+                        "steps": ss_sampling_steps,
+                        "cfg_strength": ss_guidance_strength,
+                        "cfg_interval": (0.3, 0.98),
+                        "rescale_t": 3.0,
+                    },
+                    slat_sampler_params={
+                        "steps": slat_sampling_steps,
+                        "cfg_strength": slat_guidance_strength,
+                        "cfg_interval": (0.3, 0.98),
+                        "rescale_t": 3.0,
+                    },
+                    mode="stochastic",
+                )
+                
+                if timing:
+                    fp32_time = time.time() - fp32_start
+                    print(f"     ✓ FP32 generation completed in {fp32_time:.2f}s")
+                else:
+                    print(f"     ✓ FP32 generation completed")
+            
+            print(f"   ✓ 3D model generated successfully using TRELLIS pipeline")
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate 3D model with TRELLIS: {str(e)}"
+            )
+        
+        if timing:
+            trellis_time = time.time() - trellis_start_time
+            print(f"   TRELLIS generation time: {trellis_time:.2f}s")
+        
+        # Step 7: Extract and enhance Gaussian Splatting PLY
+        print("\n🔧 Step 7: Extracting and enhancing Gaussian Splatting PLY...")
+        ply_start_time = time.time() if timing else None
+        
+        try:
+            gaussian_output = outputs['gaussian'][0]
+            
+            # Quality enhancement: Filter low-quality splats
+            if filter_low_quality:
+                print("   Enhancing quality by filtering low-quality splats...")
+                quality_start = time.time() if timing else None
+                
+                try:
+                    points = gaussian_output.points
+                    opacities = gaussian_output.opacities
+                    scales = gaussian_output.scales
+                    
+                    # Filter out low-opacity and very small splats
+                    opacity_threshold = 0.01
+                    scale_threshold = 0.001
+                    
+                    # Create quality mask
+                    quality_mask = (opacities > opacity_threshold) & (torch.norm(scales, dim=1) > scale_threshold)
+                    
+                    if quality_mask.sum() > 7000:  # Ensure minimum splat count
+                        # Apply filtering
+                        gaussian_output.points = points[quality_mask]
+                        gaussian_output.opacities = opacities[quality_mask]
+                        gaussian_output.scales = scales[quality_mask]
+                        gaussian_output.rotations = gaussian_output.rotations[quality_mask]
+                        gaussian_output.features_dc = gaussian_output.features_dc[quality_mask]
+                        gaussian_output.features_rest = gaussian_output.features_rest[quality_mask]
+                        gaussian_output.normals = gaussian_output.normals[quality_mask]
+                        
+                        if timing:
+                            quality_time = time.time() - quality_start
+                            print(f"     ✓ Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,} in {quality_time:.2f}s")
+                        else:
+                            print(f"     ✓ Quality enhancement: Kept {quality_mask.sum().item():,} high-quality splats out of {len(points):,}")
+                    else:
+                        print(f"     Quality enhancement skipped: Too few splats would remain ({quality_mask.sum().item()})")
+                        
+                except Exception as e:
+                    print(f"     Quality enhancement failed: {e}")
+                    print("     Continuing with original splats...")
+            else:
+                print("   Quality filtering disabled, keeping all splats")
+            
+            # Save as PLY file
+            save_start = time.time() if timing else None
+            ply_buffer = io.BytesIO()
+            gaussian_output.save_ply(ply_buffer)
+            ply_data = ply_buffer.getvalue()
+            
+            if timing:
+                save_time = time.time() - save_start
+                print(f"     ✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes) in {save_time:.2f}s")
+                
+                ply_total_time = time.time() - ply_start_time
+                print(f"   Total PLY processing time: {ply_total_time:.2f}s")
+            else:
+                print(f"     ✓ Gaussian Splatting PLY extracted ({len(ply_data):,} bytes)")
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to extract PLY data: {str(e)}"
+            )
+        
+        # Step 8: Generate preview video if requested
+        preview_video = None
+        video_time = 0  # Initialize timing variable
+        if save_preview:
+            try:
+                print("\n🎬 Step 8: Generating preview video...")
+                video_start = time.time()
+                
+                # Check if required dependencies are available
+                try:
+                    import imageio
+                    imageio_available = True
+                except ImportError:
+                    imageio_available = False
+                    print("   ⚠️ ImageIO not available, skipping preview video generation")
+                
+                if imageio_available:
+                    video = render_utils.render_video(outputs['gaussian'][0], num_frames=120)['color']
+                    
+                    # Convert to MP4 bytes
+                    video_buffer = io.BytesIO()
+                    imageio.mimsave(video_buffer, video, fps=15, format='mp4')
+                    preview_video = video_buffer.getvalue()
+                    
+                    video_time = time.time() - video_start
+                    print(f"   ✓ Preview video generated ({len(preview_video):,} bytes) in {video_time:.2f}s")
+                else:
+                    print("   ⚠️ Preview video generation skipped due to missing dependencies")
+                    
+            except Exception as e:
+                print(f"   ⚠️ Preview video generation failed: {e}")
+                print("   Continuing without preview video...")
+        
+        # Step 9: Compress PLY if requested
+        compressed_data = None
+        compression_time = 0  # Initialize timing variable
+        if return_compressed:
+            try:
+                print("\n🗜️ Step 9: Compressing PLY with SPZ...")
+                compression_start = time.time()
+                
+                # Check if PySPZ is available
+                try:
+                    import pyspz
+                    pyspz_available = True
+                except ImportError:
+                    pyspz_available = False
+                    print("   ⚠️ PySPZ not available, skipping compression")
+                
+                if pyspz_available:
+                    compressed_data = pyspz.compress(ply_data, workers=-1)
+                    
+                    compression_time = time.time() - compression_start
+                    print(f"     ✓ SPZ Compression successful in {compression_time:.2f}s:")
+                    print(f"       Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
+                    print(f"       Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)")
+                    print(f"       Ratio: {len(compressed_data)/len(ply_data)*100:.1f}%")
+                else:
+                    print("   ⚠️ Compression skipped due to missing PySPZ dependency")
+                    compressed_data = None
+                
+            except Exception as e:
+                print(f"     ⚠️ SPZ compression failed: {e}")
+                print("   Continuing without compression...")
+                compressed_data = None
+        
+        # Calculate total generation time
+        generation_time = time.time() - start_time
+        print(f"\n🎉 Comprehensive grid flow 3D generation completed in {generation_time:.2f}s")
+        
+        # Print timing breakdown if enabled
+        if timing:
+            print(f"\n📊 Timing breakdown:")
+            print(f"   - Grid generation: {grid_time:.2f}s")
+            print(f"   - Grid cropping: {crop_time:.2f}s")
+            if upscale and upscale_time > 0:
+                print(f"   - Image upscaling: {upscale_time:.2f}s")
+            if remove_background and bg_total_time > 0:
+                print(f"   - Background removal: {bg_total_time:.2f}s")
+            print(f"   - TRELLIS pipeline: {trellis_time:.2f}s")
+            print(f"   - PLY processing: {ply_total_time:.2f}s")
+            if save_preview and preview_video and video_time > 0:
+                print(f"   - Video generation: {video_time:.2f}s")
+            if return_compressed and compressed_data and compression_time > 0:
+                print(f"   - Compression: {compression_time:.2f}s")
+        
+        # Prepare response data
+        response_data = {
+            "status": "success",
+            "base_prompt": base_prompt,
+            "style": style,
+            "seed": seed,
+            "generation_time": generation_time,
+            "pipeline": "comprehensive_grid_flow",
+            "steps_completed": [
+                "grid_image_generation",
+                "grid_cropping",
+                "optional_upscaling" if upscale else "no_upscaling",
+                "optional_background_removal" if remove_background else "no_background_removal",
+                "trellis_3d_generation"
+            ],
+            "image_sizes": [f"{img.size[0]}x{img.size[1]}" for img in images_for_3d],
+            "upscaled": upscale,
+            "background_removed": remove_background,
+            "quality_filtering": filter_low_quality,
+            "ply_size_bytes": len(ply_data),
+            "model_format": "gaussian_splatting_ply"
+        }
+        
+        if compressed_data:
+            response_data.update({
+                "compressed_size_bytes": len(compressed_data),
+                "compression_ratio": len(compressed_data)/len(ply_data)*100
+            })
+        
+        if preview_video:
+            response_data["preview_video_size_bytes"] = len(preview_video)
+        
+        # Return compressed data if requested
+        if return_compressed and compressed_data:
+            return Response(
+                content=compressed_data,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f"attachment; filename=grid_flow_{base_prompt[:30]}_{seed}.ply.spz",
+                    "X-Generation-Seed": str(seed),
+                    "X-Model-Format": "gaussian_splatting_ply",
+                    "X-Pipeline": "comprehensive_grid_flow",
+                    "X-Compression": "spz",
+                    "X-Compression-Ratio": f"{len(compressed_data)/len(ply_data)*100:.1f}%",
+                    "X-Generation-Time": f"{generation_time:.2f}s",
+                    "X-Response-Data": json.dumps(response_data)
+                }
+            )
+        
+        # Return uncompressed PLY data
+        return Response(
+            content=ply_data,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename=grid_flow_{base_prompt[:30]}_{seed}.ply",
+                "X-Generation-Seed": str(seed),
+                "X-Model-Format": "gaussian_splatting_ply",
+                "X-Pipeline": "comprehensive_grid_flow",
+                "X-Compression": "none",
+                "X-Generation-Time": f"{generation_time:.2f}s",
+                "X-Response-Data": json.dumps(response_data)
+            }
+        )
+        
+    except Exception as e:
+        print(f"❌ Comprehensive grid flow 3D generation failed: {e}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Comprehensive grid flow 3D generation failed: {str(e)}"
+        )
+
+# Helper functions for grid generation
+def create_grid_prompt_short(base_prompt: str, style: str = "standard") -> str:
+    """Create a short grid prompt that fits within CLIP token limits."""
+    if style == "cinema":
+        base_system = "cinematic, dramatic lighting, professional photography"
+    elif style == "3d":
+        base_system = "3D isometric object asset, white background"
+    else:
+        base_system = "high quality, centered composition"
+    
+    grid_prompt = f"""2x2 grid: {base_prompt}. Top-left: front view. Top-right: side view. Bottom-left: back view. Bottom-right: 45-degree view. Same object, style, lighting."""
+    return grid_prompt
+
+def create_grid_prompt(base_prompt: str, style: str = "standard") -> str:
+    """Create a detailed grid prompt for multiple views."""
+    if style == "cinema":
+        base_system = "cinematic, dramatic lighting, professional photography, centered composition, clean edges, high detail"
+    elif style == "3d":
+        base_system = "3D isometric object asset, white background, centered composition, clean edges, high detail, professional 3D modeling style"
+    else:
+        base_system = "high quality, centered composition, clean edges, high detail, professional photography"
+    
+    grid_prompt = f"""A 2x2 grid composed of four visually distinct images of the same {base_prompt}:
+
+Top-left: {base_system}, {base_prompt}, front view, facing camera directly, symmetrical composition, centered subject, white background.
+
+Top-right: {base_system}, {base_prompt}, side view, 90 degree angle, profile view, clear silhouette, centered subject, white background.
+
+Bottom-left: {base_system}, {base_prompt}, back view, opposite side from front, clear rear details, centered subject, white background.
+
+Bottom-right: {base_system}, {base_prompt}, 45-degree angle view, three-quarter perspective, showing both front and side, centered subject, white background.
+
+Each section should be visually distinct while maintaining the exact same {base_prompt} object, style, lighting, and quality. The grid should have clear borders between sections."""
+    
+    return grid_prompt
+
+def crop_grid_image(grid_image, grid_size=(2, 2)):
+    """Crop a grid image into individual sections."""
+    width, height = grid_image.size
+    cell_width = width // grid_size[1]
+    cell_height = height // grid_size[0]
+    
+    cropped_images = {}
+    positions = ["front", "side", "back", "three_quarter"]
+    
+    for i, position in enumerate(positions):
+        row = i // grid_size[1]
+        col = i % grid_size[1]
+        
+        left = col * cell_width
+        top = row * cell_height
+        right = left + cell_width
+        bottom = top + cell_height
+        
+        cropped = grid_image.crop((left, top, right, bottom))
+        cropped_images[position] = cropped
+    
+    return cropped_images
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FLUX + TRELLIS Generation Server")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8096, help="Port to bind to")
     parser.add_argument("--workers", type=int, default=1, help="Number of worker processes")
-    parser.add_argument("--unload-flux", action="store_true", help="Unload Flux models after each generation to free GPU memory")
     
     args = parser.parse_args()
     
-    # Set global flag to control Flux unload behavior
-    UNLOAD_FLUX_AFTER_GENERATION = args.unload_flux
-    
     print(f"Starting FLUX + TRELLIS Generation Server on {args.host}:{args.port}")
-    if UNLOAD_FLUX_AFTER_GENERATION:
-        print("🧹 Flux unload enabled: Models will be unloaded after each generation")
     print("=" * 80)
     print("Pipeline: Text → FLUX → Image → TRELLIS → Gaussian Splatting PLY")
     print("Features:")
@@ -5618,7 +6332,6 @@ if __name__ == "__main__":
     print("  • SPZ compression for efficient storage/transmission")
     print("  • Optional validation integration")
     print("  • Memory-optimized for RTX 4090 (24GB)")
-    print(f"  • Flux unload after generation: {'Enabled' if UNLOAD_FLUX_AFTER_GENERATION else 'Disabled'}")
     print("=" * 80)
     
     uvicorn.run(
