@@ -6043,21 +6043,41 @@ class ContinuousTrellisOrchestrator:
         if self.config.get('fastest_mv_gen'):
             # 🚀 FASTEST Configuration (Speed Priority)
             # Expected: ~35-45s generation time, 4-6/10 quality, 5-10 MB PLY
+            # return {
+            #     'ss_sampling_steps': 15,           # Minimal TRELLIS steps
+            #     'slat_sampling_steps': 15,         # Minimal TRELLIS steps
+            #     'slat_guidance_strength': 5.0,     # Reduced guidance for speed
+            #     'ss_guidance_strength': 3.0,       # Reduced guidance for speed
+            #     'width': 256,                      # Smallest resolution
+            #     'height': 256,                     # Smallest resolution
+            #     'num_inference_steps': 4,          # Minimal FLUX steps
+            #     'guidance_scale': 2.5,             # Lower guidance for speed
+            #     'upscale': False,                  # Never upscale (proven harmful)
+            #     'remove_background': True,#False,        # Skip for speed
+            #     'use_short_prompt': True,          # Short prompts for speed
+            #     'filter_low_quality': False,       # Skip quality filtering
+            #     'save_preview': False,             # Skip preview generation
+            #     'save_intermediate': False         # Skip intermediate saves
+            # }
             return {
-                'ss_sampling_steps': 15,           # Minimal TRELLIS steps
-                'slat_sampling_steps': 15,         # Minimal TRELLIS steps
-                'slat_guidance_strength': 5.0,     # Reduced guidance for speed
-                'ss_guidance_strength': 3.0,       # Reduced guidance for speed
-                'width': 256,                      # Smallest resolution
-                'height': 256,                     # Smallest resolution
-                'num_inference_steps': 4,          # Minimal FLUX steps
-                'guidance_scale': 2.5,             # Lower guidance for speed
-                'upscale': False,                  # Never upscale (proven harmful)
-                'remove_background': True,#False,        # Skip for speed
-                'use_short_prompt': True,          # Short prompts for speed
-                'filter_low_quality': False,       # Skip quality filtering
-                'save_preview': False,             # Skip preview generation
-                'save_intermediate': False         # Skip intermediate saves
+                # "style": "3d",
+                # "seed": 456,
+                "num_inference_steps": 16,
+                "guidance_scale": 5.0,
+                "width": 1024,
+                "height": 1024,
+                "upscale": True,
+                "remove_background": True,
+                "ss_guidance_strength": 8.0,
+                "ss_sampling_steps": 25,
+                "slat_guidance_strength": 5.0,
+                "slat_sampling_steps": 30,
+                # "return_compressed": True,  # Get uncompressed PLY
+                "save_preview": False,        # Generate preview video
+                "save_intermediate": False,   # Save all intermediate outputs
+                "filter_low_quality": False,
+                # "timing": False,
+                "use_short_prompt": True
             }
         elif self.config.get('long_fast_mv_gen'):
             # ⚡ FAST but GOOD QUALITY Configuration (Balanced)
@@ -6144,21 +6164,38 @@ class ContinuousTrellisOrchestrator:
             # 🚀 FASTEST Configuration (Speed Priority) - REVOLUTIONARY UPDATE
             # Expected: ~64-75s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
             # Key Discovery: 512×512 is actually FASTER than 256×256 with perfect quality!
+            # return {
+            #     'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+            #     'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+            #     'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+            #     'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+            #     'width': 512,                      # Sweet spot resolution (proven fastest with quality)
+            #     'height': 512,                     # Sweet spot resolution
+            #     'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+            #     'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+            #     'upscale': False,                  # Never upscale (proven harmful in validation)
+            #     'remove_background': True,         # Enable (proven no time impact in validation)
+            #     'use_short_prompt': True,          # Short prompts (proven faster in validation)
+            #     'filter_low_quality': True,        # Enable (proven no time impact in validation)
+            #     'save_preview': True,              # Enable (proven no time impact in validation)
+            #     'save_intermediate': False          # Enable (proven no time impact in validation)
+            # }
             return {
-                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
-                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
-                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
-                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
-                'width': 512,                      # Sweet spot resolution (proven fastest with quality)
-                'height': 512,                     # Sweet spot resolution
-                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
-                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
-                'upscale': False,                  # Never upscale (proven harmful in validation)
-                'remove_background': True,         # Enable (proven no time impact in validation)
-                'use_short_prompt': True,          # Short prompts (proven faster in validation)
-                'filter_low_quality': True,        # Enable (proven no time impact in validation)
-                'save_preview': True,              # Enable (proven no time impact in validation)
-                'save_intermediate': True          # Enable (proven no time impact in validation)
+                "num_inference_steps": 16,
+                "guidance_scale": 3.5,
+                "width": 1024,
+                "height": 1024,
+                "upscale": True,
+                "remove_background": True,
+                "ss_guidance_strength": 8.0,
+                "ss_sampling_steps": 25,
+                "slat_guidance_strength": 5.0,
+                "slat_sampling_steps": 30,
+                "save_preview": False,        # Generate preview video
+                "save_intermediate": False,   # Save all intermediate outputs
+                "filter_low_quality": False,
+                "use_short_prompt": True, 
+                "image_endpoint": "cinema"
             }
         elif self.config.get('long_fast_mv_gen'):
             # ⚡ FAST but GOOD QUALITY Configuration (Balanced) - UPDATED
@@ -6277,14 +6314,21 @@ class ContinuousTrellisOrchestrator:
             # if "white background" not in cleaned_prompt.lower():
             #     cleaned_prompt = cleaned_prompt + " front view, white background"
             
-            optimize_generation = False
+            optimize_generation = True
             if optimize_generation:
                 ### lOOP:
                 max_iterations = 3
                 idx = 0
+                best_similarity = 0.0
+                best_optimization_result = None
+                best_cleaned_prompt = None
+                best_optimized_prompt = None
+                best_lora_info = None
+                best_endpoint = None
+                
                 while idx < max_iterations:
                     # Step 2: Generate with optimized prompt
-                    self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+                    self.logger.info(f"🔄 Step 2: Generating with optimized prompt (iteration {idx + 1})")
                     optimization_result = self.optimize_prompt_for_generation(task)
                     optimized_prompt = optimization_result['optimized_prompt']
                     lora_info = optimization_result['lora_info']
@@ -6297,21 +6341,47 @@ class ContinuousTrellisOrchestrator:
                     
                     # Compute cosine similarity between original and optimized prompts
                     original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
+                    current_similarity = original_optimized_similarity['cosine_similarity']
+                    
+                    # Track the best result so far
+                    if current_similarity > best_similarity:
+                        best_similarity = current_similarity
+                        best_optimization_result = optimization_result
+                        best_cleaned_prompt = cleaned_prompt
+                        best_optimized_prompt = optimized_prompt
+                        best_lora_info = lora_info
+                        best_endpoint = endpoint
+                        self.logger.info(f"📈 New best similarity: {best_similarity:.3f}")
                     
                     # Check similarity threshold
-                    if original_optimized_similarity['cosine_similarity'] > 0.65:
+                    if current_similarity > 0.65:
+                        self.logger.info(f"✅ Found prompt with similarity > 0.65: {current_similarity:.3f}")
                         break
                         
-                    self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
+                    self.logger.warning(f"⚠️ Original and optimized prompts are very different (similarity: {current_similarity:.3f}), retrying")
                     idx += 1
                         
                 optimization_failed=False
-                if original_optimized_similarity['cosine_similarity'] < 0.65:
-                    self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
-                    cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
-                    optimized_prompt = task.prompt
+                # if original_optimized_similarity['cosine_similarity'] < 0.65:
+                #     self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
+                #     cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
+                #     optimized_prompt = task.prompt
+                if best_similarity < 0.65:
+                    self.logger.error(f"❌ No prompt achieved >0.65 similarity. Using best result with similarity: {best_similarity:.3f}")
+                    # Use the best result we found
+                    optimization_result = best_optimization_result
+                    cleaned_prompt = best_cleaned_prompt
+                    optimized_prompt = best_optimized_prompt
+                    lora_info = best_lora_info
+                    endpoint = best_endpoint
                     optimization_failed=True
-                    optimization_result['optimized_prompt'] = cleaned_prompt
+                else:
+                    # Use the current result (which achieved >0.65)
+                    optimization_result = optimization_result
+                    cleaned_prompt = cleaned_prompt
+                    optimized_prompt = optimized_prompt
+                    lora_info = lora_info
+                    endpoint = endpoint
                 
                 original_endpoint = optimization_result['endpoint']
             else:
@@ -6334,8 +6404,8 @@ class ContinuousTrellisOrchestrator:
             
             # Use the recommended endpoint (may be different from original due to 0.0 score tracking)
             # endpoint = recommended_endpoint
-            endpoint = original_endpoint
-            
+            # endpoint = original_endpoint
+            endpoint = "/generate_3d_from_prompt_grid_flow/"
             # Store the endpoint used for tracking purposes
             task.endpoint_used = endpoint
             
@@ -6418,25 +6488,45 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"   📏 Resolution: {generation_params.get('width', 'N/A')}×{generation_params.get('height', 'N/A')}")
                 self.logger.info(f"   🔄 TRELLIS steps: SS={generation_params.get('ss_sampling_steps', 'N/A')}, SLAT={generation_params.get('slat_sampling_steps', 'N/A')}")
                 self.logger.info(f"   🎯 FLUX steps: {generation_params.get('num_inference_steps', 'N/A')}")
-            
-            self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
-            # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
-            full_url = f"{self.config['generation_server_url']}{endpoint}"
-            
-            response = requests.post(
-                full_url,
-                data={
-                    'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
-                    'seed': deterministic_seed,  # Use deterministic seed
-                    'return_compressed': True, 
-                    # 'ss_sampling_steps': 20,
-                    # 'slat_sampling_steps': 24,
-                    # 'slat_guidance_strength': 8.0,
-                    # 'ss_guidance_strength': 4.5
-                    **generation_params  # Use preset-based parameters/ default
-                },
-                timeout=self.config['generation_timeout']
-            )
+
+                self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+                # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+                full_url = f"{self.config['generation_server_url']}{endpoint}"
+
+                response = requests.post(
+                    full_url,
+                    data={
+                        'base_prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                        'seed': deterministic_seed,  # Use deterministic seed
+                        'return_compressed': True, 
+                        # 'ss_sampling_steps': 20,
+                        # 'slat_sampling_steps': 24,
+                        # 'slat_guidance_strength': 8.0,
+                        # 'ss_guidance_strength': 4.5
+                        **generation_params  # Use preset-based parameters/ default
+                    },
+                    timeout=self.config['generation_timeout']
+                )
+            else:
+                
+                self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+                # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+                full_url = f"{self.config['generation_server_url']}{endpoint}"
+                
+                response = requests.post(
+                    full_url,
+                    data={
+                        'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                        'seed': deterministic_seed,  # Use deterministic seed
+                        'return_compressed': True, 
+                        # 'ss_sampling_steps': 20,
+                        # 'slat_sampling_steps': 24,
+                        # 'slat_guidance_strength': 8.0,
+                        # 'ss_guidance_strength': 4.5
+                        **generation_params  # Use preset-based parameters/ default
+                    },
+                    timeout=self.config['generation_timeout']
+                )
             
             generation_time = time.time() - generation_start
             task.generation_time = generation_time

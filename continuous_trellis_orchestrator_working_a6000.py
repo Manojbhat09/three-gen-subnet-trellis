@@ -23,6 +23,25 @@ python continuous_trellis_orchestrator_lora_working.py --disable-task-tracking  
 
 
 python continuous_trellis_orchestrator_lora_working.py --activate-learning --only-log-learning 18 --disable-task-tracking  --no-skip-duplicates --vllm-optim --system-prompt --vllm-priority system_chat --vllm-optim-port 11300 --vllm-url "http://localhost:11300" --lora "cinema"   --vllm --no-fallback --production-mv-gen
+
+multi endpoint, vllm true
+l4:
+python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile episodic_test_prompts.py --simulate --fastest-mv-gen --no-skip-duplicates --disable-task-tracking --lora  "cinema" --vllm --vllm-url "http://localhost:11300"  --vllm-optim --vllm-optim-port 11300 --system-prompt --vllm-priority "system_chat" --no-fallback
+
+multi endpoint,
+l3:
+python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile episodic_test_prompts.py --simulate --fastest-mv-gen --no-skip-duplicates --disable-task-tracking --lora  "cinema" --vllm --vllm-url "http://localhost:11300"  --vllm-optim --vllm-optim-port 11300 --system-prompt --vllm-priority "system_chat" --no-fallback --no-optimize
+
+single best cinema, vllm true
+l2:
+python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile episodic_test_prompts.py --simulate --fastest-mv-gen --no-skip-duplicates --disable-task-tracking --lora  "cinema" --vllm --vllm-url "http://localhost:11300"  --vllm-optim --vllm-optim-port 11300 --system-prompt --vllm-priority "system_chat" --no-fallback
+
+single best cinema, no optimize 
+l1:
+python continuous_trellis_orchestrator_working_a6000_simulate.py --promptfile episodic_test_prompts.py --simulate --fastest-mv-gen --no-skip-duplicates --disable-task-tracking --lora  "cinema" --vllm --vllm-url "http://localhost:11300"  --vllm-optim --vllm-optim-port 11300 --system-prompt --vllm-priority "system_chat" --no-optimize --no-submit --no-fallback
+
+python trellis_subnit_server_mix_lora_flash_unload.py  --port 8096 --unload-flux
+vllm serve manbeast3b/dpo-full_03-step20-three-gen-1   --served-model-name llama-3-2-3b-it   --generation-config auto   --port 11300   --max-model-len 1000   --gpu-memory-utilization 0.14   --dtype=bfloat16   --kv-cache-dtype=auto   --swap-space 4   --cpu-offload-gb 2
 """
 
 # Set CUDA deterministic behavior environment variable BEFORE any imports
@@ -5811,7 +5830,7 @@ class ContinuousTrellisOrchestrator:
                 'confidence': 'Low'
             }
     
-    def optimize_prompt_for_generation(self, task: TaskRecord) -> Dict[str, Any]:
+    def [optimize_prompt_for_generation](self, task: TaskRecord) -> Dict[str, Any]:
         """
         Optimize prompt and route to optimal LoRA.
         Returns dict with optimized_prompt, lora_info, and endpoint.
@@ -6126,21 +6145,38 @@ class ContinuousTrellisOrchestrator:
             # 🚀 FASTEST Configuration (Speed Priority) - REVOLUTIONARY UPDATE
             # Expected: ~64-75s generation time, Perfect Fidelity (1.0), 7-11 MB PLY
             # Key Discovery: 512×512 is actually FASTER than 256×256 with perfect quality!
+            # return {
+            #     'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
+            #     'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
+            #     'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
+            #     'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
+            #     'width': 512,                      # Sweet spot resolution (proven fastest with quality)
+            #     'height': 512,                     # Sweet spot resolution
+            #     'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
+            #     'guidance_scale': 3.5,             # Optimal guidance (from validation data)
+            #     'upscale': False,                  # Never upscale (proven harmful in validation)
+            #     'remove_background': True,         # Enable (proven no time impact in validation)
+            #     'use_short_prompt': True,          # Short prompts (proven faster in validation)
+            #     'filter_low_quality': True,        # Enable (proven no time impact in validation)
+            #     'save_preview': True,              # Enable (proven no time impact in validation)
+            #     'save_intermediate': True          # Enable (proven no time impact in validation)
+            # }
             return {
-                'ss_sampling_steps': 21,           # Optimal TRELLIS steps (from validation data)
-                'slat_sampling_steps': 24,         # Optimal TRELLIS steps (from validation data)
-                'slat_guidance_strength': 7.5,     # Optimal guidance (from validation data)
-                'ss_guidance_strength': 4.0,       # Optimal guidance (from validation data)
-                'width': 512,                      # Sweet spot resolution (proven fastest with quality)
-                'height': 512,                     # Sweet spot resolution
-                'num_inference_steps': 7,          # Optimal FLUX steps (from validation data)
-                'guidance_scale': 3.5,             # Optimal guidance (from validation data)
-                'upscale': False,                  # Never upscale (proven harmful in validation)
-                'remove_background': True,         # Enable (proven no time impact in validation)
-                'use_short_prompt': True,          # Short prompts (proven faster in validation)
-                'filter_low_quality': True,        # Enable (proven no time impact in validation)
-                'save_preview': True,              # Enable (proven no time impact in validation)
-                'save_intermediate': True          # Enable (proven no time impact in validation)
+                "num_inference_steps": 16,
+                "guidance_scale": 3.5,
+                "width": 1024,
+                "height": 1024,
+                "upscale": True,
+                "remove_background": True,
+                "ss_guidance_strength": 8.0,
+                "ss_sampling_steps": 25,
+                "slat_guidance_strength": 5.0,
+                "slat_sampling_steps": 30,
+                "save_preview": False,        # Generate preview video
+                "save_intermediate": False,   # Save all intermediate outputs
+                "filter_low_quality": False,
+                "use_short_prompt": True, 
+                # "image_endpoint": "cinema"
             }
         elif self.config.get('long_fast_mv_gen'):
             # ⚡ FAST but GOOD QUALITY Configuration (Balanced) - UPDATED
@@ -6259,14 +6295,203 @@ class ContinuousTrellisOrchestrator:
             # if "white background" not in cleaned_prompt.lower():
             #     cleaned_prompt = cleaned_prompt + " front view, white background"
             
-            optimize_generation = False
+            # optimize_generation = True
+            # if optimize_generation:
+            #     ### lOOP:
+            #     max_iterations = 3
+            #     idx = 0
+            #     while idx < max_iterations:
+            #         # Step 2: Generate with optimized prompt
+            #         self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+            #         optimization_result = self.optimize_prompt_for_generation(task)
+            #         optimized_prompt = optimization_result['optimized_prompt']
+            #         lora_info = optimization_result['lora_info']
+            #         endpoint = optimization_result['endpoint']
+                    
+            #         # Clean the optimized prompt
+            #         cleaned_prompt = self.clean_optimized_prompt_wbgmsst(optimized_prompt)
+            #         # if "white background" not in cleaned_prompt.lower():
+            #         #     cleaned_prompt = cleaned_prompt + " front view, white background"
+                    
+            #         # Compute cosine similarity between original and optimized prompts
+            #         original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
+                    
+            #         # Check similarity threshold
+            #         if original_optimized_similarity['cosine_similarity'] > 0.65:
+            #             break
+                        
+            #         self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
+            #         idx += 1
+                        
+            #     optimization_failed=False
+            #     if original_optimized_similarity['cosine_similarity'] < 0.65:
+            #         self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
+            #         cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
+            #         optimized_prompt = task.prompt
+            #         optimization_failed=True
+            #         optimization_result['optimized_prompt'] = cleaned_prompt
+                
+            #     original_endpoint = optimization_result['endpoint']
+            # else:
+            #     cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
+            #     optimized_prompt = task.prompt + " front view, accurate, complete, white background"
+            #     lora_info = {
+            #         'lora_name': 'Cinema',
+            #         'endpoint': '/generate/cinema/',
+            #         'reasoning': 'Default model: Cinema',
+            #         'confidence': 'High'
+            #     }
+            #     original_endpoint = '/generate/cinema/'
+            #     optimization_failed=False
+                
+            # # Check fidelity tracker for endpoint recommendations
+            # recommended_endpoint = self.fidelity_tracker.get_recommended_endpoint(
+            #     validator_uid=task.validator_uid,
+            #     requested_endpoint=original_endpoint
+            # )
+            
+            # # Use the recommended endpoint (may be different from original due to 0.0 score tracking)
+            # # endpoint = recommended_endpoint
+            # endpoint = original_endpoint
+            
+            # # Store the endpoint used for tracking purposes
+            # task.endpoint_used = endpoint
+            
+            # # Log endpoint selection decision
+            # if endpoint != original_endpoint:
+            #     self.logger.info(f"🔄 Endpoint overridden by fidelity tracker:")
+            #     self.logger.info(f"   Original: {original_endpoint}")
+            #     self.logger.info(f"   Recommended: {endpoint}")
+            #     self.logger.info(f"   Reason: Recent 0.0 scores detected")
+            # else:
+            #     self.logger.info(f"✅ Using original endpoint: {endpoint}")
+
+            # # Log the final optimization result
+            # if self.config.get('log_optimization_details', True):
+            #     if optimized_prompt != task.prompt:
+            #         self.logger.info(f"🎯 FINAL OPTIMIZATION RESULT:")
+            #         self.logger.info(f"   Original: '{task.prompt}'")
+            #         self.logger.info(f"   Optimized: '{optimized_prompt}'")
+            #         self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
+            #         self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
+            #         if optimize_generation: 
+            #             self.logger.info(f"   Similarity: {original_optimized_similarity['cosine_similarity']:.4f}")
+            #             self.logger.info(f"   Similarity level: {original_optimized_similarity['similarity_level']}")
+            #             self.logger.info(f"   Description: {original_optimized_similarity['description']}")
+            #         else:
+            #             self.logger.info(f"   Similarity: N/A")
+            #             self.logger.info(f"   Similarity level: N/A")
+            #             self.logger.info(f"   Description: N/A")
+                    
+            #     else:
+            #         self.logger.info(f"ℹ️ No optimization applied - using original prompt")
+            #         self.logger.info(f"   Prompt: '{task.prompt}'")
+            #         self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
+            
+            # # Clear cache on the server using priority coordinator
+            # self.priority_coordinator.clear_server_cache()
+
+            # # Step 2: Get deterministic seed
+            # deterministic_seed = self.get_deterministic_seed(task)
+            # self.logger.info(f"   🎲 Using deterministic seed: {deterministic_seed}")
+            # self.logger.info(f"   �� Using LoRA: {lora_info['lora_name']} via {endpoint}")
+            
+            # generation_start = time.time()
+            
+            
+            
+            # # generation_params = {
+            # #     'ss_sampling_steps': 21,
+            # #     'slat_sampling_steps': 24,
+            # #     'slat_guidance_strength': 7.5,
+            # #     'ss_guidance_strength': 4.0,
+            # #     'width': 512,
+            # #     'height': 512,
+            # #     'num_inference_steps': 7,
+            # #     'guidance_scale': 3.5,
+            # #     'upscale': False,
+            # #     'remove_background': True,
+            # #     'use_short_prompt': False,
+            # #     'filter_low_quality': True,
+            # #     'save_preview': True,
+            # #     'save_intermediate': True
+            # # }
+            # generation_params = {}
+            # if endpoint == "/generate_3d_from_prompt_grid_flow/":
+            #     # Get generation parameters based on selected preset
+            #     generation_params = self._get_generation_params()
+                
+            #     # Log the generation preset being used
+            #     preset_name = "DEFAULT"
+            #     if self.config.get('fastest_mv_gen'):
+            #         preset_name = "🚀 FASTEST"
+            #     elif self.config.get('long_fast_mv_gen'):
+            #         preset_name = "⚡ FAST + GOOD QUALITY"
+            #     elif self.config.get('production_mv_gen'):
+            #         preset_name = "🎯 PRODUCTION QUALITY"
+            #     elif self.config.get('quality_mv_gen'):
+            #         preset_name = "🎨 HIGHEST QUALITY"
+                
+            #     self.logger.info(f"   🎛️ Using generation preset: {preset_name}")
+            #     self.logger.info(f"   📏 Resolution: {generation_params.get('width', 'N/A')}×{generation_params.get('height', 'N/A')}")
+            #     self.logger.info(f"   🔄 TRELLIS steps: SS={generation_params.get('ss_sampling_steps', 'N/A')}, SLAT={generation_params.get('slat_sampling_steps', 'N/A')}")
+            #     self.logger.info(f"   🎯 FLUX steps: {generation_params.get('num_inference_steps', 'N/A')}")
+
+            #     self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+            #     # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+            #     full_url = f"{self.config['generation_server_url']}{endpoint}"
+                
+            #     response = requests.post(
+            #         full_url,
+            #         data={
+            #             'base_prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+            #             'seed': deterministic_seed,  # Use deterministic seed
+            #             'return_compressed': True, 
+            #             # 'ss_sampling_steps': 20,
+            #             # 'slat_sampling_steps': 24,
+            #             # 'slat_guidance_strength': 8.0,
+            #             # 'ss_guidance_strength': 4.5
+            #             **generation_params  # Use preset-based parameters/ default
+            #         },
+            #         timeout=self.config['generation_timeout']
+            #     )
+            # else:
+                
+            #     self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+            #     # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+            #     full_url = f"{self.config['generation_server_url']}{endpoint}"
+                
+            #     response = requests.post(
+            #         full_url,
+            #         data={
+            #             'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+            #             'seed': deterministic_seed,  # Use deterministic seed
+            #             'return_compressed': True, 
+            #             # 'ss_sampling_steps': 20,
+            #             # 'slat_sampling_steps': 24,
+            #             # 'slat_guidance_strength': 8.0,
+            #             # 'ss_guidance_strength': 4.5
+            #             **generation_params  # Use preset-based parameters/ default
+            #         },
+            #         timeout=self.config['generation_timeout']
+            #     )
+
+            
+            optimize_generation = True
             if optimize_generation:
                 ### lOOP:
                 max_iterations = 3
                 idx = 0
+                best_similarity = 0.0
+                best_optimization_result = None
+                best_cleaned_prompt = None
+                best_optimized_prompt = None
+                best_lora_info = None
+                best_endpoint = None
+                
                 while idx < max_iterations:
                     # Step 2: Generate with optimized prompt
-                    self.logger.info(f"🔄 Step 2: Generating with optimized prompt")
+                    self.logger.info(f"🔄 Step 2: Generating with optimized prompt (iteration {idx + 1})")
                     optimization_result = self.optimize_prompt_for_generation(task)
                     optimized_prompt = optimization_result['optimized_prompt']
                     lora_info = optimization_result['lora_info']
@@ -6279,21 +6504,47 @@ class ContinuousTrellisOrchestrator:
                     
                     # Compute cosine similarity between original and optimized prompts
                     original_optimized_similarity = self.similarity_server.compute_similarity_device(self.similarity_device, task.prompt, optimized_prompt, warmup_runs=0, num_runs=1, timer=False)
+                    current_similarity = original_optimized_similarity['cosine_similarity']
+                    
+                    # Track the best result so far
+                    if current_similarity > best_similarity:
+                        best_similarity = current_similarity
+                        best_optimization_result = optimization_result
+                        best_cleaned_prompt = cleaned_prompt
+                        best_optimized_prompt = optimized_prompt
+                        best_lora_info = lora_info
+                        best_endpoint = endpoint
+                        self.logger.info(f"📈 New best similarity: {best_similarity:.3f}")
                     
                     # Check similarity threshold
-                    if original_optimized_similarity['cosine_similarity'] > 0.65:
+                    if current_similarity > 0.65:
+                        self.logger.info(f"✅ Found prompt with similarity > 0.65: {current_similarity:.3f}")
                         break
                         
-                    self.logger.warning(f"⚠️ Original and optimized prompts are very different, retrying")
+                    self.logger.warning(f"⚠️ Original and optimized prompts are very different (similarity: {current_similarity:.3f}), retrying")
                     idx += 1
                         
                 optimization_failed=False
-                if original_optimized_similarity['cosine_similarity'] < 0.65:
-                    self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
-                    cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
-                    optimized_prompt = task.prompt
+                # if original_optimized_similarity['cosine_similarity'] < 0.65:
+                #     self.logger.error(f"❌ Original and optimized prompts are still very different using original prompt")
+                #     cleaned_prompt = task.prompt + " front view, accurate, complete, white background"
+                #     optimized_prompt = task.prompt
+                if best_similarity < 0.65:
+                    self.logger.error(f"❌ No prompt achieved >0.65 similarity. Using best result with similarity: {best_similarity:.3f}")
+                    # Use the best result we found
+                    optimization_result = best_optimization_result
+                    cleaned_prompt = best_cleaned_prompt
+                    optimized_prompt = best_optimized_prompt
+                    lora_info = best_lora_info
+                    endpoint = best_endpoint
                     optimization_failed=True
-                    optimization_result['optimized_prompt'] = cleaned_prompt
+                else:
+                    # Use the current result (which achieved >0.65)
+                    optimization_result = optimization_result
+                    cleaned_prompt = cleaned_prompt
+                    optimized_prompt = optimized_prompt
+                    lora_info = lora_info
+                    endpoint = endpoint
                 
                 original_endpoint = optimization_result['endpoint']
             else:
@@ -6309,15 +6560,15 @@ class ContinuousTrellisOrchestrator:
                 optimization_failed=False
                 
             # Check fidelity tracker for endpoint recommendations
-            recommended_endpoint = self.fidelity_tracker.get_recommended_endpoint(
-                validator_uid=task.validator_uid,
-                requested_endpoint=original_endpoint
-            )
+            # recommended_endpoint = self.fidelity_tracker.get_recommended_endpoint(
+            #     validator_uid=task.validator_uid,
+            #     requested_endpoint=original_endpoint
+            # )
             
             # Use the recommended endpoint (may be different from original due to 0.0 score tracking)
             # endpoint = recommended_endpoint
             endpoint = original_endpoint
-            
+            # endpoint = "/generate_3d_from_prompt_grid_flow/"
             # Store the endpoint used for tracking purposes
             task.endpoint_used = endpoint
             
@@ -6338,7 +6589,7 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"   Optimized: '{optimized_prompt}'")
                     self.logger.info(f"   Cleaned: '{cleaned_prompt}'")
                     self.logger.info(f"   LoRA: {lora_info['lora_name']} via {endpoint}")
-                    if optimize_generation: 
+                    if optimize_generation:     
                         self.logger.info(f"   Similarity: {original_optimized_similarity['cosine_similarity']:.4f}")
                         self.logger.info(f"   Similarity level: {original_optimized_similarity['similarity_level']}")
                         self.logger.info(f"   Description: {original_optimized_similarity['description']}")
@@ -6400,25 +6651,45 @@ class ContinuousTrellisOrchestrator:
                 self.logger.info(f"   📏 Resolution: {generation_params.get('width', 'N/A')}×{generation_params.get('height', 'N/A')}")
                 self.logger.info(f"   🔄 TRELLIS steps: SS={generation_params.get('ss_sampling_steps', 'N/A')}, SLAT={generation_params.get('slat_sampling_steps', 'N/A')}")
                 self.logger.info(f"   🎯 FLUX steps: {generation_params.get('num_inference_steps', 'N/A')}")
-            
-            self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
-            # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
-            full_url = f"{self.config['generation_server_url']}{endpoint}"
-            
-            response = requests.post(
-                full_url,
-                data={
-                    'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
-                    'seed': deterministic_seed,  # Use deterministic seed
-                    'return_compressed': True, 
-                    # 'ss_sampling_steps': 20,
-                    # 'slat_sampling_steps': 24,
-                    # 'slat_guidance_strength': 8.0,
-                    # 'ss_guidance_strength': 4.5
-                    **generation_params  # Use preset-based parameters/ default
-                },
-                timeout=self.config['generation_timeout']
-            )
+
+                self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+                # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+                full_url = f"{self.config['generation_server_url']}{endpoint}"
+
+                response = requests.post(
+                    full_url,
+                    data={
+                        'base_prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                        'seed': deterministic_seed,  # Use deterministic seed
+                        'return_compressed': True, 
+                        # 'ss_sampling_steps': 20,
+                        # 'slat_sampling_steps': 24,
+                        # 'slat_guidance_strength': 8.0,
+                        # 'ss_guidance_strength': 4.5
+                        **generation_params  # Use preset-based parameters/ default
+                    },
+                    timeout=self.config['generation_timeout']
+                )
+            else:
+                
+                self.logger.info(f"   🔄 Final endpoint selection: {endpoint}")
+                # Call TRELLIS generation server with cleaned prompt, deterministic seed, and LoRA-specific endpoint
+                full_url = f"{self.config['generation_server_url']}{endpoint}"
+                
+                response = requests.post(
+                    full_url,
+                    data={
+                        'prompt': cleaned_prompt,  # Use cleaned prompt (artifacts removed)
+                        'seed': deterministic_seed,  # Use deterministic seed
+                        'return_compressed': True, 
+                        # 'ss_sampling_steps': 20,
+                        # 'slat_sampling_steps': 24,
+                        # 'slat_guidance_strength': 8.0,
+                        # 'ss_guidance_strength': 4.5
+                        **generation_params  # Use preset-based parameters/ default
+                    },
+                    timeout=self.config['generation_timeout']
+                )
             
             generation_time = time.time() - generation_start
             task.generation_time = generation_time
