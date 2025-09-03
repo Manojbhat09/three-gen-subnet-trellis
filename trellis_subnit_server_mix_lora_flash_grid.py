@@ -1800,7 +1800,12 @@ class TrellisGenerator:
                     print("Step 5: Compressing PLY with SPZ...")
                     try:
                         import pyspz
-                        compressed_data = pyspz.compress(ply_data, workers=-1)
+                        import contextlib
+                        from io import StringIO
+                        
+                        # Suppress stdout to prevent pyspz from printing PLY data
+                        with contextlib.redirect_stdout(StringIO()):
+                            compressed_data = pyspz.compress(ply_data, workers=-1)
                         print(f"🗜️ SPZ Compression successful:")
                         print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
                         print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
@@ -2180,7 +2185,12 @@ class TrellisGenerator:
                     print("Step 5: Compressing PLY with SPZ...")
                     try:
                         import pyspz
-                        compressed_data = pyspz.compress(ply_data, workers=-1)
+                        import contextlib
+                        from io import StringIO
+                        
+                        # Suppress stdout to prevent pyspz from printing PLY data
+                        with contextlib.redirect_stdout(StringIO()):
+                            compressed_data = pyspz.compress(ply_data, workers=-1)
                         print(f"🗜️ SPZ Compression successful:")
                         print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
                         print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
@@ -2429,7 +2439,12 @@ async def generate_3d_model_endpoint(
         try:
             if compressed_data is None:
                 import pyspz
-                compressed_data = pyspz.compress(ply_data, workers=-1)
+                import contextlib
+                from io import StringIO
+                
+                # Suppress stdout to prevent pyspz from printing PLY data
+                with contextlib.redirect_stdout(StringIO()):
+                    compressed_data = pyspz.compress(ply_data, workers=-1)
                 print(f"🗜️ SPZ Compression for response:")
                 print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
                 print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
@@ -5116,7 +5131,12 @@ async def generate_flux_socket_3d_model(
             print("Step 5: Compressing PLY with SPZ...")
             try:
                 import pyspz
-                compressed_data = pyspz.compress(ply_data, workers=-1)
+                import contextlib
+                from io import StringIO
+                
+                # Suppress stdout to prevent pyspz from printing PLY data
+                with contextlib.redirect_stdout(StringIO()):
+                    compressed_data = pyspz.compress(ply_data, workers=-1)
                 print(f"🗜️ SPZ Compression successful:")
                 print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
                 print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
@@ -5505,7 +5525,12 @@ async def generate_flux_socket_3d_model_with_lora(
             print("Step 5: Compressing PLY with SPZ...")
             try:
                 import pyspz
-                compressed_data = pyspz.compress(ply_data, workers=-1)
+                import contextlib
+                from io import StringIO
+                
+                # Suppress stdout to prevent pyspz from printing PLY data
+                with contextlib.redirect_stdout(StringIO()):
+                    compressed_data = pyspz.compress(ply_data, workers=-1)
                 print(f"🗜️ SPZ Compression successful:")
                 print(f"   Original: {len(ply_data):,} bytes ({len(ply_data)/1024/1024:.1f} MB)")
                 print(f"   Compressed: {len(compressed_data):,} bytes ({len(compressed_data)/1024/1024:.1f} MB)") 
@@ -6146,7 +6171,9 @@ async def generate_3d_from_prompt_grid_flow_endpoint(
                     print("   ⚠️ PySPZ not available, skipping compression")
                 
                 if pyspz_available:
-                    compressed_data = pyspz.compress(ply_data, workers=-1)
+                    # Suppress stdout to prevent pyspz from printing PLY data
+                    with contextlib.redirect_stdout(StringIO()):
+                        compressed_data = pyspz.compress(ply_data, workers=-1)
                     
                     compression_time = time.time() - compression_start
                     print(f"     ✓ SPZ Compression successful in {compression_time:.2f}s:")
