@@ -3048,7 +3048,10 @@ class ContinuousTrellisOrchestrator:
             
             # self.subtensor = bt.subtensor(network="test") #TODO
             if self.subtensor is None:
+                # Keep finney as default for performance, but handle UID 142 specially
                 self.subtensor = bt.subtensor(network="finney")
+                # Initialize archive subtensor for UID 142 axon info
+                self.archive_subtensor = bt.subtensor(network="archive")
                 self.logger.info("✅ Subtensor connected")
             
             if self.dendrite is None:
@@ -3308,14 +3311,13 @@ class ContinuousTrellisOrchestrator:
         # Check if we pulled recently (respect MIN_TASK_INTERVAL - following _pull_task logic from trellis_miner.py)
         if validator.last_task_pull:
             time_since_pull = current_time - validator.last_task_pull
-            # DEPRECATED: Hardcoded task_pull_interval - now using MIN_TASK_INTERVAL constant
-            # if time_since_pull < self.config['task_pull_interval']:
-            #     time_until_available = self.config['task_pull_interval'] - time_since_pull
-            #     self.logger.debug(f"⏰ Validator UID {validator.uid} not available: PULL INTERVAL ({time_until_available:.1f}s until available)")
-            #     return False
-            if time_since_pull < MIN_TASK_INTERVAL:
-                time_until_available = MIN_TASK_INTERVAL - time_since_pull
-                self.logger.debug(f"⏰ Validator UID {validator.uid} not available: MIN_TASK_INTERVAL ({time_until_available:.1f}s until available) - following _pull_task logic")
+            # Use consistent buffered interval to match cooldown state checking
+            base_multiplier = getattr(validator, 'cooldown_multiplier', 1.0)
+            effective_min_interval = max(MIN_TASK_INTERVAL_BUFFERED * base_multiplier, 62.0)
+
+            if time_since_pull < effective_min_interval:
+                time_until_available = effective_min_interval - time_since_pull
+                self.logger.debug(f"⏰ Validator UID {validator.uid} not available: MIN_TASK_INTERVAL ({time_until_available:.1f}s until available, multiplier: {base_multiplier}x)")
                 return False
         
         self.logger.debug(f"✅ Validator UID {validator.uid} is AVAILABLE for task pulling")
@@ -5111,19 +5113,35 @@ class ContinuousTrellisOrchestrator:
             if validator.uid >= len(self.metagraph.neurons):
                 return None
             
-            neuron = self.metagraph.neurons[validator.uid]
-            
-            # Validate axon endpoint to avoid connection failures
-            axon_info = neuron.axon_info
+            # Special handling for UID 142 - use archive network for axon info
+            if validator.uid == 142:
+                # Force fresh metagraph sync for UID 142
+                try:
+                    archive_subtensor = bt.subtensor(network="archive")
+                    archive_metagraph = archive_subtensor.metagraph(self.config['netuid'], lite=False)
+                    if validator.uid < len(archive_metagraph.neurons):
+                        neuron = archive_metagraph.neurons[validator.uid]
+                        axon_info = neuron.axon_info
+                        self.logger.info(f"📡 UID 142: Using FRESH archive network axon info: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                    else:
+                        self.logger.warning(f"⚠️ UID 142 not found in archive metagraph, falling back to finney")
+                        neuron = self.metagraph.neurons[validator.uid]
+                        axon_info = neuron.axon_info
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Failed to get archive axon info for UID 142: {e}, using finney")
+                    neuron = self.metagraph.neurons[validator.uid]
+                    axon_info = neuron.axon_info
+            else:
+                neuron = self.metagraph.neurons[validator.uid]
+                axon_info = neuron.axon_info
             if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
                 self.logger.warning(f"⚠️ Skipping UID {validator.uid} due to invalid axon endpoint: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
                 return None
 
-            # SPECIAL HANDLING: Skip UID 142 due to network connectivity issues from this machine
-            if validator.uid == 142 and axon_info.ip == '129.146.3.173':
-                self.logger.warning(f"🚫 Skipping UID 142 ({axon_info.ip}:{axon_info.port}) due to network connectivity issues from this machine")
-                self.logger.info(f"💡 RECOMMENDATION: Use other validators or try from different network/machine")
-                return None
+            # SPECIAL HANDLING: Try UID 142 with extended timeout due to network connectivity issues from this machine
+            # UID 142 has had multiple endpoints: 195.26.233.61:36818, 88.204.136.220:8092, 213.173.110.74:12672, 216.81.248.90:8091, 216.81.248.157:8092
+            if validator.uid == 142:
+                self.logger.info(f"🎯 ATTEMPTING UID 142 ({axon_info.ip}:{axon_info.port}) with extended timeout - may take longer due to network issues")
             
             start_time = time.time()
             
@@ -5134,13 +5152,19 @@ class ContinuousTrellisOrchestrator:
             #     timeout=self.config['submission_timeout']
             # )
             
+            # Use extended timeout for UID 142 due to network connectivity issues
+            timeout_value = self.config['submission_timeout']
+            if validator.uid == 142:
+                timeout_value = max(timeout_value, 120)  # At least 2 minutes for UID 142
+                self.logger.info(f"⏱️ Using extended timeout {timeout_value}s for UID 142")
+
             response = typing.cast(
                 PullTask,
                 await self.dendrite.call(
                     target_axon=axon_info,
                     synapse=synapse,
                     deserialize=False,
-                    timeout=self.config['submission_timeout']
+                    timeout=timeout_value
                 )
             )
 
@@ -5150,14 +5174,16 @@ class ContinuousTrellisOrchestrator:
                 return None 
             query_time = time.time() - start_time
 
-            # 🚨 CRITICAL FIX: Only update last_task_pull if we don't get violations
-            # If validator reports violations, don't count this pull toward MIN_TASK_INTERVAL
-            # because the pull attempt was invalid from the validator's perspective
+            # 🚨 IMPROVED VIOLATION HANDLING: Always update last_task_pull to respect MIN_TASK_INTERVAL
+            # Even if validator reports violations, we made a successful HTTP request and should
+            # respect the minimum interval to avoid spamming. Only skip update for serious errors.
             has_violations = hasattr(response, 'cooldown_violations') and response.cooldown_violations > 0
-            if not has_violations:
-                validator.last_task_pull = time.time()
-            else:
-                self.logger.warning(f"🚨 VIOLATION DETECTED: Not updating last_task_pull for UID {validator.uid} due to {response.cooldown_violations} violations")
+            if has_violations:
+                self.logger.warning(f"⚠️ VIOLATION REPORTED: UID {validator.uid} reported {response.cooldown_violations} violations (still updating last_task_pull to respect intervals)")
+
+            # Always update last_task_pull after successful HTTP response (even with violations)
+            # This prevents the vicious cycle of constantly retrying the same validator
+            validator.last_task_pull = time.time()
 
             if response and hasattr(response, 'task') and response.task:
                 # resp = response[0]
@@ -7663,10 +7689,27 @@ class ContinuousTrellisOrchestrator:
                 self.logger.error(f"❌ Validator UID {task.validator_uid} not found")
                 return False
             
-            neuron = self.metagraph.neurons[task.validator_uid]
-            
-            # Validate axon endpoint to avoid connection failures
-            axon_info = neuron.axon_info
+            # Special handling for UID 142 - use archive network for axon info
+            if task.validator_uid == 142:
+                # Force fresh metagraph sync for UID 142 submission
+                try:
+                    archive_subtensor = bt.subtensor(network="archive")
+                    archive_metagraph = archive_subtensor.metagraph(self.config['netuid'], lite=False)
+                    if task.validator_uid < len(archive_metagraph.neurons):
+                        neuron = archive_metagraph.neurons[task.validator_uid]
+                        axon_info = neuron.axon_info
+                        self.logger.info(f"📤 UID 142 SUBMIT: Using FRESH archive network axon info: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                    else:
+                        self.logger.warning(f"⚠️ UID 142 not found in archive metagraph for submit, falling back to finney")
+                        neuron = self.metagraph.neurons[task.validator_uid]
+                        axon_info = neuron.axon_info
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Failed to get archive axon info for UID 142 submit: {e}, using finney")
+                    neuron = self.metagraph.neurons[task.validator_uid]
+                    axon_info = neuron.axon_info
+            else:
+                neuron = self.metagraph.neurons[task.validator_uid]
+                axon_info = neuron.axon_info
             if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
                 self.logger.warning(f"⚠️ Axon endpoint appears invalid for UID {task.validator_uid}: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
                 self.logger.warning(f"   This validator previously provided a task, so attempting submission anyway...")

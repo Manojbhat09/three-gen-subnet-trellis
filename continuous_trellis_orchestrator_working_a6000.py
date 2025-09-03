@@ -161,7 +161,7 @@ FAILED_VALIDATOR_DELAY = 165
 GENERATION_ERROR_DELAY = 180
 MIN_TASK_INTERVAL = 35  # Minimum time between tasks to respect throttle period
 SYNTHETIC_TRAFFIC_COOLDOWN = 301
-ORGANIC_TRAFFIC_COOLDOWN = 121
+ORGANIC_TRAFFIC_COOLDOWN = 121 
 MAX_COOLDOWN_DURATION = 300
 THROTTLE_PERIOD = MIN_TASK_INTERVAL
 
@@ -1504,7 +1504,7 @@ class ValidatorStatePersistence:
                     # INTEGRATED MIMIC STATE - Uses existing violation tracking
                     'mimic_last_pull_attempt': validator.mimic_last_pull_attempt,
                     'mimic_expected_cooldown_until': validator.mimic_expected_cooldown_until,
-
+                    
                     # Validation and emergency state (CRITICAL)
                     # DEPRECATED: Validation lock removed - now using MIN_TASK_INTERVAL constant for rate limiting
                     # 'validation_locked_until': validator.validation_locked_until,
@@ -2466,7 +2466,7 @@ class FidelityScoreTracker:
                     'reason': f"{trigger_reason} - switching to normal",
                     'type': 'to_normal',
                     'trigger': trigger_type
-                }
+                    }
             else:
                 # Currently using normal, switch to fallback
                 return {
@@ -2475,7 +2475,7 @@ class FidelityScoreTracker:
                     'reason': f"{trigger_reason} - switching to fallback",
                     'type': 'to_fallback',
                     'trigger': trigger_type
-                }
+                    }
         else:
             # No switching needed
             return {
@@ -3350,14 +3350,25 @@ class ContinuousTrellisOrchestrator:
         current_time = time.time()
         
         # Check validator-enforced cooldown first (highest priority)
-        if validator.validator_enforced_cooldown_until and current_time < validator.validator_enforced_cooldown_until:
-            remaining = validator.validator_enforced_cooldown_until - current_time
-            return True, "validator", remaining
-        
+        if validator.validator_enforced_cooldown_until:
+            if current_time < validator.validator_enforced_cooldown_until:
+                remaining = validator.validator_enforced_cooldown_until - current_time
+                return True, "validator", remaining
+            else:
+                # Cooldown has expired - clear it safely
+                validator.validator_enforced_cooldown_until = None
+                validator.pending_cooldown_task_id = None
+                self.logger.info(f"✅ UID {validator.uid} validator cooldown expired and cleared")
+
         # Check miner cooldown (only if no validator cooldown is active)
-        if validator.miner_cooldown_until and current_time < validator.miner_cooldown_until:
-            remaining = validator.miner_cooldown_until - current_time
-            return True, "miner", remaining
+        if validator.miner_cooldown_until:
+            if current_time < validator.miner_cooldown_until:
+                remaining = validator.miner_cooldown_until - current_time
+                return True, "miner", remaining
+            else:
+                # Cooldown has expired - clear it safely
+                validator.miner_cooldown_until = None
+                self.logger.info(f"✅ UID {validator.uid} miner cooldown expired and cleared")
         
         return False, "none", 0.0
     
@@ -3505,26 +3516,8 @@ class ContinuousTrellisOrchestrator:
         """Check if validator is available for task pulling"""
         current_time = time.time()
 
-        # FIXED: Emergency state recovery check for 100% compliance
-        self._recover_from_emergency_state(validator)
-        
-        # Check if validator is active
-        if not validator.is_active:
-            self.logger.debug(f"🔴 Validator UID {validator.uid} not available: INACTIVE")
-            return False
-        
-        # Check if validator is blacklisted
-        if self.is_validator_blacklisted(validator.uid):
-            # self.logger.info(f"🚫 Validator UID {validator.uid} not available: BLACKLISTED")
-            return False
-        
-        # Check emergency blacklist (new critical feature)
-        if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
-            remaining = validator.emergency_blacklist_until - current_time
-            self.logger.warning(f"🚨 Validator UID {validator.uid} not available: EMERGENCY BLACKLIST ({remaining:.1f}s remaining)")
-            return False
-        
-        # Enhanced cooldown checking using helper method (subnet compliant)
+        # CRITICAL FIX: Check cooldowns FIRST before any recovery logic
+        # This prevents the recovery logic from incorrectly clearing active cooldowns
         is_cooldown, cooldown_type, remaining = self._is_validator_on_cooldown(validator)
         if is_cooldown:
             if cooldown_type == "validator":
@@ -3532,27 +3525,53 @@ class ContinuousTrellisOrchestrator:
             else:
                 self.logger.debug(f"⏳ Validator UID {validator.uid} not available: MINER COOLDOWN ({remaining:.1f}s remaining)")
             return False
+
+        # Check if validator is active
+        if not validator.is_active:
+            self.logger.debug(f"🔴 Validator UID {validator.uid} not available: INACTIVE")
+            return False
+
+        # Check if validator is blacklisted
+        if self.is_validator_blacklisted(validator.uid):
+            # self.logger.info(f"🚫 Validator UID {validator.uid} not available: BLACKLISTED")
+            return False
+
+        # Check emergency blacklist (new critical feature)
+        if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
+            remaining = validator.emergency_blacklist_until - current_time
+            self.logger.warning(f"🚨 Validator UID {validator.uid} not available: EMERGENCY BLACKLIST ({remaining:.1f}s remaining)")
+            return False
+        # # Enhanced cooldown checking using helper method (subnet compliant)
+        # is_cooldown, cooldown_type, remaining = self._is_validator_on_cooldown(validator)
+        # if is_cooldown:
+        #     if cooldown_type == "validator":
+        #         self.logger.debug(f"⏳ Validator UID {validator.uid} not available: VALIDATOR COOLDOWN ({remaining:.1f}s remaining)")
+        #     else:
+        #         self.logger.debug(f"⏳ Validator UID {validator.uid} not available: MINER COOLDOWN ({remaining:.1f}s remaining)")
+        #     return False
         
-        # FIXED: Check if we have a pending cooldown that should be enforced now
-        # Only enforce if we've actually completed the pending task
-        if validator.validator_enforced_cooldown_until:
-            current_time = time.time()
-            if current_time < validator.validator_enforced_cooldown_until:
-                # Check if we have a pending task - if so, allow one more pull to complete it
-                if validator.pending_cooldown_task_id:
-                    # We have a pending task - allow processing to complete it
-                    remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
-                    self.logger.debug(f"⏳ Pending cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s - allowing completion of task {validator.pending_cooldown_task_id}")
-                else:
-                    # No pending task - enforce the cooldown
-                    remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
-                    self.logger.info(f"⏳ Enforcing validator cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s remaining")
-                    return False
-            else:
-                # Pending cooldown has expired - clear it
-                validator.validator_enforced_cooldown_until = None
-                validator.pending_cooldown_task_id = None
-                self.logger.info(f"✅ Validator cooldown for UID {validator.uid} has expired")
+        # # FIXED: Check if we have a pending cooldown that should be enforced now
+        # # Only enforce if we've actually completed the pending task
+        # if validator.validator_enforced_cooldown_until:
+        #     current_time = time.time()
+        #     if current_time < validator.validator_enforced_cooldown_until:
+        #         # Check if we have a pending task - if so, allow one more pull to complete it
+        #         if validator.pending_cooldown_task_id:
+        #             # We have a pending task - allow processing to complete it
+        #             remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
+        #             self.logger.debug(f"⏳ Pending cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s - allowing completion of task {validator.pending_cooldown_task_id}")
+        #         else:
+        #             # No pending task - enforce the cooldown
+        #             remaining_cooldown = validator.validator_enforced_cooldown_until - current_time
+        #             self.logger.info(f"⏳ Enforcing validator cooldown for UID {validator.uid}: {remaining_cooldown:.1f}s remaining")
+        #             return False
+        #     else:
+        #         # Pending cooldown has expired - clear it
+        #         validator.validator_enforced_cooldown_until = None
+        #         validator.pending_cooldown_task_id = None
+        #         self.logger.info(f"✅ Validator cooldown for UID {validator.uid} has expired")
+        # REMOVED: Duplicate cooldown check - already handled above by _is_validator_on_cooldown
+        # This was causing the cooldown to be incorrectly cleared
         
         # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
         # Check validation lock (new enhanced feature)
@@ -3564,14 +3583,13 @@ class ContinuousTrellisOrchestrator:
         # Check if we pulled recently (respect MIN_TASK_INTERVAL - following _pull_task logic from trellis_miner.py)
         if validator.last_task_pull:
             time_since_pull = current_time - validator.last_task_pull
-            # DEPRECATED: Hardcoded task_pull_interval - now using MIN_TASK_INTERVAL constant
-            # if time_since_pull < self.config['task_pull_interval']:
-            #     time_until_available = self.config['task_pull_interval'] - time_since_pull
-            #     self.logger.debug(f"⏰ Validator UID {validator.uid} not available: PULL INTERVAL ({time_until_available:.1f}s until available)")
-            #     return False
-            if time_since_pull < MIN_TASK_INTERVAL:
-                time_until_available = MIN_TASK_INTERVAL - time_since_pull
-                self.logger.debug(f"⏰ Validator UID {validator.uid} not available: MIN_TASK_INTERVAL ({time_until_available:.1f}s until available) - following _pull_task logic")
+            # Use consistent buffered interval to match cooldown state checking
+            base_multiplier = getattr(validator, 'cooldown_multiplier', 1.0)
+            effective_min_interval = max(MIN_TASK_INTERVAL_BUFFERED * base_multiplier, 62.0)
+
+            if time_since_pull < effective_min_interval:
+                time_until_available = effective_min_interval - time_since_pull
+                self.logger.debug(f"⏰ Validator UID {validator.uid} not available: MIN_TASK_INTERVAL ({time_until_available:.1f}s until available, multiplier: {base_multiplier}x)")
                 return False
         
         self.logger.debug(f"✅ Validator UID {validator.uid} is AVAILABLE for task pulling")
@@ -3640,12 +3658,13 @@ class ContinuousTrellisOrchestrator:
         if cooldown_type == "validator":
             validator.validator_enforced_cooldown_until = current_time + effective_cooldown
             self.logger.info(f"🔒 Validator-enforced cooldown set for UID {validator.uid}: {effective_cooldown}s (original: {cooldown_seconds}s, throttle reduction: {throttle_period}s) ({reason})")
+        # else:
+        #     # Handle case where miner_cooldown_until might be None
+        #     if validator.miner_cooldown_until is None:
+        #         validator.miner_cooldown_until = current_time + effective_cooldown
         else:
-            # Handle case where miner_cooldown_until might be None
-            if validator.miner_cooldown_until is None:
-                validator.miner_cooldown_until = current_time + effective_cooldown
-            else:
-                validator.miner_cooldown_until = max(validator.miner_cooldown_until, current_time + effective_cooldown)
+            validator.miner_cooldown_until = self._safe_set_cooldown(validator, current_time + effective_cooldown)
+            # validator.miner_cooldown_until = max(validator.miner_cooldown_until, current_time + effective_cooldown)
             # FIX 2: Use only one cooldown field per cooldown type
             # validator.cooldown_until = current_time + effective_cooldown
             self.logger.info(f"⏳ Miner cooldown set for UID {validator.uid}: {effective_cooldown}s (original: {cooldown_seconds}s, throttle reduction: {throttle_period}s) ({reason})")
@@ -3869,7 +3888,7 @@ class ContinuousTrellisOrchestrator:
             if emergency_cooldown_until < min_emergency_cooldown:
                 emergency_cooldown_until = min_emergency_cooldown
                 self.logger.warning(f"🚨 ENFORCED minimum emergency cooldown: 60s")
-
+            
             # FIX 2: Use only one cooldown field per cooldown type
             validator.validator_enforced_cooldown_until = emergency_cooldown_until
             self.logger.warning(f"🚨 Emergency cooldown set for UID {validator.uid}: {reason}")
@@ -4100,10 +4119,10 @@ class ContinuousTrellisOrchestrator:
 
         This function now uses validator mimic logic to ensure we never violate cooldowns.
         It mirrors the validator's internal state and decision-making process.
-
+        
         Args:
             validator: The validator to check
-
+            
         Returns:
             Dict with cooldown status, remaining time, and recommendations
         """
@@ -4122,46 +4141,59 @@ class ContinuousTrellisOrchestrator:
 
         # INTEGRATED: Use existing cooldown system as primary check
         # Check validator enforced cooldown first (most important)
-        if validator.validator_enforced_cooldown_until and current_time < validator.validator_enforced_cooldown_until:
-            remaining = validator.validator_enforced_cooldown_until - current_time
-            cooldown_status.update({
-                'available': False,
-                'reason': 'Validator enforced cooldown active',
-                'remaining_time': remaining,
-                'cooldown_type': 'validator_enforced',
-                'recommendation': f'Wait {remaining:.1f}s for validator cooldown to expire'
-            })
+        if validator.validator_enforced_cooldown_until:
+            if current_time < validator.validator_enforced_cooldown_until:
+                remaining = validator.validator_enforced_cooldown_until - current_time
+                cooldown_status.update({
+                    'available': False,
+                    'reason': 'Validator enforced cooldown active',
+                    'remaining_time': remaining,
+                    'cooldown_type': 'validator_enforced',
+                    'recommendation': f'Wait {remaining:.1f}s for validator cooldown to expire'
+                })
 
-            # CRITICAL FIX: Do NOT increment violations just for checking cooldown status
-            # Violations should only be incremented when we actually attempt to pull while on cooldown
-            # This prevents false violation counts from status checks
-            cooldown_status['violation_incremented'] = False
-            cooldown_status['violation_count'] = validator.validator_reported_violations
+                # CRITICAL FIX: Do NOT increment violations just for checking cooldown status
+                # Violations should only be incremented when we actually attempt to pull while on cooldown
+                # This prevents false violation counts from status checks
+                cooldown_status['violation_incremented'] = False
+                cooldown_status['violation_count'] = validator.validator_reported_violations
 
-            return cooldown_status
-
+                return cooldown_status
+            else:
+                # Cooldown has expired - clear it safely
+                validator.validator_enforced_cooldown_until = None
+                validator.pending_cooldown_task_id = None
+                self.logger.info(f"✅ UID {validator.uid} validator cooldown expired and cleared in status check")
+                # Continue to check other cooldowns
+        
         # Check miner local cooldown
-        if validator.miner_cooldown_until and current_time < validator.miner_cooldown_until:
-            remaining = validator.miner_cooldown_until - current_time
-            cooldown_status.update({
-                'available': False,
-                'reason': 'Miner local cooldown active',
-                'remaining_time': remaining,
-                'cooldown_type': 'miner_local',
-                'recommendation': f'Wait {remaining:.1f}s for miner cooldown to expire'
-            })
-            return cooldown_status
-
+        if validator.miner_cooldown_until:
+            if current_time < validator.miner_cooldown_until:
+                remaining = validator.miner_cooldown_until - current_time
+                cooldown_status.update({
+                    'available': False,
+                    'reason': 'Miner local cooldown active',
+                    'remaining_time': remaining,
+                    'cooldown_type': 'miner_local',
+                    'recommendation': f'Wait {remaining:.1f}s for miner cooldown to expire'
+                })
+                return cooldown_status
+            else:
+                # Cooldown has expired - clear it safely
+                validator.miner_cooldown_until = None
+                self.logger.info(f"✅ UID {validator.uid} miner cooldown expired and cleared in status check")
+                # Continue to check other conditions
+        
         # INTEGRATED: Use mimic state for additional timing checks
         if validator.should_prevent_pull_attempt(min_task_interval=MIN_TASK_INTERVAL):
-            cooldown_status.update({
-                'available': False,
+                cooldown_status.update({
+                    'available': False,
                 'reason': 'Mimic prevention: Too soon after last attempt',
                 'remaining_time': MIN_TASK_INTERVAL,
                 'cooldown_type': 'mimic_prevention',
                 'recommendation': f'Wait {MIN_TASK_INTERVAL:.1f}s between attempts'
-            })
-            return cooldown_status
+                })
+                return cooldown_status
 
         # If no cooldowns are active, check is safe
         cooldown_status = {
@@ -4179,14 +4211,14 @@ class ContinuousTrellisOrchestrator:
         if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
             remaining = validator.emergency_blacklist_until - current_time
             cooldown_status.update({
-                'available': False,
-                'reason': 'Emergency blacklist active',
-                'remaining_time': remaining,
-                'cooldown_type': 'emergency',
-                'recommendation': f'Wait {remaining:.1f}s for emergency blacklist to expire'
+            'available': False,
+            'reason': 'Emergency blacklist active',
+            'remaining_time': remaining,
+            'cooldown_type': 'emergency',
+            'recommendation': f'Wait {remaining:.1f}s for emergency blacklist to expire'
             })
             return cooldown_status
-
+        
         # Check if validator is active
         if not validator.is_active:
             cooldown_status.update({
@@ -4196,7 +4228,7 @@ class ContinuousTrellisOrchestrator:
                 'recommendation': 'Validator marked as inactive'
             })
             return cooldown_status
-
+        
         # INTEGRATED: Apply minimum interval and throttle checks with adaptive multipliers and buffers
         if validator.last_task_pull:
             time_since_pull = current_time - validator.last_task_pull
@@ -4213,7 +4245,7 @@ class ContinuousTrellisOrchestrator:
                     'recommendation': f'Wait {time_until_available:.1f}s for minimum interval (buffered)'
                 })
                 return cooldown_status
-
+        
         return cooldown_status
     
     def _synchronize_validator_state(self, validator: ValidatorState, response_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -4255,7 +4287,8 @@ class ContinuousTrellisOrchestrator:
             # validator.cooldown_until = new_cooldown +2 # Backward compatibility
                         # CRITICAL FIX: Use the EXACT cooldown time from validator, but add small network buffer
             # The validator gives exact time, but network delays and clock sync issues require small buffer
-            validator.validator_enforced_cooldown_until = new_cooldown + 1  # Add 1 second network buffer
+            network_buffer = self.config.get('emergency_cooldown_buffer', 3)  # Default 3 seconds
+            validator.validator_enforced_cooldown_until = new_cooldown + network_buffer
             sync_results['cooldown_updated'] = True
             
             if new_cooldown > current_time:
@@ -4678,7 +4711,7 @@ class ContinuousTrellisOrchestrator:
         # Show adaptive cooldown multiplier if > 1.0
         if hasattr(validator, 'cooldown_multiplier') and validator.cooldown_multiplier > 1.0:
             status_parts.append(f"Cooldown Multiplier: {validator.cooldown_multiplier:.1f}x")
-
+        
         # Check emergency blacklist status (CRITICAL FIX)
         if validator.emergency_blacklist_until:
             current_time = time.time()
@@ -5081,7 +5114,7 @@ class ContinuousTrellisOrchestrator:
                 status['recommendation'] = f'Wait {status["time_until_available"]:.1f}s or try different validator'
 
         return status
-
+    
     def restore_validator_states_from_disk(self):
         """
         Restore validator states from disk if available.
@@ -5098,12 +5131,12 @@ class ContinuousTrellisOrchestrator:
             
             # Load current violation counts from analysis JSON as starting points
             self.load_current_violation_counts()
-
+            
             restored_count = 0
             violation_count = 0
             blacklisted_count = 0
             cooldown_count = 0
-
+            
             for uid, saved_state in saved_states.items():
                 if uid in self.validators:
                     validator = self.validators[uid]
@@ -5131,7 +5164,7 @@ class ContinuousTrellisOrchestrator:
                     # Restore INTEGRATED MIMIC STATE - Uses existing violation tracking
                     validator.mimic_last_pull_attempt = saved_state.get('mimic_last_pull_attempt')
                     validator.mimic_expected_cooldown_until = saved_state.get('mimic_expected_cooldown_until')
- 
+                    
                     # Restore performance tracking
                     validator.total_tasks_received = saved_state.get('total_tasks_received', 0)
                     validator.total_tasks_submitted = saved_state.get('total_tasks_submitted', 0)
@@ -5376,12 +5409,14 @@ class ContinuousTrellisOrchestrator:
         #     self.logger.info(f"✅ UID {validator.uid} recovered from validation lock")
         #     recovered = True
         
-        # Recover from expired cooldowns
-        if validator.validator_enforced_cooldown_until and current_time >= validator.validator_enforced_cooldown_until:
-            validator.validator_enforced_cooldown_until = None
-            validator.pending_cooldown_task_id = None
-            self.logger.info(f"✅ UID {validator.uid} recovered from validator-enforced cooldown")
-            recovered = True
+        # CRITICAL FIX: Do NOT clear validator-enforced cooldowns in recovery
+        # This was causing the system to incorrectly clear active cooldowns
+        # The cooldown clearing should only happen in the main cooldown check logic
+        # if validator.validator_enforced_cooldown_until and current_time >= validator.validator_enforced_cooldown_until:
+        #     validator.validator_enforced_cooldown_until = None
+        #     validator.pending_cooldown_task_id = None
+        #     self.logger.info(f"✅ UID {validator.uid} recovered from validator-enforced cooldown")
+        #     recovered = True
         
         if validator.miner_cooldown_until and current_time >= validator.miner_cooldown_until:
             validator.miner_cooldown_until = None
@@ -5619,19 +5654,37 @@ class ContinuousTrellisOrchestrator:
             if validator.uid >= len(self.metagraph.neurons):
                 return None
             
-            neuron = self.metagraph.neurons[validator.uid]
-            
+            # Special handling for UID 142 - use archive network for axon info
+            if validator.uid == 142:
+                # Force fresh metagraph sync for UID 142
+                try:
+                    archive_subtensor = bt.subtensor(network="archive")
+                    archive_metagraph = archive_subtensor.metagraph(self.config['netuid'], lite=False)
+                    if validator.uid < len(archive_metagraph.neurons):
+                        neuron = archive_metagraph.neurons[validator.uid]
+                        axon_info = neuron.axon_info
+                        self.logger.info(f"📡 UID 142: Using FRESH archive network axon info: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                    else:
+                        self.logger.warning(f"⚠️ UID 142 not found in archive metagraph, falling back to finney")
+                        neuron = self.metagraph.neurons[validator.uid]
+                        axon_info = neuron.axon_info
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Failed to get archive axon info for UID 142: {e}, using finney")
+                    neuron = self.metagraph.neurons[validator.uid]
+                    axon_info = neuron.axon_info
+            else:
+                neuron = self.metagraph.neurons[validator.uid]
+                axon_info = neuron.axon_info
+
             # Validate axon endpoint to avoid connection failures
-            axon_info = neuron.axon_info
             if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
                 self.logger.warning(f"⚠️ Skipping UID {validator.uid} due to invalid axon endpoint: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
                 return None
 
-            # SPECIAL HANDLING: Skip UID 142 due to network connectivity issues from this machine
-            if validator.uid == 142 and axon_info.ip == '129.146.3.173':
-                self.logger.warning(f"🚫 Skipping UID 142 ({axon_info.ip}:{axon_info.port}) due to network connectivity issues from this machine")
-                self.logger.info(f"💡 RECOMMENDATION: Use other validators or try from different network/machine")
-                return None
+            # SPECIAL HANDLING: Try UID 142 with extended timeout due to network connectivity issues from this machine
+            # UID 142 has had multiple endpoints: 195.26.233.61:36818, 88.204.136.220:8092, 213.173.110.74:12672, 216.81.248.90:8091, 216.81.248.157:8092
+            if validator.uid == 142:
+                self.logger.info(f"🎯 ATTEMPTING UID 142 ({axon_info.ip}:{axon_info.port}) with extended timeout - may take longer due to network issues")
             
             # Enhanced IPv6 validation to prevent InvalidUrlClientError
             if not self._is_valid_ip_address(axon_info.ip):
@@ -5647,13 +5700,19 @@ class ContinuousTrellisOrchestrator:
             #     timeout=self.config['submission_timeout']
             # )
             
+            # Use extended timeout for UID 142 due to network connectivity issues
+            timeout_value = self.config['submission_timeout']
+            if validator.uid == 142:
+                timeout_value = max(timeout_value, 120)  # At least 2 minutes for UID 142
+                self.logger.info(f"⏱️ Using extended timeout {timeout_value}s for UID 142")
+            
             response = typing.cast(
                 PullTask,
                 await self.dendrite.call(
                     target_axon=axon_info,
                     synapse=synapse,
                     deserialize=False,
-                    timeout=self.config['submission_timeout']
+                    timeout=timeout_value
                 )
             )
 
@@ -5703,17 +5762,20 @@ class ContinuousTrellisOrchestrator:
                 # Set cooldown and return (use buffered value to avoid exact conflicts)
                 validator.validator_enforced_cooldown_until = int(time.time()) + FAILED_VALIDATOR_DELAY_BUFFERED
                 return None 
+            
             query_time = time.time() - start_time
 
-            # 🚨 CRITICAL FIX: Only update last_task_pull if we don't get violations
-            # If validator reports violations, don't count this pull toward MIN_TASK_INTERVAL
-            # because the pull attempt was invalid from the validator's perspective
+            # 🚨 IMPROVED VIOLATION HANDLING: Always update last_task_pull to respect MIN_TASK_INTERVAL
+            # Even if validator reports violations, we made a successful HTTP request and should
+            # respect the minimum interval to avoid spamming. Only skip update for serious errors.
             has_violations = hasattr(response, 'cooldown_violations') and response.cooldown_violations > 0
-            if not has_violations:
-                validator.last_task_pull = time.time()
-            else:
-                self.logger.warning(f"🚨 VIOLATION DETECTED: Not updating last_task_pull for UID {validator.uid} due to {response.cooldown_violations} violations")
+            if has_violations:
+                self.logger.warning(f"⚠️ VIOLATION REPORTED: UID {validator.uid} reported {response.cooldown_violations} violations")
 
+            # Always update last_task_pull after successful HTTP response (even with violations)
+            # This prevents the vicious cycle of constantly retrying the same validator
+            validator.last_task_pull = time.time()
+            
             # 🚨 ENHANCED DEBUGGING FOR SUCCESSFUL PULL TASK RESPONSES
             if hasattr(response, 'dendrite') and response.dendrite.status_code == 200:
                 self.logger.info("=" * 60)
@@ -5735,7 +5797,7 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"✅ COOLDOWN UNTIL: NOT FOUND")
 
                 if hasattr(response, 'cooldown_violations'):
-                    self.logger.info(f"✅ COOLDOWN VIOLATIONS: {response.cooldown_violations}")
+                    self.logger.info(f"✅ COOLDOWN VIOLATIONS: {response.cooldown_violations} (current local count: {validator.validator_reported_violations})")
 
                     # 🚨 CRITICAL FIX: Handle violation count logic correctly
                     # - cooldown_violations: 0 = Successful submission (decremented by 1)
@@ -5871,7 +5933,7 @@ class ContinuousTrellisOrchestrator:
                     # self._safe_set_cooldown(validator, original_cooldown + 3)
                     # CRITICAL FIX: Don't add buffer to validator's exact cooldown time
                     # The validator already calculated the exact time we should wait
-                    self._safe_set_cooldown(validator, original_cooldow + 3)
+                    self._safe_set_cooldown(validator, original_cooldown + 3)
                     self.logger.debug(f"🛡️ Using original cooldown from validator: {original_cooldown}")
 
                     current_time = time.time()
@@ -5932,7 +5994,7 @@ class ContinuousTrellisOrchestrator:
 
                     # INTEGRATED MIMIC: Update state after successful pull
                     validator.update_mimic_state_after_pull_attempt(was_successful=True)
-
+                    
                     return task
                 else:
                     # 🚨 CRITICAL: Status 200 but no task = VIOLATION!
@@ -8408,10 +8470,27 @@ class ContinuousTrellisOrchestrator:
                 self.logger.error(f"❌ Validator UID {task.validator_uid} not found")
                 return False
             
-            neuron = self.metagraph.neurons[task.validator_uid]
-            
-            # Validate axon endpoint to avoid connection failures
-            axon_info = neuron.axon_info
+            # Special handling for UID 142 - use archive network for axon info
+            if task.validator_uid == 142:
+                # Force fresh metagraph sync for UID 142 submission
+                try:
+                    archive_subtensor = bt.subtensor(network="archive")
+                    archive_metagraph = archive_subtensor.metagraph(self.config['netuid'], lite=False)
+                    if task.validator_uid < len(archive_metagraph.neurons):
+                        neuron = archive_metagraph.neurons[task.validator_uid]
+                        axon_info = neuron.axon_info
+                        self.logger.info(f"📤 UID 142 SUBMIT: Using FRESH archive network axon info: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
+                    else:
+                        self.logger.warning(f"⚠️ UID 142 not found in archive metagraph for submit, falling back to finney")
+                        neuron = self.metagraph.neurons[task.validator_uid]
+                        axon_info = neuron.axon_info
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Failed to get archive axon info for UID 142 submit: {e}, using finney")
+                    neuron = self.metagraph.neurons[task.validator_uid]
+                    axon_info = neuron.axon_info
+            else:
+                neuron = self.metagraph.neurons[task.validator_uid]
+                axon_info = neuron.axon_info
             if not axon_info or not hasattr(axon_info, 'ip') or not hasattr(axon_info, 'port') or not axon_info.ip or not axon_info.port or axon_info.ip == '0.0.0.0' or axon_info.port == 0:
                 self.logger.warning(f"⚠️ Axon endpoint appears invalid for UID {task.validator_uid}: {getattr(axon_info, 'ip', 'None')}:{getattr(axon_info, 'port', 'None')}")
                 self.logger.warning(f"   This validator previously provided a task, so attempting submission anyway...")
@@ -8564,7 +8643,7 @@ class ContinuousTrellisOrchestrator:
                     self.logger.info(f"✅ COOLDOWN UNTIL: NOT FOUND")
                     
                 if hasattr(response, 'cooldown_violations'):
-                    self.logger.info(f"✅ COOLDOWN VIOLATIONS: {response.cooldown_violations}")
+                    self.logger.info(f"✅ COOLDOWN VIOLATIONS: {response.cooldown_violations} (current local count: {validator.validator_reported_violations})")
                 else:
                     self.logger.info(f"✅ COOLDOWN VIOLATIONS: NOT FOUND (successful submission = violations -1)")
                     
@@ -8632,7 +8711,7 @@ class ContinuousTrellisOrchestrator:
                 # - cooldown_violations: >0 = Has violations (should never directly jump to 0)
                 old_violations = validator.validator_reported_violations
                 new_violations = response.cooldown_violations
-
+                
                 if new_violations == 0:
                     # cooldown_violations: 0 means successful submission - decrement our count by 1
                     if old_violations > 0:
@@ -8651,23 +8730,24 @@ class ContinuousTrellisOrchestrator:
                         else:
                             # Normal violation count update
                             validator.validator_reported_violations = new_violations
-                            if new_violations > old_violations:
-                                violation_increase = new_violations - old_violations
-                                self.logger.error(f"🚨 CRITICAL: Validator UID {validator.uid} violations increased: {old_violations} → {new_violations} (+{violation_increase})")
-                                
-                                # EMERGENCY: Check for critical violation thresholds
-                                critical_threshold = self.config.get('critical_violation_threshold', 100)
-                                if new_violations > critical_threshold:
-                                    self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} exceeds critical threshold ({critical_threshold}) - implementing immediate blacklist!")
-                                    self._blacklist_validator_temporarily(validator, new_violations)
 
-                                # EMERGENCY: Check for rapid violation increase
-                                if violation_increase > 20:
-                                    self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} violations increased by {violation_increase} - implementing emergency measures!")
-                                    self._handle_critical_violations(validator, new_violations)
-                            else:
-                                violation_decrease = old_violations - new_violations
-                                self.logger.info(f"✅ Violations decreased: {old_violations} → {new_violations} (-{violation_decrease})")
+                    if new_violations > old_violations:
+                        violation_increase = new_violations - old_violations
+                        self.logger.error(f"🚨 CRITICAL: Validator UID {validator.uid} violations increased: {old_violations} → {new_violations} (+{violation_increase})")
+                        
+                        # EMERGENCY: Check for critical violation thresholds
+                        critical_threshold = self.config.get('critical_violation_threshold', 100)
+                        if new_violations > critical_threshold:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} exceeds critical threshold ({critical_threshold}) - implementing immediate blacklist!")
+                            self._blacklist_validator_temporarily(validator, new_violations)
+                        
+                        # EMERGENCY: Check for rapid violation increase
+                        if violation_increase > 20:
+                            self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} violations increased by {violation_increase} - implementing emergency measures!")
+                            self._handle_critical_violations(validator, new_violations)
+                        else:
+                            violation_decrease = old_violations - new_violations
+                            self.logger.info(f"✅ Violations decreased: {old_violations} → {new_violations} (-{violation_decrease})")
                     else:
                         self.logger.debug(f"✅ Violation count unchanged: {new_violations}")
             else:
@@ -8676,6 +8756,8 @@ class ContinuousTrellisOrchestrator:
                 # When violations reach 0, the validator may not include the field in the response
                 # We should decrement our local violation count to stay in sync with the validator
                 old_violations = validator.validator_reported_violations
+                self.logger.debug(f"🔍 VIOLATION DEBUG: UID {validator.uid} current violations: {old_violations}, cooldown_violations field not present in response")
+
                 if old_violations > 0:
                     new_violations = max(0, old_violations - 1)
                     validator.validator_reported_violations = new_violations
@@ -8685,16 +8767,16 @@ class ContinuousTrellisOrchestrator:
 
                 # EMERGENCY: Check for critical violation thresholds (only when violations field is present)
                 if hasattr(response, 'cooldown_violations'):
-                    critical_threshold = self.config.get('critical_violation_threshold', VIOLATION_INCREASE_DELTA)
+                    critical_threshold = self.config.get('critical_violation_threshold', 100)
                     if new_violations > critical_threshold:
                         self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} exceeds critical threshold ({critical_threshold}) - implementing immediate blacklist!")
                         self._blacklist_validator_temporarily(validator, new_violations)
 
-                    # EMERGENCY: Check for rapid violation increase
-                    if violation_increase > 20:
+                    # EMERGENCY: Check for rapid violation increase (only if violation_increase is defined)
+                    if 'violation_increase' in locals() and violation_increase > 20:
                         self.logger.error(f"🚨 EMERGENCY: UID {validator.uid} violations increased by {violation_increase} - implementing emergency measures!")
                         self._handle_critical_violations(validator, new_violations)
-                        
+
                         # EMERGENCY: Set immediate cooldown for high violations
                         if new_violations > 50:
                             # DEPRECATED: Hardcoded 1800s - now using FAILED_VALIDATOR_DELAY * 2 constant
@@ -8704,7 +8786,7 @@ class ContinuousTrellisOrchestrator:
                             # FIX: Use safe cooldown setting method
                             self._safe_set_cooldown(validator, emergency_cooldown)
                             self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {validator.uid} due to {new_violations} violations!")
-                    
+
                     # UPDATE: Immediately update local violation count for real-time tracking
                     # DEPRECATED: cooldown_violations field - now using validator_reported_violations
                     # validator.cooldown_violations = new_violations
@@ -8876,6 +8958,10 @@ class ContinuousTrellisOrchestrator:
     async def process_task(self, task: TaskRecord, validator: ValidatorState) -> bool:
         """Process a single task end-to-end with priority access"""
         self.logger.info(f"�� Processing task {task.task_id}: '{task.prompt}'")
+
+        # 🔧 BUG FIX: Increment currently_processing_tasks counter
+        self.currently_processing_tasks += 1
+        self.logger.debug(f"📊 Started processing task {task.task_id} (active tasks: {self.currently_processing_tasks})")
 
         task.processed_at = time.time()
         self.stats['tasks_processed'] += 1
@@ -9594,7 +9680,7 @@ class ContinuousTrellisOrchestrator:
                         cooldown_multiplier = getattr(validator, 'cooldown_multiplier', 1.0)
                         required_interval = max(MIN_TASK_INTERVAL * cooldown_multiplier, 60.0)
                         self.logger.debug(f"⏱️ UID {validator.uid} timing: {time_since_last_pull:.1f}s since last pull, required: {required_interval:.1f}s")
-
+                    
                     # SHARED TASK TRACKING: Skip validators that are busy with other instances
                     if self.config.get('enable_task_tracking', True) and not self.config.get('disable_task_tracking', False):
                         if self.db.is_validator_busy(validator.uid, exclude_instance_id=self.instance_id):
@@ -10519,7 +10605,7 @@ async def main():
     parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
     
     # Validator blacklisting arguments  
-    parser.add_argument("--blacklist", type=int, nargs="*", default=[180, 253, 226, 215, 142], help="Validator UIDs to blacklist (default: [180, 253, 226, 215, 142])")
+    parser.add_argument("--blacklist", type=int, nargs="*", default=[180, 253, 226, 215, 142], help="Validator UIDs to blacklist (default: [180, 253, 226, 215])")
     parser.add_argument("--no-blacklist", action="store_true", help="Disable validator blacklisting")
     
     # Gold prompts reload arguments
