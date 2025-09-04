@@ -30,6 +30,8 @@ import traceback
 import threading
 import gc
 import numpy as np
+import contextlib
+from io import StringIO
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -410,7 +412,7 @@ from PIL import Image
 from rembg import remove, new_session
 
 class BackgroundRemover():
-    def __init__(self, session=None, putalpha=True):
+    def __init__(self, session="u2netp", putalpha=True):
         self.session = new_session(session)
         self.putalpha = putalpha
 
@@ -1136,7 +1138,7 @@ class TrellisGenerator:
         
         try:
             # self.background_remover = BackgroundRemover(session="u2netp", putalpha=True)
-            self.background_remover = BackgroundRemover()
+            self.background_remover = BackgroundRemover(session="u2net", putalpha=True)
             print("✅ Background remover loaded successfully")
             
         except Exception as e:

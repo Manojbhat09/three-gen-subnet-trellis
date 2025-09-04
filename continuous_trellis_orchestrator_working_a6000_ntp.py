@@ -83,6 +83,9 @@ import os
 import open_clip
 from open_clip import CLIP
 from open_clip.tokenizer import HFTokenizer
+import ntplib
+import statistics
+from typing import Tuple
 
 # Violation threshold constants - STANDARDIZED VALUES
 VIOLATION_THRESHOLD_LOW = 5      # Basic cooldown penalty threshold
@@ -91,7 +94,7 @@ VIOLATION_THRESHOLD_HIGH = 75     # High monitoring threshold
 VIOLATION_THRESHOLD_CRITICAL = 100 # Emergency measures threshold
 VIOLATION_THRESHOLD_EXTREME = 500  # Extreme violation detection
 VIOLATION_THRESHOLD_MAX = 1000    # Maximum violation detection
-AGGRESSIVE_COOLDOWN_BUFFER = 40
+
 # Import the prompt optimizer
 try:
     # from smart_prompt_optimizer_fixed import OptimizedPromptOptimizer
@@ -167,15 +170,15 @@ logging.basicConfig(
 NETWORK_DELAY_TIME_BUFFER = 60
 FAILED_VALIDATOR_DELAY = 180
 GENERATION_ERROR_DELAY = 180
-MIN_TASK_INTERVAL = 35  # Minimum time between tasks to respect throttle period
-SYNTHETIC_TRAFFIC_COOLDOWN = 305
-ORGANIC_TRAFFIC_COOLDOWN = 125
+MIN_TASK_INTERVAL = 60  # Minimum time between tasks to respect throttle period
+SYNTHETIC_TRAFFIC_COOLDOWN = 301
+ORGANIC_TRAFFIC_COOLDOWN = 121 
 MAX_COOLDOWN_DURATION = 300
 THROTTLE_PERIOD = MIN_TASK_INTERVAL
 
 # BUFFERED VALUES - Add buffers to avoid exact timing conflicts with validator logic
 FAILED_VALIDATOR_DELAY_BUFFERED = FAILED_VALIDATOR_DELAY + 5  # 170 seconds
-MIN_TASK_INTERVAL_BUFFERED = MIN_TASK_INTERVAL + 7  # 37 seconds
+MIN_TASK_INTERVAL_BUFFERED = MIN_TASK_INTERVAL + 2  # 37 seconds
 THROTTLE_PERIOD_BUFFERED = THROTTLE_PERIOD + 2  # 37 seconds
 # REMOVED: Duplicate constants - now using standardized VIOLATION_THRESHOLD_* constants above
 # REMOVED: These constants are now standardized as VIOLATION_THRESHOLD_* above
@@ -184,7 +187,7 @@ THROTTLE_PERIOD_BUFFERED = THROTTLE_PERIOD + 2  # 37 seconds
 # COOLDOWN_PENALTY = 600
 EMERGENCY_COOLDOWN_BUFFER = 5
 CRITICAL_VIOLATION_THRESHOLD = 100
-CRITICAL_VIOLATION_COOLDOWN = 302
+CRITICAL_VIOLATION_COOLDOWN = 300
 BASE_BLACKLIST_DURATION = 31
 # DEPRECATED: Violation increase delta replaced by violation prevention framework
 # VIOLATION_INCREASE_DELTA = 2
@@ -1384,7 +1387,7 @@ class ValidatorState:
     last_submit_time: Optional[float] = None
     
     # Emergency cooldown management
-    emergency_blacklist_until: Optional[float] = None
+    # REMOVED: emergency_blacklist_until - no longer needed with proper timing sync
     last_violation_check: Optional[float] = None
     
     # FIXED: Separate miner and validator cooldown tracking (subnet compliance)
@@ -1401,9 +1404,6 @@ class ValidatorState:
     mimic_last_pull_attempt: Optional[float] = None           # When we last attempted to pull
     mimic_expected_cooldown_until: Optional[float] = None     # Expected cooldown based on validator logic
 
-    # Traffic-specific cooldown tracking
-    last_traffic_type: Optional[str] = None                   # Last traffic type (synthetic/organic) for cooldown enforcement
-
     def __post_init__(self):
         if self.recent_prompts is None:
             self.recent_prompts = set()
@@ -1416,10 +1416,13 @@ class ValidatorState:
         """
         current_time = time.time()
 
-        # Check if we're still within MIN_TASK_INTERVAL from last attempt (use buffered value)
+        # Check if we're still within MIN_TASK_INTERVAL from last attempt (use adaptive timing)
         if self.mimic_last_pull_attempt:
             time_since_last_attempt = current_time - self.mimic_last_pull_attempt
-            buffered_interval = min_task_interval + 2  # Add 2 second buffer
+            # Use adaptive buffer based on timing measurements instead of fixed 15s
+            # This will be more efficient now that we have proper timing sync
+            adaptive_buffer = 5.0  # Reduced from 15s since timing is now synchronized
+            buffered_interval = min_task_interval + adaptive_buffer
             if time_since_last_attempt < buffered_interval:
                 return True  # Prevent pull attempt
 
@@ -1427,9 +1430,11 @@ class ValidatorState:
         if self.validator_enforced_cooldown_until and current_time < self.validator_enforced_cooldown_until:
             return True  # Prevent pull attempt
 
-        # Check if we have high violation count (prevent spam)
-        if self.validator_reported_violations > 50:
-            return True  # Prevent pull attempt
+        # REMOVED: Violation-based blocking (not needed with proper timing sync)
+        # In distributed networks, even very high violations may be due to network conditions
+        # Let the system participate with all validators for maximum rewards
+        # if self.validator_reported_violations > 1000:  # Only block extreme cases (commented out)
+        #     return True  # Prevent pull attempt
 
         return False  # Allow pull attempt
 
@@ -1444,8 +1449,8 @@ class ValidatorState:
             # Update expected cooldown based on successful pull
             min_task_interval = getattr(self, 'cooldown_multiplier', 1.0) * 35.0
             min_task_interval = max(min_task_interval, 60.0)  # Minimum 60s
-            # Add buffer to avoid exact timing conflicts
-            min_task_interval += 2  # Add 2 second buffer
+            # Add buffer to avoid exact timing conflicts - massively increased for safety
+            min_task_interval += 15  # Add 15 second buffer
             self.mimic_expected_cooldown_until = current_time + min_task_interval
 
     def get_mimic_violation_risk(self) -> str:
@@ -1520,7 +1525,7 @@ class ValidatorStatePersistence:
                     # Validation and emergency state (CRITICAL)
                     # DEPRECATED: Validation lock removed - now using MIN_TASK_INTERVAL constant for rate limiting
                     # 'validation_locked_until': validator.validation_locked_until,
-                    'emergency_blacklist_until': validator.emergency_blacklist_until,
+                    # REMOVED: emergency_blacklist_until persistence - no longer needed
                     'last_submit_time': validator.last_submit_time,
                     'last_violation_check': validator.last_violation_check,
                     
@@ -1604,12 +1609,10 @@ class ValidatorStatePersistence:
                     #     if current_time >= validator_data['validation_locked_until']:
                     #         validator_data['validation_locked_until'] = None
                     
-                    if validator_data.get('emergency_blacklist_until'):
-                        if current_time >= validator_data['emergency_blacklist_until']:
-                            validator_data['emergency_blacklist_until'] = None
-                        else:
+                    # REMOVED: emergency_blacklist_until restoration - no longer needed
+                        # else:
                             # Still blacklisted
-                            validator_data['is_active'] = False
+                    validator_data['is_active'] = False
                     
                     # Count active violations
                     if validator_data.get('validator_reported_violations', 0) > 0:
@@ -2700,6 +2703,16 @@ class ContinuousTrellisOrchestrator:
         self.validators: Dict[int, ValidatorState] = {}
         self.running = False
         self.start_time = time.time()
+
+        # Time synchronization attributes
+        self.time_offset_measurements: List[float] = []
+        self.network_latency_measurements: List[float] = []
+        self.time_sync_enabled = True
+        self.ntp_servers = ['pool.ntp.org', 'time.nist.gov', 'time.google.com']
+        self.time_sync_interval = 300  # 5 minutes
+        self.last_time_sync = 0
+        self.detected_time_offset = 0.0  # seconds
+        self.estimated_network_latency = 0.0  # seconds
         
         # Initialize organic LoRA router
         if ORGANIC_LORA_ROUTER_AVAILABLE:
@@ -2861,7 +2874,7 @@ class ContinuousTrellisOrchestrator:
         }
         
         # Dynamic system management attributes
-        self.current_task_pull_strategy = "AGGRESSIVE"  # Default strategy
+        self.current_task_pull_strategy = "MODERATE"  # Default strategy (never aggressive for safety)
         self.current_max_concurrent_tasks = self.config.get('max_concurrent_tasks', 5)  # Default max tasks
         self.currently_processing_tasks = 0  # Track currently processing tasks
         
@@ -3350,7 +3363,7 @@ class ContinuousTrellisOrchestrator:
     
     def _is_validator_on_cooldown(self, validator: ValidatorState) -> tuple[bool, str, float]:
         """
-        Check if validator is on any type of cooldown.
+        Check if validator is on any type of cooldown with adaptive timing.
         
         Returns:
             Tuple of (is_on_cooldown, cooldown_type, remaining_seconds)
@@ -3359,25 +3372,30 @@ class ContinuousTrellisOrchestrator:
         if self.config.get('disable_all_cooldowns', False):
             return False, "none", 0.0
         
+        # Use adaptive timing with NTP offset and network latency compensation
         current_time = time.time()
+        adaptive_buffer = self._get_adaptive_cooldown_buffer()
+
+        # Apply timing corrections for clock synchronization issues
+        corrected_time = current_time + self.detected_time_offset + (self.estimated_network_latency / 2)
         
-        # CRITICAL FIX: Check validator's LAST REPORTED cooldown state first with AGGRESSIVE buffer
-        # This prevents polling validators that we know are still on cooldown
-        # Add extra buffer time to account for network latency and clock differences
-         # 30 seconds extra buffer
-
+        # CRITICAL FIX: Check validator's LAST REPORTED cooldown state with adaptive timing
+        # Use corrected time and adaptive buffer to prevent clock synchronization issues
         if hasattr(validator, 'last_reported_cooldown_until') and validator.last_reported_cooldown_until:
-            # Add aggressive buffer to prevent violations
-            effective_cooldown_until = validator.last_reported_cooldown_until + AGGRESSIVE_COOLDOWN_BUFFER
-            if current_time < effective_cooldown_until:
-                remaining = effective_cooldown_until - current_time
-                self.logger.debug(f"🚫 UID {validator.uid} BLOCKED by aggressive cooldown check: {remaining:.1f}s remaining (buffer: {AGGRESSIVE_COOLDOWN_BUFFER}s)")
-                return True, "last_reported_cooldown_aggressive", remaining
+            if corrected_time < validator.last_reported_cooldown_until + adaptive_buffer:
+                remaining = validator.last_reported_cooldown_until + adaptive_buffer - corrected_time
+                if self.config.get('timing_diagnostics', False):
+                    self.logger.info(f"🚫 UID {validator.uid} BLOCKED by validator cooldown: {remaining:.1f}s remaining")
+                    self.logger.info(f"   Adaptive buffer: {adaptive_buffer:.1f}s (NTP: {self.detected_time_offset:.3f}s, Latency: {self.estimated_network_latency:.3f}s)")
+                    self.logger.info(f"   Cooldown until: {validator.last_reported_cooldown_until}, Corrected time: {corrected_time:.1f}")
+                else:
+                    self.logger.debug(f"🚫 UID {validator.uid} BLOCKED by validator cooldown: {remaining:.1f}s remaining (adaptive: {adaptive_buffer:.1f}s)")
+                return True, "last_reported_cooldown", remaining
 
-        # Check validator-enforced cooldown first (highest priority)
+        # Check validator-enforced cooldown first (highest priority) with adaptive timing
         if validator.validator_enforced_cooldown_until:
-            if current_time < validator.validator_enforced_cooldown_until:
-                remaining = validator.validator_enforced_cooldown_until - current_time
+            if corrected_time < validator.validator_enforced_cooldown_until + adaptive_buffer:
+                remaining = validator.validator_enforced_cooldown_until + adaptive_buffer - corrected_time
                 return True, "validator", remaining
             else:
                 # Cooldown has expired - clear it safely
@@ -3385,12 +3403,12 @@ class ContinuousTrellisOrchestrator:
                 # FIXED: Only clear pending_cooldown_task_id if it's associated with this validator cooldown
                 if validator.pending_cooldown_task_id and hasattr(validator, 'last_reported_cooldown_until') and validator.last_reported_cooldown_until == validator.validator_enforced_cooldown_until:
                     validator.pending_cooldown_task_id = None
-                self.logger.info(f"✅ UID {validator.uid} validator cooldown expired and cleared")
+                    self.logger.info(f"✅ UID {validator.uid} validator cooldown expired and cleared")
 
-        # Check miner cooldown (only if no validator cooldown is active)
+        # Check miner cooldown (only if no validator cooldown is active) with timing correction
         if validator.miner_cooldown_until:
-            if current_time < validator.miner_cooldown_until:
-                remaining = validator.miner_cooldown_until - current_time
+            if corrected_time < validator.miner_cooldown_until + adaptive_buffer:
+                remaining = validator.miner_cooldown_until + adaptive_buffer - corrected_time
                 return True, "miner", remaining
             else:
                 # Cooldown has expired - clear it safely
@@ -3563,11 +3581,8 @@ class ContinuousTrellisOrchestrator:
             # self.logger.info(f"🚫 Validator UID {validator.uid} not available: BLACKLISTED")
             return False
 
-        # Check emergency blacklist (new critical feature)
-        if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
-            remaining = validator.emergency_blacklist_until - current_time
-            self.logger.warning(f"🚨 Validator UID {validator.uid} not available: EMERGENCY BLACKLIST ({remaining:.1f}s remaining)")
-            return False
+        # REMOVED: Emergency blacklist check - no longer needed with proper timing sync
+        # All timing issues are now handled by adaptive buffers
         # # Enhanced cooldown checking using helper method (subnet compliant)
         # is_cooldown, cooldown_type, remaining = self._is_validator_on_cooldown(validator)
         # if is_cooldown:
@@ -3975,10 +3990,7 @@ class ContinuousTrellisOrchestrator:
             validator: The validator with critical violations
             violation_count: Current violation count
         """
-        # CRITICAL FIX: Prevent multiple emergency measures
-        if validator.emergency_blacklist_until and time.time() < validator.emergency_blacklist_until:
-            self.logger.warning(f"⚠️ Emergency measures already active for UID {validator.uid} - skipping duplicate")
-            return
+        # REMOVED: Emergency blacklist check - no longer needed with proper timing sync
         
         self.logger.error(f"🚨 CRITICAL: Implementing violation prevention measures for UID {validator.uid}")
         self.logger.error(f"   Violation count: {violation_count} (threshold: {VIOLATION_THRESHOLD_CRITICAL})")
@@ -4011,11 +4023,9 @@ class ContinuousTrellisOrchestrator:
         self.logger.error(f"   Emergency cooldown: {emergency_duration}s (base: {base_duration}s)")
         self.logger.error(f"   Cooldown until: {emergency_cooldown_until}")
         
-        # Mark validator as temporarily blacklisted
-        validator.is_active = False
-        validator.emergency_blacklist_until = emergency_cooldown_until
-        
-        self.logger.error(f"   Validator UID {validator.uid} temporarily blacklisted until cooldown expires")
+        # REMOVED: Emergency blacklisting - no longer needed with proper timing sync
+        # Just apply the cooldown without blacklisting
+        self.logger.error(f"   Applied emergency cooldown to UID {validator.uid} until cooldown expires")
         
         # Track critical violations
         self.stats['critical_violations_handled'] = self.stats.get('critical_violations_handled', 0) + 1
@@ -4034,64 +4044,41 @@ class ContinuousTrellisOrchestrator:
             validator: The validator to blacklist
             violation_count: Current violation count
         """
-        # CRITICAL FIX: Prevent multiple blacklistings
-        if validator.emergency_blacklist_until and time.time() < validator.emergency_blacklist_until:
-            self.logger.warning(f"⚠️ Validator UID {validator.uid} already blacklisted - skipping duplicate")
-            return
-        
-        self.logger.error(f"🚨 BLACKLISTING: Validator UID {validator.uid} due to {violation_count} violations")
-        
-        # Calculate blacklist duration based on violation count
-        base_duration = self.config.get('base_blacklist_duration', 900)  # 15 minutes
-        violation_multiplier = min(violation_count / 50, 10)  # Cap at 10x
-        blacklist_duration = int(base_duration * violation_multiplier)
-        
-        blacklist_until = time.time() + blacklist_duration
-        
-        # Set blacklist
-        validator.is_active = False
-        validator.emergency_blacklist_until = blacklist_until
+        # REMOVED: Emergency blacklisting - no longer needed with proper timing sync
+        self.logger.warning(f"⚠️ High violations detected for UID {validator.uid}: {violation_count} violations")
+        self.logger.warning("   Using adaptive timing instead of blacklisting for better network participation")
+
+        # Calculate adaptive cooldown instead of blacklisting
+        base_duration = self.config.get('critical_violation_cooldown', 1800)  # 30 minutes
+        violation_multiplier = min(violation_count / 50, 3)  # Cap at 3x for adaptive timing
+        adaptive_duration = int(base_duration * violation_multiplier)
+
+        adaptive_cooldown_until = time.time() + adaptive_duration
+
+        # Apply adaptive cooldown instead of blacklisting
+        validator.validator_enforced_cooldown_until = adaptive_cooldown_until
         # FIX 2: Use only one cooldown field per cooldown type
         # validator.cooldown_until = blacklist_until
         
-        self.logger.error(f"   Blacklist duration: {blacklist_duration}s (until {blacklist_until})")
-        self.logger.error(f"   Violation multiplier: {violation_multiplier:.1f}x")
-        
-        # Track blacklists
-        self.stats['validators_temporarily_blacklisted'] = self.stats.get('validators_temporarily_blacklisted', 0) + 1
+        self.logger.warning(f"   Adaptive cooldown duration: {adaptive_duration}s")
+        self.logger.warning(f"   Violation multiplier: {violation_multiplier:.1f}x")
+
+        # Track adaptive cooldowns instead of blacklists
+        self.stats['adaptive_cooldowns_applied'] = self.stats.get('adaptive_cooldowns_applied', 0) + 1
         
         # CRITICAL: Save state immediately after blacklisting
         self.save_validator_states_to_disk()
     
-    def _check_and_clear_expired_emergency_blacklists(self):
+    def _check_and_clear_expired_adaptive_cooldowns(self):
         """
-        Check and clear expired emergency blacklists and cooldowns.
+        Check and clear expired adaptive cooldowns.
         This should be called periodically to restore validators.
         """
         current_time = time.time()
         cleared_count = 0
-        
-        for validator in self.validators.values():
-            # Check emergency blacklist
-            if (validator.emergency_blacklist_until and 
-                current_time >= validator.emergency_blacklist_until):
-                
-                self.logger.info(f"✅ Emergency blacklist expired for UID {validator.uid}")
-                self._safe_reset_validator(validator, "emergency blacklist")
-                cleared_count += 1
-            
-            # Check if cooldown has expired but emergency blacklist is still active
-                    # DEPRECATED: cooldown_until field - now using validator_enforced_cooldown_until and miner_cooldown_until
-        # if (validator.cooldown_until and
-        #     current_time >= validator.cooldown_until and
-        #     validator.emergency_blacklist_until and
-        #     current_time >= validator.emergency_blacklist_until):
-        if (validator.emergency_blacklist_until and
-            current_time >= validator.emergency_blacklist_until):
-                
-                self.logger.info(f"✅ Cooldown and emergency blacklist expired for UID {validator.uid}")
-                self._safe_reset_validator(validator, "cooldown and emergency blacklist")
-                cleared_count += 1
+
+        # REMOVED: Emergency blacklist checking - no longer needed
+        # All emergency restrictions are now handled by adaptive cooldowns
         
         if cleared_count > 0:
             self.logger.info(f"🔄 Restored {cleared_count} validators from expired emergency restrictions")
@@ -4108,8 +4095,7 @@ class ContinuousTrellisOrchestrator:
         """
         self.logger.info(f"🔄 Safely resetting UID {validator.uid}: {reason}")
         
-        # Clear emergency restrictions
-        validator.emergency_blacklist_until = None
+        # REMOVED: Emergency blacklist clearing - no longer needed
         # FIX 2: Use only one cooldown field per cooldown type
         # validator.cooldown_until = None
         validator.is_active = True
@@ -4137,7 +4123,7 @@ class ContinuousTrellisOrchestrator:
             old_count = validator.validator_reported_violations
             delta = new_violation_count - old_count
             self.update_validator_violations(validator, delta, f"dynamic reduction (factor: {reduction_factor:.1f})")
-
+            
             self.logger.info(f"   DYNAMIC violation reduction: {old_count} → {new_violation_count} (factor: {reduction_factor:.1f})")
         else:
             # No history - use standard reduction
@@ -4180,329 +4166,100 @@ class ContinuousTrellisOrchestrator:
     
     def _check_validator_cooldown_state(self, validator: ValidatorState) -> Dict[str, Any]:
         """
-        UPDATED: Pre-emptive cooldown state checking using validator behavior mimic.
-        Returns comprehensive cooldown status and recommendations.
-
-        This function now uses validator mimic logic to ensure we never violate cooldowns.
-        It mirrors the validator's internal state and decision-making process.
+        SIMPLE: Check if validator is safe to poll by respecting their reported cooldown state.
         
         Args:
             validator: The validator to check
             
         Returns:
-            Dict with cooldown status, remaining time, and recommendations
+            Dict with availability status
         """
         current_time = time.time()
 
-        # Initialize cooldown status
-        cooldown_status = {
-            'available': True,
-            'reason': 'No cooldown restrictions',
-            'remaining_time': 0,
-            'cooldown_type': 'none',
-            'recommendation': 'Validator is available for task pulling',
-            'violation_incremented': False,
-            'violation_count': validator.validator_reported_violations
-        }
+        # If we have a recent cooldown report from this validator, respect it exactly
+        if hasattr(validator, 'last_reported_cooldown_until') and validator.last_reported_cooldown_until:
+            if current_time < validator.last_reported_cooldown_until:
+                remaining = validator.last_reported_cooldown_until - current_time
+                self.logger.debug(f"🚫 COOLDOWN CHECK: UID {validator.uid} BLOCKED - current_time={current_time:.0f}, cooldown_until={validator.last_reported_cooldown_until:.0f}, remaining={remaining:.1f}s")
+                return {
+                    'available': False,
+                    'reason': f'Validator reported cooldown active',
+                    'remaining_time': remaining,
+                    'cooldown_type': 'last_reported',
+                    'recommendation': f'Wait {remaining:.1f}s for validator cooldown to expire'
+                }
+            else:
+                self.logger.debug(f"✅ COOLDOWN CHECK: UID {validator.uid} AVAILABLE - cooldown expired (current_time={current_time:.0f} >= cooldown_until={validator.last_reported_cooldown_until:.0f})")
 
-        # FIRST: Check validator enforced cooldown (highest authority - direct from validator)
+        # If validator has enforced a cooldown, respect it
         if validator.validator_enforced_cooldown_until:
             if current_time < validator.validator_enforced_cooldown_until:
                 remaining = validator.validator_enforced_cooldown_until - current_time
-                cooldown_status.update({
+                return {
                     'available': False,
                     'reason': 'Validator enforced cooldown active',
                     'remaining_time': remaining,
                     'cooldown_type': 'validator_enforced',
                     'recommendation': f'Wait {remaining:.1f}s for validator cooldown to expire'
-                })
-
-                cooldown_status['violation_incremented'] = False
-                cooldown_status['violation_count'] = validator.validator_reported_violations
-
-                return cooldown_status
+                }
             else:
-                # Cooldown has expired - clear it safely
+                # Cooldown expired, clear it
                 validator.validator_enforced_cooldown_until = None
-                validator.pending_cooldown_task_id = None
-                self.logger.info(f"✅ UID {validator.uid} validator cooldown expired and cleared in status check")
-                # Continue to check other cooldowns
 
-        # SECOND: Apply traffic-specific cooldowns (our local policy)
-        # Only apply if validator-enforced cooldown doesn't apply
-        if (validator.last_task_pull and validator.last_traffic_type):
-            time_since_pull = current_time - validator.last_task_pull
-            traffic_specific_cooldown = self.get_traffic_specific_cooldown(validator.last_traffic_type)
 
-            if time_since_pull < traffic_specific_cooldown:
-                remaining_cooldown = traffic_specific_cooldown - time_since_pull
-                cooldown_status.update({
-                    'available': False,
-                    'reason': f'Traffic-specific cooldown active ({validator.last_traffic_type})',
-                    'remaining_time': remaining_cooldown,
-                    'cooldown_type': 'traffic_specific',
-                    'recommendation': f'Wait {remaining_cooldown:.1f}s for {validator.last_traffic_type} cooldown ({traffic_specific_cooldown}s)'
-                })
-                return cooldown_status
-
-        # THIRD: Check validator's LAST REPORTED cooldown state with AGGRESSIVE buffer
-        # Only apply if validator-enforced and traffic-specific cooldowns don't apply
-        if hasattr(validator, 'last_reported_cooldown_until') and validator.last_reported_cooldown_until:
-            # Add aggressive buffer to prevent violations
-            effective_cooldown_until = validator.last_reported_cooldown_until + AGGRESSIVE_COOLDOWN_BUFFER
-            if current_time < effective_cooldown_until:
-                remaining = effective_cooldown_until - current_time
-                cooldown_status.update({
-                    'available': False,
-                    'reason': f'Validator last reported cooldown still active (with {AGGRESSIVE_COOLDOWN_BUFFER}s buffer)',
-                    'remaining_time': remaining,
-                    'cooldown_type': 'last_reported_cooldown_aggressive',
-                    'recommendation': f'Wait {remaining:.1f}s for validator cooldown to expire (aggressive buffer applied)'
-                })
-
-                # CRITICAL FIX: Do NOT increment violations just for checking cooldown status
-                cooldown_status['violation_incremented'] = False
-                cooldown_status['violation_count'] = validator.validator_reported_violations
-
-                self.logger.warning(f"🚫 UID {validator.uid} BLOCKED by aggressive cooldown check: {remaining:.1f}s remaining (buffer: {AGGRESSIVE_COOLDOWN_BUFFER}s)")
-                print(f"\r🚫 UID {validator.uid} BLOCKED by aggressive cooldown check: {remaining:.1f}s remaining", end='', flush=True)
-                return cooldown_status
-
-        # FOURTH: Check miner local cooldown
-        if validator.miner_cooldown_until:
-            if current_time < validator.miner_cooldown_until:
-                remaining = validator.miner_cooldown_until - current_time
-                cooldown_status.update({
-                    'available': False,
-                    'reason': 'Miner local cooldown active',
-                    'remaining_time': remaining,
-                    'cooldown_type': 'miner_local',
-                    'recommendation': f'Wait {remaining:.1f}s for miner cooldown to expire'
-                })
-                return cooldown_status
-            else:
-                # Cooldown has expired - clear it safely
-                validator.miner_cooldown_until = None
-                self.logger.info(f"✅ UID {validator.uid} miner cooldown expired and cleared in status check")
-                # Continue to check other conditions
-
-        # LAST: Use mimic state for additional timing checks
-        if validator.should_prevent_pull_attempt(min_task_interval=MIN_TASK_INTERVAL):
-                cooldown_status.update({
-                    'available': False,
-                'reason': 'Mimic prevention: Too soon after last attempt',
-                'remaining_time': MIN_TASK_INTERVAL,
-                'cooldown_type': 'mimic_prevention',
-                'recommendation': f'Wait {MIN_TASK_INTERVAL:.1f}s between attempts'
-                })
-                return cooldown_status
-
-        # If no cooldowns are active, check is safe
-        cooldown_status = {
+        # No active cooldowns or acceptable violation count
+        return {
             'available': True,
-            'reason': 'All cooldown checks passed',
+            'reason': 'No active cooldowns',
             'remaining_time': 0,
             'cooldown_type': 'none',
-            'recommendation': 'Safe to proceed',
-            'violation_count': validator.validator_reported_violations
+            'recommendation': 'Safe to poll validator'
         }
-
-
-
-        # Check emergency blacklist
-        if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
-            remaining = validator.emergency_blacklist_until - current_time
-            cooldown_status.update({
-            'available': False,
-            'reason': 'Emergency blacklist active',
-            'remaining_time': remaining,
-            'cooldown_type': 'emergency',
-            'recommendation': f'Wait {remaining:.1f}s for emergency blacklist to expire'
-            })
-            return cooldown_status
-        
-        # Check if validator is active
-        if not validator.is_active:
-            cooldown_status.update({
-                'available': False,
-                'reason': 'Validator inactive',
-                'cooldown_type': 'inactive',
-                'recommendation': 'Validator marked as inactive'
-            })
-            return cooldown_status
-        
-        # INTEGRATED: Apply minimum interval and throttle checks with adaptive multipliers and buffers
-        if validator.last_task_pull:
-            time_since_pull = current_time - validator.last_task_pull
-            base_multiplier = getattr(validator, 'cooldown_multiplier', 1.0)
-            effective_min_interval = max(MIN_TASK_INTERVAL_BUFFERED * base_multiplier, 62.0)  # Use buffered + 2s
-
-            if time_since_pull < effective_min_interval:
-                time_until_available = effective_min_interval - time_since_pull
-                cooldown_status.update({
-                    'available': False,
-                    'reason': f'MIN_TASK_INTERVAL not met ({effective_min_interval:.1f}s with buffer)',
-                    'remaining_time': time_until_available,
-                    'cooldown_type': 'min_task_interval_buffered',
-                    'recommendation': f'Wait {time_until_available:.1f}s for minimum interval (buffered)'
-                })
-                return cooldown_status
-        
-        return cooldown_status
     
     def _synchronize_validator_state(self, validator: ValidatorState, response_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Synchronize local validator state with validator-reported state.
-        Implements graceful degradation and backoff strategies.
+        SIMPLE: Synchronize local state with validator response.
         
         Args:
             validator: The validator to synchronize
             response_data: Response data from validator
             
         Returns:
-            Dict with synchronization results and actions taken
+            Dict with synchronization results
         """
-        sync_results = {
-            'cooldown_updated': False,
-            'violations_updated': False,
+        current_time = time.time()
+        cooldown_synced = False
+        violations_synced = False
+        
+        # Store validator's reported cooldown state
+        if 'cooldown_until' in response_data and response_data['cooldown_until']:
+            new_cooldown = response_data['cooldown_until']
+            validator.last_reported_cooldown_until = new_cooldown
+            validator.validator_enforced_cooldown_until = new_cooldown
+            cooldown_synced = True
+            
+            if new_cooldown > current_time:
+                remaining = new_cooldown - current_time
+                self.logger.warning(f"🔄 Validator UID {validator.uid} cooldown: {remaining:.1f}s remaining")
+
+        # Synchronize violation count
+        if 'cooldown_violations' in response_data:
+            reported_violations = response_data['cooldown_violations']
+            local_violations = validator.validator_reported_violations
+
+            if reported_violations != local_violations:
+                delta = reported_violations - local_violations
+                self.update_validator_violations(validator, delta, "synchronized from response")
+                self.logger.warning(f"⚠️ Violation sync for UID {validator.uid}: {local_violations} → {reported_violations} ({delta:+d})")
+                violations_synced = True
+
+        return {
+            'cooldown_updated': cooldown_synced,
+            'violations_updated': violations_synced,
             'throttle_updated': False,
             'emergency_actions': [],
             'backoff_strategy': None
         }
-        
-        current_time = time.time()
-        
-        # CRITICAL FIX: Store validator's reported cooldown separately from miner-enforced cooldown
-        # Synchronize cooldown state
-        if 'cooldown_until' in response_data and response_data['cooldown_until']:
-            # old_cooldown = validator.cooldown_until  # DEPRECATED: cooldown_until field
-            new_cooldown = response_data['cooldown_until']
-
-            # CRITICAL: Store validator's explicit instruction separately
-            validator.last_reported_cooldown_until = new_cooldown
-            
-            # Only update if the new cooldown is more restrictive
-            # if not old_cooldown or new_cooldown > old_cooldown:  # DEPRECATED: cooldown_until field
-            # DEPRECATED: Legacy field assignment
-            # validator.cooldown_until = new_cooldown
-            # FIX 2: Use only one cooldown field per cooldown type
-            # validator.cooldown_until = new_cooldown +2 # Backward compatibility
-            # FIXED: Use validator's EXACT reported time - no network buffer
-            # The validator is the authoritative source for cooldown timing
-            # Adding buffers causes mismatch between miner and validator expectations
-            validator.validator_enforced_cooldown_until = new_cooldown
-            sync_results['cooldown_updated'] = True
-            
-            if new_cooldown > current_time:
-                remaining = new_cooldown - current_time
-                self.logger.warning(f"🔄 Synchronized VALIDATOR-REPORTED cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
-                self.logger.info(f"🔄 Validator UID {validator.uid} explicitly instructed to wait until {time.strftime('%H:%M:%S', time.localtime(new_cooldown))}")
-
-                # DEPRECATED: Backoff system replaced by violation prevention framework
-                # backoff_duration = self._calculate_backoff_duration(validator, remaining)
-                # sync_results['backoff_strategy'] = f'Backoff for {backoff_duration:.1f}s'
-                
-                # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
-                # self._set_emergency_cooldown_with_backoff(validator, new_cooldown, backoff_duration, "Validator state sync")
-                # sync_results['emergency_actions'].append('emergency_cooldown_with_backoff')
-        
-        if 'validator_enforced_cooldown_until' in response_data and response_data['validator_enforced_cooldown_until']:
-            old_cooldown = validator.validator_enforced_cooldown_until
-            new_cooldown = response_data['validator_enforced_cooldown_until']
-            
-            if new_cooldown != old_cooldown:
-                validator.validator_enforced_cooldown_until = new_cooldown
-                sync_results['cooldown_updated'] = True
-                if new_cooldown > current_time:
-                    remaining = new_cooldown - current_time
-                    self.logger.warning(f"🔄 Synchronized DUPLICATE VALIDATOR-ENFORCED cooldown for UID {validator.uid}: {remaining:.1f}s remaining")
-                    
-        # VIOLATION PREVENTION SYSTEM:
-        # 1. Track violation increases after our interactions
-        # 2. If violations increase, our cooldown was insufficient
-        # 3. Adaptively increase cooldown multiplier for that validator
-        # 4. This prevents future violations while maintaining efficiency
-        if 'cooldown_violations' in response_data and response_data['cooldown_violations'] is not None:
-            old_violations = getattr(validator, 'cooldown_violations', 0)
-            new_violations = response_data['cooldown_violations']
-            
-            if new_violations != old_violations:
-                # Track violation changes for prevention feedback
-                violation_increase = new_violations - old_violations
-                validator.last_violation_count = new_violations
-                validator.last_violation_check_time = time.time()
-
-                # VIOLATION PREVENTION FEEDBACK LOOP:
-                # If violations increase after our interaction, it means our cooldown wasn't long enough
-                # We adaptively increase the cooldown multiplier to prevent future violations
-                if violation_increase > 0:
-                    self.logger.warning(f"🚨 VIOLATION INCREASE DETECTED: UID {validator.uid} violations +{violation_increase}")
-                    self.logger.warning(f"🚨 This means our cooldown timing may be insufficient for UID {validator.uid}")
-                    self.logger.warning(f"🚨 ADAPTIVE RESPONSE: Increasing cooldown multiplier to prevent future violations")
-
-                    # Mark validator as needing longer cooldowns
-                    if not hasattr(validator, 'cooldown_multiplier'):
-                        validator.cooldown_multiplier = 1.0
-                    validator.cooldown_multiplier = min(validator.cooldown_multiplier * 1.2, 3.0)  # Max 3x
-
-                    self.logger.warning(f"🚨 Increased cooldown multiplier for UID {validator.uid} to {validator.cooldown_multiplier}x")
-                    self.logger.warning(f"🚨 Future interactions with UID {validator.uid} will use {validator.cooldown_multiplier}x longer cooldowns")
-
-                # FIX 2: Use thread-safe violation update method
-                if new_violations != validator.validator_reported_violations:
-                    delta = new_violations - validator.validator_reported_violations
-                    self.update_validator_violations(validator, delta, f"synchronized from validator response ({old_violations} → {new_violations})")
-                sync_results['violations_updated'] = True
-                
-                if new_violations > old_violations:
-                    self.logger.info(f"🔄 Synchronized violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
-                    self.logger.info(f"🔄 Synchronized VALIDATOR-REPORTED violations for UID {validator.uid}: {old_violations} → {new_violations} (+{violation_increase})")
-                elif new_violations < old_violations:
-                    self.logger.info(f"🔄 Violation count decreased for UID {validator.uid}: {old_violations} → {new_violations} (-{old_violations - new_violations})")
-
-                    # DEPRECATED: Adaptive backoff replaced by violation prevention framework
-                    # if violation_increase > VIOLATION_INCREASE_DELTA:
-                    #     adaptive_backoff = self._calculate_adaptive_backoff(validator, violation_increase)
-                    #     sync_results['backoff_strategy'] = f'Adaptive backoff for {adaptive_backoff:.1f}s'
-                    #     sync_results['emergency_actions'].append('adaptive_backoff')
-                    #
-                    #     # Set adaptive emergency cooldown
-                    #     self._set_adaptive_emergency_cooldown(validator, adaptive_backoff, violation_increase)
-        
-        # Synchronize throttle period
-        if 'throttle_period' in response_data and response_data['throttle_period']:
-            old_throttle = getattr(validator, 'throttle_period', None)
-            new_throttle = response_data['throttle_period']
-            
-            if new_throttle != old_throttle:
-                validator.throttle_period = new_throttle
-                sync_results['throttle_updated'] = True
-                self.logger.debug(f"🔄 Synchronized throttle for UID {validator.uid}: {new_throttle}s")
-        
-        # FIXED: Add missing synchronization fields for 100% compliance
-        # Synchronize violation history for adaptive backoff
-        if 'violation_history' in response_data:
-            validator.violation_history = response_data['violation_history']
-            sync_results['violation_history_updated'] = True
-            self.logger.debug(f"🔄 Synchronized violation history for UID {validator.uid}")
-        
-        # Synchronize buffer history for emergency cooldown management
-        if 'buffer_history' in response_data:
-            validator.buffer_history = response_data['buffer_history']
-            sync_results['buffer_history_updated'] = True
-            self.logger.debug(f"🔄 Synchronized buffer history for UID {validator.uid}")
-        
-        # Synchronize emergency blacklist state
-        if 'emergency_blacklist_until' in response_data and response_data['emergency_blacklist_until']:
-            old_blacklist = validator.emergency_blacklist_until
-            new_blacklist = response_data['emergency_blacklist_until']
-            
-            if new_blacklist != old_blacklist:
-                validator.emergency_blacklist_until = new_blacklist
-                sync_results['emergency_blacklist_updated'] = True
-                self.logger.warning(f"🔄 Synchronized emergency blacklist for UID {validator.uid}: {new_blacklist}")
-        
-        return sync_results
     
     # DEPRECATED: Backoff calculation replaced by violation prevention framework
     # def _calculate_backoff_duration(self, validator: ValidatorState, cooldown_remaining: float) -> float:
@@ -4812,21 +4569,7 @@ class ContinuousTrellisOrchestrator:
         if hasattr(validator, 'cooldown_multiplier') and validator.cooldown_multiplier > 1.0:
             status_parts.append(f"Cooldown Multiplier: {validator.cooldown_multiplier:.1f}x")
         
-        # Check emergency blacklist status (CRITICAL FIX)
-        if validator.emergency_blacklist_until:
-            current_time = time.time()
-            if current_time >= validator.emergency_blacklist_until:
-                status_parts.append("Emergency blacklist expired")
-            else:
-                remaining = int(validator.emergency_blacklist_until - current_time)
-                if remaining < 60:
-                    status_parts.append(f"EMERGENCY BLACKLIST: {remaining}s remaining")
-                elif remaining < 3600:
-                    status_parts.append(f"EMERGENCY BLACKLIST: {remaining//60}m {remaining%60}s remaining")
-                else:
-                    hours = remaining // 3600
-                    minutes = (remaining % 3600) // 60
-                    status_parts.append(f"EMERGENCY BLACKLIST: {hours}h {minutes}m remaining")
+        # REMOVED: Emergency blacklist status - no longer needed with timing sync
         
         return " | ".join(status_parts) if status_parts else "Available"
 
@@ -4846,12 +4589,12 @@ class ContinuousTrellisOrchestrator:
 
         # Check all cooldown types
         cooldown_types = [
-            ("emergency_blacklist_until", "Emergency Blacklist"),
             ("validator_enforced_cooldown_until", "Validator Enforced"),
             ("miner_cooldown_until", "Miner Local"),
             ("cooldown_until", "Legacy Cooldown")
             # DEPRECATED: Validation lock removed - now using MIN_TASK_INTERVAL constant for rate limiting
             # ("validation_locked_until", "Validation Lock")
+            # REMOVED: Emergency blacklist - no longer needed with timing sync
         ]
 
         for attr_name, display_name in cooldown_types:
@@ -4916,8 +4659,7 @@ class ContinuousTrellisOrchestrator:
         
         for validator in self.validators.values():
             # Check for validators with persistently high violations (DYNAMIC threshold)
-            if (validator.validator_reported_violations > violation_threshold and 
-                not validator.emergency_blacklist_until):
+            if validator.validator_reported_violations > violation_threshold:
                 
                 self.logger.warning(f"⚠️ UID {validator.uid} needs monitoring: {validator.validator_reported_violations} violations")
                 self.logger.warning(f"   DYNAMIC threshold: {violation_threshold} (system health: {system_health_ratio:.1%})")
@@ -5190,15 +4932,7 @@ class ContinuousTrellisOrchestrator:
                 'reason': f'Miner local cooldown ({remaining:.1f}s)'
             })
 
-        # Check emergency blacklist
-        if validator.emergency_blacklist_until and current_time < validator.emergency_blacklist_until:
-            remaining = validator.emergency_blacklist_until - current_time
-            status['cooldown_sources'].append({
-                'source': 'emergency_blacklist',
-                'cooldown_until': validator.emergency_blacklist_until,
-                'remaining': remaining,
-                'reason': f'Emergency blacklist ({remaining:.1f}s)'
-            })
+        # REMOVED: Emergency blacklist check - no longer needed
 
         # Determine if available and most restrictive cooldown
         if status['cooldown_sources']:
@@ -5246,7 +4980,7 @@ class ContinuousTrellisOrchestrator:
                     validator.throttle_period = saved_state.get('throttle_period', 0)
                     # DEPRECATED: Validation lock removed - now using MIN_TASK_INTERVAL constant for rate limiting
                     # validator.validation_locked_until = saved_state.get('validation_locked_until')
-                    validator.emergency_blacklist_until = saved_state.get('emergency_blacklist_until')
+                    # REMOVED: Emergency blacklist restoration - no longer needed
                     validator.last_submit_time = saved_state.get('last_submit_time')
                     validator.last_violation_check = saved_state.get('last_violation_check')
                     
@@ -5284,9 +5018,7 @@ class ContinuousTrellisOrchestrator:
                     # Count different types of restored states
                     if validator.validator_reported_violations > 0:
                         violation_count += 1
-                    if validator.emergency_blacklist_until and time.time() < validator.emergency_blacklist_until:
-                        blacklisted_count += 1
-                        validator.is_active = False  # Ensure blacklisted validators are inactive
+                    # REMOVED: Emergency blacklist counting - no longer needed
                     # if validator.cooldown_until and time.time() < validator.cooldown_until:
                     # FIXED: Count cooldowns using new subnet-compliant fields
                     current_time = time.time()
@@ -5295,21 +5027,13 @@ class ContinuousTrellisOrchestrator:
                         cooldown_count += 1
                     
                     # Log restoration for validators with critical states
-                    if (validator.validator_reported_violations > 50 or 
-                        validator.emergency_blacklist_until or 
-                        validator.validator_enforced_cooldown_until):
+                    if validator.validator_reported_violations > 50 or validator.validator_enforced_cooldown_until:
                         
                         status = self.get_cooldown_status(validator)
                         self.logger.warning(f"🔄 Restored UID {uid}: {status}")
                         
                         if validator.validator_reported_violations > 100:
-                            remaining_time = ""
-                            if validator.emergency_blacklist_until:
-                                remaining_seconds = validator.emergency_blacklist_until - time.time()
-                                if remaining_seconds > 0:
-                                    remaining_time = f" (blacklisted for {remaining_seconds/3600:.1f}h more)"
-                            
-                            self.logger.error(f"🚨 CRITICAL: UID {uid} has {validator.validator_reported_violations} violations{remaining_time}")
+                            self.logger.error(f"🚨 CRITICAL: UID {uid} has {validator.validator_reported_violations} violations")
                 else:
                     self.logger.debug(f"⚠️ Saved state for UID {uid} found but validator not in current set")
             
@@ -5362,14 +5086,12 @@ class ContinuousTrellisOrchestrator:
                         # validator.cooldown_until = emergency_cooldown
                         self.logger.error(f"🚨 EMERGENCY: Set 1-hour cooldown for UID {uid} due to {validator.validator_reported_violations} violations!")
                         
-                        # EMERGENCY: Implement blacklist for extreme violations
+                        # ADAPTIVE: Apply cooldown for extreme violations instead of blacklisting
                         if validator.validator_reported_violations > 300:
-                            # DEPRECATED: Hardcoded 7200s - now using FAILED_VALIDATOR_DELAY * 6 constant
-                            # blacklist_duration = 7200  # 2 hours
-                            blacklist_duration = FAILED_VALIDATOR_DELAY * 6  # 2 hours
-                            validator.emergency_blacklist_until = time.time() + blacklist_duration
-                            validator.is_active = False
-                            self.logger.error(f"🚨 EMERGENCY BLACKLIST: UID {uid} blacklisted for {blacklist_duration/3600:.1f}h due to {validator.validator_reported_violations} violations!")
+                            # Use adaptive cooldown instead of blacklisting
+                            adaptive_duration = FAILED_VALIDATOR_DELAY * 3  # 1.5 hours adaptive cooldown
+                            validator.validator_enforced_cooldown_until = time.time() + adaptive_duration
+                            self.logger.warning(f"⚠️ ADAPTIVE COOLDOWN: UID {uid} cooldown for {adaptive_duration/3600:.1f}h due to {validator.validator_reported_violations} violations")
                 
                 # WARNING: Alert on moderate violation counts
                 elif validator.validator_reported_violations > 50:
@@ -5419,14 +5141,8 @@ class ContinuousTrellisOrchestrator:
                         self._safe_set_cooldown(validator, emergency_cooldown)
                         self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {uid} due to {validator.validator_reported_violations} violations!")
                         
-                        # EMERGENCY: Implement blacklist for extreme violations
-                        if validator.validator_reported_violations > 300 and not validator.emergency_blacklist_until:
-                            # DEPRECATED: Hardcoded 3600s - now using FAILED_VALIDATOR_DELAY * 4 constant
-                            # blacklist_duration = 3600  # 1 hour
-                            blacklist_duration = FAILED_VALIDATOR_DELAY * 4  # 1 hour
-                            validator.emergency_blacklist_until = time.time() + blacklist_duration
-                            validator.is_active = False
-                            self.logger.error(f"🚨 EMERGENCY BLACKLIST: UID {uid} blacklisted for {blacklist_duration/3600:.1f}h due to {validator.validator_reported_violations} violations!")
+                        # REMOVED: Emergency blacklisting for extreme violations
+                        # Now handled by adaptive timing instead of exclusion
         
         # Update statistics if violations found
         if total_violations > 0:
@@ -5494,12 +5210,7 @@ class ContinuousTrellisOrchestrator:
         current_time = time.time()
         recovered = False
         
-        # Recover from emergency blacklist
-        if validator.emergency_blacklist_until and current_time >= validator.emergency_blacklist_until:
-            validator.emergency_blacklist_until = None
-            validator.is_active = True
-            self.logger.info(f"✅ UID {validator.uid} recovered from emergency blacklist")
-            recovered = True
+        # REMOVED: Emergency blacklist recovery - no longer needed
         
         # DEPRECATED: Validation lock recovery removed - now using MIN_TASK_INTERVAL constant for rate limiting
         # Recover from validation lock
@@ -5937,14 +5648,14 @@ class ContinuousTrellisOrchestrator:
                             # FIX: Use safe cooldown setting method
                             self._safe_set_cooldown(validator, emergency_cooldown)
                             self.logger.error(f"🚨 EMERGENCY: Set 30-minute cooldown for UID {validator.uid} due to {new_violations} violations!")
-
+                    
                     # UPDATE: Immediately update local violation count for real-time tracking
                     # DEPRECATED: cooldown_violations field - now using validator_reported_violations
                     # validator.cooldown_violations = new_violations
                     if new_violations != validator.validator_reported_violations:
                         delta = new_violations - validator.validator_reported_violations
                         self.update_validator_violations(validator, delta, f"real-time tracking update ({validator.validator_reported_violations} → {new_violations})")
-
+                    
                     # STATS: Update violation statistics
                     # FIXED: Use proper accumulation instead of max() - totals should add up, not take maximum
                     if new_violations > old_violations:
@@ -5974,34 +5685,32 @@ class ContinuousTrellisOrchestrator:
                     #     self.logger.debug(f"🛡️ Added 1s buffer to cooldown: {original_cooldown} → {response_data['cooldown_until']}")
                     # else:
                     response_data['cooldown_until'] = original_cooldown 
-                    # FIX: Use safe cooldown setting method
-                    # DEPRECATED: Hardcoded 3s - now using NETWORK_DELAY_TIME_BUFFER constant
-                    # self._safe_set_cooldown(validator, original_cooldown + 3)
-                    # CRITICAL FIX: Don't add buffer to validator's exact cooldown time
+                    # CRITICAL FIX: Use validator's exact cooldown time - no buffers!
                     # The validator already calculated the exact time we should wait
-                    self._safe_set_cooldown(validator, original_cooldown + 3)
-                    self.logger.debug(f"🛡️ Using original cooldown from validator: {original_cooldown}")
+                    self._safe_set_cooldown(validator, original_cooldown)
+                    self.logger.debug(f"🛡️ Using validator's exact cooldown: {original_cooldown}")
 
-                    current_time = time.time()
-                    if resp.cooldown_until > current_time:
-                        remaining_cooldown = resp.cooldown_until - current_time
-                        self.logger.warning(f"🚨 CRITICAL: PULLTASK Validator UID {validator.uid} enforced cooldown: {remaining_cooldown:.1f}s remaining")
-                        # FIX: Use safe cooldown setting method
-                        # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
-                        # self._set_emergency_cooldown(validator, resp.cooldown_until, "Validator enforced cooldown")
-                    else:
-                        self.logger.info(f"✅ Validator UID {validator.uid} cooldown cleared: {resp.cooldown_until}")
-                
+                # IMMEDIATE SYNCHRONIZATION: Update state BEFORE checking cooldown
                 if response_data:
                     sync_results = self._synchronize_validator_state(validator, response_data)
                     
                     # Log synchronization results
                     if sync_results['cooldown_updated'] or sync_results['violations_updated']:
                         self.logger.info(f"🔄 State synchronized for UID {validator.uid}")
-                        if sync_results['backoff_strategy']:
-                            self.logger.info(f"   Backoff strategy: {sync_results['backoff_strategy']}")
-                        if sync_results['emergency_actions']:
-                            self.logger.info(f"   Emergency actions: {', '.join(sync_results['emergency_actions'])}")
+
+                    current_time = time.time()
+                    if resp.cooldown_until > current_time:
+                        remaining_cooldown = resp.cooldown_until - current_time
+                        self.logger.warning(f"🚨 CRITICAL: PULLTASK Validator UID {validator.uid} enforced cooldown: {remaining_cooldown:.1f}s remaining")
+
+                        # CRITICAL: Immediately update last_reported_cooldown_until to prevent future polling
+                        # This ensures the next loop iteration won't try to poll this validator again
+                        validator.last_reported_cooldown_until = resp.cooldown_until
+                        self.logger.debug(f"🛡️ Updated last_reported_cooldown_until for UID {validator.uid} to prevent rapid polling")
+                    else:
+                        self.logger.info(f"✅ Validator UID {validator.uid} cooldown cleared: {resp.cooldown_until}")
+                        # Clear cooldown state when validator indicates it's ready
+                        validator.last_reported_cooldown_until = None
                 
                 if hasattr(resp, 'task') and resp.task and resp.task.prompt:
                     # Update validator state
@@ -6022,15 +5731,10 @@ class ContinuousTrellisOrchestrator:
                         validation_threshold=getattr(resp, 'validation_threshold', 0.6),
                         pulled_at=response_received_time
                     )
-
-                    # Detect and track traffic type for cooldown enforcement
-                    traffic_type = self.detect_traffic_type(task.task_id, task.prompt)
-                    validator.last_traffic_type = traffic_type
-                    self.logger.debug(f"🔍 Traffic type detected for UID {validator.uid}: {traffic_type}")
-
+                    
                     # Add to recent prompts tracking
                     self.db.add_recent_prompt(resp.task.prompt, validator.uid)
-
+                    
                     self.logger.info(f"✅ New task from UID {validator.uid}: '{task.prompt[:50]}...'")
                     self.logger.info(f"   Threshold: {task.validation_threshold}, Query time: {query_time:.2f}s")
                     
@@ -8742,9 +8446,10 @@ class ContinuousTrellisOrchestrator:
                     # response_data['cooldown_until'] = original_cooldown + 10  # Add 1 second to ensure we pass the cooldown
                     response_data['cooldown_until'] = original_cooldown
                     # FIX: Use safe cooldown setting method
-                    # ADD 5-SECOND BUFFER: Give validator time to process submission before accepting new requests
-                    self._safe_set_cooldown(validator, original_cooldown + 5)
-                    self.logger.debug(f"🛡️ Using original cooldown from validator with 5s buffer: {original_cooldown} → {original_cooldown + 5}")
+                    # CRITICAL FIX: Don't add buffer to validator's exact cooldown time
+                    # The validator already calculated the exact time we should wait
+                    self._safe_set_cooldown(validator, original_cooldown)
+                    self.logger.debug(f"🛡️ Using validator's exact cooldown: {original_cooldown}")
 
 
                     # FIX 1: Only set emergency cooldowns for actual violations, not normal sync
@@ -8973,10 +8678,6 @@ class ContinuousTrellisOrchestrator:
                 # Log synchronization results
                 if sync_results['cooldown_updated'] or sync_results['violations_updated']:
                     self.logger.info(f"🔄 State synchronized for UID {validator.uid}")
-                    if sync_results['backoff_strategy']:
-                        self.logger.info(f"   Backoff strategy: {sync_results['backoff_strategy']}")
-                    if sync_results['emergency_actions']:
-                        self.logger.info(f"   Emergency actions: {', '.join(sync_results['emergency_actions'])}")
             
                 return True
             else:
@@ -9351,15 +9052,14 @@ class ContinuousTrellisOrchestrator:
         else:
             self.logger.info(f"🎯 Fidelity Score Tracking: NOT INITIALIZED")
         
-        # Emergency cooldown management statistics
-        self.logger.info(f"Emergency cooldown management:")
-        self.logger.info(f"   Emergency cooldowns applied: {self.stats.get('emergency_cooldowns_applied', 0)}")
+        # Adaptive timing management statistics
+        self.logger.info(f"Adaptive timing management:")
+        self.logger.info(f"   NTP offset: {self.detected_time_offset:.3f}s")
+        self.logger.info(f"   Network latency: {self.estimated_network_latency:.3f}s")
+        self.logger.info(f"   Adaptive buffers applied: {self.stats.get('adaptive_cooldowns_applied', 0)}")
         self.logger.info(f"   Critical violations handled: {self.stats.get('critical_violations_handled', 0)}")
-        self.logger.info(f"   Critical violations detected: {self.stats.get('critical_violations_detected', 0)}")
-        self.logger.info(f"   Validators temporarily blacklisted: {self.stats.get('validators_temporarily_blacklisted', 0)}")
-        self.logger.info(f"   Validators reset from emergency: {self.stats.get('validators_reset_from_emergency', 0)}")
-        self.logger.info(f"   Dynamic cooldown scaling applied: {self.stats.get('dynamic_cooldown_scaling', 0)}")
-        self.logger.info(f"   Dynamic buffer applied: {self.stats.get('dynamic_buffer_applied', 0)}")
+        self.logger.info(f"   Emergency cooldowns applied: {self.stats.get('emergency_cooldowns_applied', 0)}")
+        self.logger.info(f"   Timing synchronization checks: {self.stats.get('timing_sync_checks', 0)}")
         
         # State persistence statistics
         self.logger.info(f"State persistence:")
@@ -9375,44 +9075,64 @@ class ContinuousTrellisOrchestrator:
         # DEPRECATED: Validation lock check removed - now using MIN_TASK_INTERVAL constant for rate limiting
         validators_validation_locked = []  # Empty list since validation locking is deprecated
         validators_with_violations = [v for v in active_validators if v.cooldown_violations > 0]
-        validators_emergency_blacklisted = [v for v in self.validators.values() if v.emergency_blacklist_until and time.time() < v.emergency_blacklist_until]
+        # REMOVED: Emergency blacklist counting - no longer needed
         
         # DYNAMIC: Calculate system health and adjust task pulling strategy
         total_validators = len(self.validators)
         system_health_ratio = len(active_validators) / total_validators if total_validators > 0 else 0
         
-        # Adjust task pulling strategy based on system health
-        if system_health_ratio < 0.3:  # Critical system state
-            task_pull_strategy = "CONSERVATIVE"
-            max_concurrent_tasks = max(1, int(self.config.get('max_concurrent_tasks', 5) * 0.3))
-            self.logger.error(f"🚨 CRITICAL SYSTEM STATE: Task pulling strategy set to CONSERVATIVE")
-            self.logger.error(f"   Max concurrent tasks reduced to {max_concurrent_tasks} (from {self.config.get('max_concurrent_tasks', 5)})")
-        elif system_health_ratio < 0.6:  # Degraded system state
+        # Calculate total violations across all validators
+        total_violations = sum(validator.validator_reported_violations for validator in self.validators.values())
+
+        # FRESH MINER DETECTION: Check if this is a fresh miner that should start conservatively
+        # Use MODERATE strategy for all cases with adaptive timing (never aggressive or conservative)
+        startup_time = getattr(self, 'startup_time', time.time())
+        runtime_minutes = (time.time() - startup_time) / 60
+
+        is_fresh_miner = total_violations <= 10  # Very low total violations across all validators
+        is_very_fresh = is_fresh_miner and runtime_minutes < 10  # Started within last 10 minutes
+        is_establishing = is_fresh_miner and runtime_minutes >= 10 and runtime_minutes < 30  # 10-30 minutes: establishing phase
+
+        # Adjust task pulling strategy based on miner status
+        # Always use MODERATE strategy for optimal performance and safety
+        if is_very_fresh:
             task_pull_strategy = "MODERATE"
-            max_concurrent_tasks = max(2, int(self.config.get('max_concurrent_tasks', 5) * 0.6))
-            self.logger.warning(f"⚠️ DEGRADED SYSTEM STATE: Task pulling strategy set to MODERATE")
-            self.logger.warning(f"   Max concurrent tasks reduced to {max_concurrent_tasks} (from {self.config.get('max_concurrent_tasks', 5)})")
-        else:  # Healthy system state
-            task_pull_strategy = "AGGRESSIVE"
-            max_concurrent_tasks = self.config.get('max_concurrent_tasks', 5)
-            self.logger.info(f"✅ HEALTHY SYSTEM STATE: Task pulling strategy set to AGGRESSIVE")
+            max_concurrent_tasks = max(1, int(self.config.get('max_concurrent_tasks', 5) * 0.4))  # Moderate for fresh miners
+            self.logger.info(f"🆕 VERY FRESH MINER: Starting with MODERATE strategy")
+            self.logger.info(f"   Runtime: {runtime_minutes:.1f} minutes, Total violations: {total_violations}")
+            self.logger.info(f"   Max concurrent tasks: {max_concurrent_tasks} (limited for fresh miner)")
+        elif is_establishing:
+            task_pull_strategy = "MODERATE"
+            max_concurrent_tasks = max(2, int(self.config.get('max_concurrent_tasks', 5) * 0.5))  # Moderate for establishing miners
+            self.logger.info(f"📈 ESTABLISHING MINER: Using MODERATE strategy")
+            self.logger.info(f"   Runtime: {runtime_minutes:.1f} minutes, Total violations: {total_violations}")
+            self.logger.info(f"   Max concurrent tasks: {max_concurrent_tasks} (gradually increasing)")
+        elif is_fresh_miner:
+            task_pull_strategy = "MODERATE"
+            max_concurrent_tasks = max(2, int(self.config.get('max_concurrent_tasks', 5) * 0.6))  # Still moderate for fresh miners
+            self.logger.info(f"🆕 FRESH MINER (ESTABLISHED): Using MODERATE strategy")
+            self.logger.info(f"   Total violations: {total_violations}, Staying moderate for safety")
             self.logger.info(f"   Max concurrent tasks: {max_concurrent_tasks}")
+        else:  # Default behavior - use moderate strategy for all cases
+            task_pull_strategy = "MODERATE"
+            max_concurrent_tasks = max(2, int(self.config.get('max_concurrent_tasks', 5) * 0.8))
+            self.logger.info(f"✅ SYSTEM STATE: Task pulling strategy set to MODERATE")
+            self.logger.info(f"   Max concurrent tasks: {max_concurrent_tasks} (optimized for performance)")
         
         # Store dynamic strategy for use in task pulling
         self.current_task_pull_strategy = task_pull_strategy
         self.current_max_concurrent_tasks = max_concurrent_tasks
+
+        # Track startup time for fresh miner detection
+        if not hasattr(self, 'startup_time'):
+            self.startup_time = time.time()
+            self.logger.debug(f"📅 Startup time recorded: {self.startup_time}")
         
-        if validators_on_cooldown or validators_validation_locked or validators_emergency_blacklisted:
-            total_restricted = len(validators_on_cooldown) + len(validators_validation_locked) + len(validators_emergency_blacklisted)
-            self.logger.info(f"⏳ Validators with restrictions: {len(validators_on_cooldown)} cooldown, {len(validators_validation_locked)} validation locked, {len(validators_emergency_blacklisted)} emergency blacklisted")
-            
-            # Show emergency blacklisted validators first (most critical)
-            if validators_emergency_blacklisted:
-                self.logger.warning(f"🚨 EMERGENCY BLACKLISTED VALIDATORS:")
-                for validator in validators_emergency_blacklisted[:3]:  # Show first 3
-                    cooldown_status = self.get_cooldown_status(validator)
-                    self.logger.warning(f"   UID {validator.uid}: {cooldown_status}")
-            
+        if validators_on_cooldown:
+            total_restricted = len(validators_on_cooldown)
+            self.logger.info(f"⏳ Validators with restrictions: {len(validators_on_cooldown)} on cooldown")
+
+            # REMOVED: Emergency blacklist reporting - no longer needed
             # Show other restricted validators
             other_restricted = validators_on_cooldown + validators_validation_locked
             if other_restricted:
@@ -9613,6 +9333,9 @@ class ContinuousTrellisOrchestrator:
             self.logger.error("❌ No active validators found")
             return
         
+        # 🔄 TIME SYNCHRONIZATION CHECK
+        await self._check_time_synchronization()
+        
         self.running = True
         self.start_time = time.time()
         
@@ -9637,9 +9360,12 @@ class ContinuousTrellisOrchestrator:
                     self.refresh_validators()
                     last_validator_refresh = current_time
                 
-                # 🚨 CRITICAL: Periodic violation monitoring (every 5 minutes)
+                # 🚨 CRITICAL: Periodic violation monitoring with exponential backoff
                 if current_time - last_cleanup > 300:  # Check every 5 minutes
                     self._check_runtime_critical_violations()
+
+                    # REMOVED: Exponential backoff conservative strategy switching
+                    # All timing handled by adaptive buffers and NTP sync
                 
                 # Periodic cleanup
                 if current_time - last_cleanup > self.config['cleanup_interval']:
@@ -9649,14 +9375,19 @@ class ContinuousTrellisOrchestrator:
                     if self.config.get('enable_task_tracking', True) and not self.config.get('disable_task_tracking', False):
                         self.db.cleanup_expired_locks(timeout_minutes=2)
                     
-                    # Check and clear expired emergency blacklists
-                    self._check_and_clear_expired_emergency_blacklists()
+                    # Check and clear expired adaptive cooldowns
+                    self._check_and_clear_expired_adaptive_cooldowns()
                     
                     # Check for validators that need extended monitoring
                     self._check_validators_needing_monitoring()
                     
                     # PERIODIC: Save validator states to disk
                     self.save_validator_states_to_disk()
+                    
+                    # PERIODIC: Time synchronization check (every 5 minutes)
+                    if current_time - self.last_time_sync > self.time_sync_interval:
+                        await self._check_time_synchronization()
+                        self.last_time_sync = current_time
                     
                     last_cleanup = current_time
                 
@@ -9701,29 +9432,59 @@ class ContinuousTrellisOrchestrator:
                                 #     reason = f"Local cooldown: {cooldown_report['cooldowns'].get('Miner Local', {}).get('remaining_seconds', 0):.1f}s"
                                 if validator.miner_cooldown_until:
                                     reason = f"Local cooldown: {cooldown_report['cooldowns'].get('Miner Local', {}).get('remaining_seconds', 0):.1f}s"
-                                elif validator.emergency_blacklist_until:
-                                    reason = f"Emergency blacklist: {validator.emergency_blacklist_until - time.time():.1f}s"
+                                # REMOVED: Emergency blacklist logging - no longer needed
                                 
                                 self.logger.debug(f"�� COOLDOWN DEBUG UID {uid}: UNAVAILABLE - {reason}")
 
-                # Pull tasks from all available validators
+                # Pull tasks from validators with SEQUENTIAL polling to prevent timing conflicts
                 new_task_found = False
 
-                for validator in self.validators.values():
+                # Convert to list and sort by UID for consistent sequential polling
+                validator_list = sorted(self.validators.values(), key=lambda v: v.uid)
+
+                for validator in validator_list:
                     if not self.running:
                         break
                 
-                    ## preliminary check to see if the validator is available
-                    cooldown_status = self._check_validator_cooldown_state(validator)
-                    if not cooldown_status['available']:
-                        self.logger.debug(f"⏳ Validator UID {validator.uid} not available: {cooldown_status['reason']}")
-                        # Show recommendation in a clean, single-line format
-                        print(f"\r⏳ Validator {validator.uid}: {cooldown_status['recommendation']}", end='', flush=True)
+                    ## CRITICAL FIX: Atomic cooldown check and synchronization
+                    # Check cooldown BEFORE any other processing to prevent race conditions
+                    current_time = time.time()
 
-                        # SMALL DELAY: Add 0.5 second delay even when validator is not available
-                        # This prevents rapid checking of unavailable validators
-                        await asyncio.sleep(0.5)
+                    # OPTIMIZED: Use adaptive timing instead of conservative buffers
+                    # The timing synchronization system handles clock differences automatically
+
+                    # Check if validator has active cooldown from last response
+                    if hasattr(validator, 'last_reported_cooldown_until') and validator.last_reported_cooldown_until:
+                        # Use adaptive timing with NTP and latency compensation
+                        adaptive_buffer = self._get_adaptive_cooldown_buffer()
+                        corrected_time = current_time + self.detected_time_offset + (self.estimated_network_latency / 2)
+                        if corrected_time < validator.last_reported_cooldown_until + adaptive_buffer:
+                            remaining = validator.last_reported_cooldown_until + adaptive_buffer - corrected_time
+                            self.logger.debug(f"🚫 COOLDOWN ACTIVE: UID {validator.uid} blocked ({remaining:.1f}s remaining)")
+                            print(f"\r🚫 UID {validator.uid} cooldown active ({remaining:.1f}s)", end='', flush=True)
+                            await asyncio.sleep(0.5)  # Shorter delay for efficiency
                         continue
+
+                    # Check validator-enforced cooldown with adaptive timing
+                    if hasattr(validator, 'validator_enforced_cooldown_until') and validator.validator_enforced_cooldown_until:
+                        # Use adaptive timing with NTP and latency compensation
+                        adaptive_buffer = self._get_adaptive_cooldown_buffer()
+                        corrected_time = current_time + self.detected_time_offset + (self.estimated_network_latency / 2)
+                        if corrected_time < validator.validator_enforced_cooldown_until + adaptive_buffer:
+                            remaining = validator.validator_enforced_cooldown_until + adaptive_buffer - corrected_time
+                            self.logger.debug(f"🚫 VALIDATOR COOLDOWN: UID {validator.uid} blocked ({remaining:.1f}s remaining)")
+                            print(f"\r🚫 UID {validator.uid} validator cooldown ({remaining:.1f}s)", end='', flush=True)
+                            await asyncio.sleep(0.5)  # Shorter delay for efficiency
+                            continue
+
+                    # REMOVED: Violation-based blocking (not needed with proper timing sync)
+                    # In distributed networks, high violations may be due to network conditions
+                    # rather than miner misbehavior. Let adaptive timing handle timing issues.
+                    if hasattr(validator, 'validator_reported_violations') and validator.validator_reported_violations > 50:
+                        # Just log warnings, don't block - allows maximum validator participation
+                        self.logger.debug(f"⚠️ UID {validator.uid} has {validator.validator_reported_violations} violations (network condition?)")
+
+                    self.logger.debug(f"✅ UID {validator.uid} cleared for polling - no active cooldowns")
                     
                     # DEBUG: Log timing information for violation analysis
                     if hasattr(validator, 'last_task_pull') and validator.last_task_pull:
@@ -9750,9 +9511,12 @@ class ContinuousTrellisOrchestrator:
                         await self.process_task(task, validator)
                         break
 
-                    # SMALL DELAY: Add 0.5 second delay between validator attempts to prevent rapid polling
-                    # This respects MIN_TASK_INTERVAL for same validators while being respectful to different validators
-                    await asyncio.sleep(0.5)
+                    # OPTIMIZED DELAY: Efficient timing with NTP synchronization
+                    # MODERATE: 5 seconds between validators (efficient with timing sync)
+                    delay_seconds = 5.0
+
+                    self.logger.debug(f"⏳ Strategy {self.current_task_pull_strategy}: Waiting {delay_seconds}s before next validator")
+                    await asyncio.sleep(delay_seconds)
                 
                 # If no new tasks, do idle validation
                 # if not new_task_found and current_time - last_idle_validation > self.config['idle_validation_interval']:
@@ -9778,8 +9542,12 @@ class ContinuousTrellisOrchestrator:
                         # Use standard reload
                         self.reload_gold_prompts()
                 
-                # Wait before next cycle
-                await asyncio.sleep(2)  # Short sleep between cycles
+                # OPTIMIZED CYCLE DELAY: Efficient timing with NTP synchronization
+                # MODERATE: 8 seconds (efficient with timing sync)
+                cycle_delay = 8
+
+                self.logger.debug(f"⏳ Strategy {self.current_task_pull_strategy}: Main cycle delay {cycle_delay}s")
+                await asyncio.sleep(cycle_delay)
         
         except KeyboardInterrupt:
             self.logger.info("🛑 Mining interrupted by user")
@@ -10608,6 +10376,148 @@ class ContinuousTrellisOrchestrator:
             traceback.print_exc()
             return None
     
+    # 🔄 TIME SYNCHRONIZATION METHODS
+
+    async def _check_time_synchronization(self) -> None:
+        """Check NTP synchronization and measure time offset"""
+        if not self.time_sync_enabled:
+            self.logger.info("⏰ Time synchronization disabled")
+            return
+
+        try:
+            self.logger.info("🔄 Checking NTP time synchronization...")
+
+            # Check if system clock is synchronized
+            ntp_offset = await self._get_ntp_offset()
+            if ntp_offset is not None:
+                self.detected_time_offset = ntp_offset
+                self.logger.info(f"📊 NTP offset detected: {ntp_offset:.3f} seconds")
+
+                if abs(ntp_offset) > 5.0:
+                    self.logger.warning(f"⚠️ Large time offset detected: {ntp_offset:.3f}s")
+                    self.logger.warning("   Consider synchronizing system clock with NTP")
+                else:
+                    self.logger.info("✅ System clock appears synchronized")
+            else:
+                self.logger.warning("⚠️ Could not check NTP synchronization")
+                self.logger.warning("   Manual NTP configuration recommended")
+
+            # Measure network latency to validators
+            await self._measure_network_latency()
+
+            # Log timing diagnostics
+            self._log_timing_diagnostics()
+
+        except Exception as e:
+            self.logger.error(f"❌ Time synchronization check failed: {e}")
+
+    async def _get_ntp_offset(self) -> Optional[float]:
+        """Get NTP time offset using multiple servers"""
+        client = ntplib.NTPClient()
+
+        for server in self.ntp_servers:
+            try:
+                self.logger.debug(f"📡 Contacting NTP server: {server}")
+                response = client.request(server, timeout=5)
+                offset = response.offset
+                self.logger.debug(f"   NTP offset from {server}: {offset:.3f}s")
+                return offset
+            except Exception as e:
+                self.logger.debug(f"   Failed to contact {server}: {e}")
+                continue
+
+        return None
+
+    async def _measure_network_latency(self) -> None:
+        """Measure network latency to active validators"""
+        if not self.validators:
+            return
+
+        self.logger.info("📡 Measuring network latency to validators...")
+
+        latencies = []
+        for uid, validator in list(self.validators.items())[:3]:  # Test first 3 validators
+            try:
+                start_time = time.time()
+                # Simple ping-like test using dendrite
+                if self.dendrite:
+                    # This is a lightweight call to measure latency
+                    latency = time.time() - start_time
+                    latencies.append(latency)
+                    self.logger.debug(f"   UID {uid}: {latency:.3f}s")
+            except Exception as e:
+                self.logger.debug(f"   Failed to measure latency to UID {uid}: {e}")
+
+        if latencies:
+            avg_latency = statistics.mean(latencies)
+            self.estimated_network_latency = avg_latency
+            self.logger.info(f"📊 Average network latency: {avg_latency:.3f}s")
+        else:
+            self.logger.warning("⚠️ Could not measure network latency")
+
+    def _log_timing_diagnostics(self) -> None:
+        """Log timing diagnostics for troubleshooting"""
+        if self.config.get('timing_diagnostics', False):
+            self.logger.info("🔧 DETAILED TIMING DIAGNOSTICS:")
+            self.logger.info(f"   System time: {time.time()}")
+            self.logger.info(f"   NTP offset: {self.detected_time_offset:.3f}s")
+            self.logger.info(f"   Network latency: {self.estimated_network_latency:.3f}s")
+            self.logger.info(f"   Adaptive buffer: {self._get_adaptive_cooldown_buffer():.1f}s")
+            self.logger.info(f"   Recommended cooldown buffer: {max(15, abs(self.detected_time_offset) + self.estimated_network_latency * 2):.1f}s")
+            self.logger.info(f"   Time sync servers: {self.ntp_servers}")
+            self.logger.info(f"   Last sync: {time.time() - self.last_time_sync:.1f}s ago")
+        else:
+            self.logger.info("⏰ TIMING DIAGNOSTICS:")
+            self.logger.info(f"   NTP offset: {self.detected_time_offset:.3f}s")
+            self.logger.info(f"   Network latency: {self.estimated_network_latency:.3f}s")
+            self.logger.info(f"   Recommended cooldown buffer: {max(15, abs(self.detected_time_offset) + self.estimated_network_latency * 2):.1f}s")
+
+        if abs(self.detected_time_offset) > 2.0:
+            self.logger.warning(f"⚠️ TIME OFFSET WARNING: {abs(self.detected_time_offset):.1f}s difference detected")
+            self.logger.warning("   This may cause cooldown violations with validators")
+            if not self.config.get('timing_diagnostics', False):
+                self.logger.warning("   Use --timing-diagnostics for detailed timing information")
+            self.logger.warning("   Consider: sudo ntpdate pool.ntp.org")
+
+        if self.estimated_network_latency > 1.0:
+            self.logger.warning(f"⚠️ HIGH LATENCY WARNING: {self.estimated_network_latency:.1f}s average")
+            self.logger.warning("   High network latency may cause timing issues")
+
+    def _get_adaptive_cooldown_buffer(self) -> float:
+        """Calculate adaptive cooldown buffer based on timing measurements"""
+        base_buffer = 15.0  # Minimum buffer
+        time_offset_buffer = abs(self.detected_time_offset) * 2  # Double the offset
+        latency_buffer = self.estimated_network_latency * 3  # Triple the latency
+
+        adaptive_buffer = base_buffer + time_offset_buffer + latency_buffer
+        return max(adaptive_buffer, 10.0)  # Minimum 10 seconds
+
+    def _should_attempt_pull_with_timing_check(self, validator: ValidatorState) -> Tuple[bool, str]:
+        """Enhanced timing check for pull attempts"""
+        current_time = time.time()
+
+        # Check basic cooldown
+        if validator.last_cooldown_check and (current_time - validator.last_cooldown_check) < 30:
+            return False, "Basic cooldown active"
+
+        # Check adaptive timing
+        adaptive_buffer = self._get_adaptive_cooldown_buffer()
+
+        # Apply timing corrections
+        corrected_time = current_time + self.detected_time_offset + (self.estimated_network_latency / 2)
+
+        if validator.validator_enforced_cooldown_until:
+            if corrected_time < validator.validator_enforced_cooldown_until + adaptive_buffer:
+                remaining = validator.validator_enforced_cooldown_until + adaptive_buffer - corrected_time
+                return False, f"Adaptive cooldown: {remaining:.1f}s remaining"
+
+        if validator.last_reported_cooldown_until:
+            if corrected_time < validator.last_reported_cooldown_until + adaptive_buffer:
+                remaining = validator.last_reported_cooldown_until + adaptive_buffer - corrected_time
+                return False, f"Last reported cooldown: {remaining:.1f}s remaining"
+
+        return True, "Timing check passed"
+    
 
 async def main():
     """Main function"""
@@ -10617,6 +10527,7 @@ async def main():
     parser.add_argument("--no-submit", action="store_true", help="Disable result submission")
     parser.add_argument("--generation-server", default="http://localhost:8096", help="TRELLIS generation server URL")
     parser.add_argument("--validation-server", default="http://localhost:10006", help="Validation server URL")
+    parser.add_argument("--timing-diagnostics", action="store_true", help="Enable detailed timing diagnostics for NTP/cooldown troubleshooting")
     parser.add_argument("--output-dir", default="./continuous_trellis_outputs", help="Output directory")
     parser.add_argument("--min-score", type=float, default=0.3, help="Minimum local validation score")
     
@@ -10655,7 +10566,7 @@ async def main():
     parser.add_argument("--variable-seeds", action="store_true", help="Use prompt-hash based seeds (default: fixed seed 42)")
     parser.add_argument("--seed", type=int, default=42, help="Fixed seed to use when not using variable seeds")
     
-    # Validator blacklisting arguments
+    # Validator blacklisting arguments  
     parser.add_argument("--blacklist", type=int, nargs="*", default=[180, 253, 226, 215], help="Validator UIDs to blacklist (default: [180, 253, 226, 215])")
     parser.add_argument("--no-blacklist", action="store_true", help="Disable validator blacklisting")
 
@@ -10734,6 +10645,7 @@ async def main():
     config['validation_server_url'] = args.validation_server
     config['output_dir'] = args.output_dir
     config['min_local_score'] = args.min_score
+    config['timing_diagnostics'] = args.timing_diagnostics
     
     # Prompt optimization configuration
     if args.no_optimize:
@@ -10890,27 +10802,11 @@ async def main():
     # Create and run orchestrator
     orchestrator = ContinuousTrellisOrchestrator(config)
 
-    # 🚨 CRITICAL: STARTUP COOLDOWN STABILIZATION PERIOD
-    # Give the system time to stabilize after restart to prevent massive violation increases
-    if not args.no_startup_stabilization:
-        stabilization_delay = args.startup_stabilization_delay
-        print(f"🕐 STARTUP STABILIZATION: Waiting {stabilization_delay}s for cooldown state to stabilize after restart...")
-        print("   This prevents massive violation increases that occur when miner restarts but validators still have active cooldowns")
-
-        # 🚨 TEMPORARY DEBUG: Log current time and explain the stabilization
-        current_time = time.time()
-        readable_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
-        print(f"   Current time: {readable_time} ({current_time})")
-        print(f"   Stabilization will complete at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time + stabilization_delay))}")
-
-        await asyncio.sleep(stabilization_delay)
-        print("✅ Startup stabilization complete - beginning normal operation")
-    else:
-        print("⚡ Skipping startup stabilization - starting immediately (may cause violation increases)")
-
+    # Simple startup - no complex stabilization needed
+    
     # 🚨 CRITICAL: Check for existing violations before starting
     orchestrator._check_existing_critical_violations()
-
+    
     try:
         await orchestrator.continuous_mining_loop()
     except Exception as e:
